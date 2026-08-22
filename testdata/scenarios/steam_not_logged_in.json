@@ -1,0 +1,8 @@
+{
+  "name": "steam_not_logged_in",
+  "description": "Steam is not signed in. Must fail fast with a plain-language reason, no pointless retries.",
+  "steps": [
+    {"after_ms": 500, "line": "Steamworks failed to initialize", "expect": "steam_problem"},
+    {"after_ms": 500, "exit": 1}
+  ]
+}

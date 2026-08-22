@@ -1,0 +1,9 @@
+{
+  "name": "server_full",
+  "description": "Server is full and refuses to queue us. Agent should back off and retry.",
+  "steps": [
+    {"after_ms": 500,  "line": "Connecting to {{connect}}", "expect": "connecting"},
+    {"after_ms": 2000, "line": "Disconnected: Server is full", "expect": "server_full"},
+    {"after_ms": 500,  "exit": 0}
+  ]
+}

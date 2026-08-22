@@ -1,0 +1,8 @@
+{
+  "name": "instant_join",
+  "description": "Server has room. Client connects and is in the game within seconds.",
+  "steps": [
+    {"after_ms": 500,  "line": "Connecting to {{connect}}", "expect": "connecting"},
+    {"after_ms": 3000, "line": "Finished loading level Procedural Map", "expect": "joined"}
+  ]
+}
