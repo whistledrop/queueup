@@ -17,6 +17,7 @@ type Job struct {
 	DeviceID        string
 	ServerAddr      string
 	ServerName      string
+	ServerID        string // the search provider's id, which is the canonical identity
 	WaitForServerUp bool
 	GroupID         string
 	State           string
@@ -49,6 +50,7 @@ type NewJob struct {
 	DeviceID        string
 	ServerAddr      string
 	ServerName      string
+	ServerID        string
 	WaitForServerUp bool
 	GroupID         string
 }
@@ -64,6 +66,7 @@ func (s *Store) CreateJob(n NewJob) (Job, error) {
 		DeviceID:        n.DeviceID,
 		ServerAddr:      n.ServerAddr,
 		ServerName:      n.ServerName,
+		ServerID:        n.ServerID,
 		WaitForServerUp: n.WaitForServerUp,
 		GroupID:         n.GroupID,
 		State:           "pending",
@@ -80,10 +83,10 @@ func (s *Store) CreateJob(n NewJob) (Job, error) {
 		group = j.GroupID
 	}
 	_, err := s.db.Exec(`
-		INSERT INTO jobs (id, account_id, device_id, server_addr, server_name,
+		INSERT INTO jobs (id, account_id, device_id, server_addr, server_name, server_id,
 		                  wait_for_server_up, group_id, state, detail, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		j.ID, j.AccountID, j.DeviceID, j.ServerAddr, j.ServerName,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		j.ID, j.AccountID, j.DeviceID, j.ServerAddr, j.ServerName, j.ServerID,
 		wait, group, j.State, j.Detail, ms(now), ms(now))
 	if err != nil {
 		return Job{}, err
@@ -109,15 +112,15 @@ func (s *Store) ActiveJobForDevice(deviceID string) (Job, error) {
 
 func (s *Store) jobWhere(where string, arg any) (Job, error) {
 	var j Job
-	var name, group, detail, rc, rm sql.NullString
+	var name, serverID, group, detail, rc, rm sql.NullString
 	var wait int
 	var created, updated int64
 	err := s.db.QueryRow(`
-		SELECT id, account_id, device_id, server_addr, server_name, wait_for_server_up,
+		SELECT id, account_id, device_id, server_addr, server_name, server_id, wait_for_server_up,
 		       group_id, state, position, attempt, detail, reason_code, reason_message,
 		       created_at, updated_at
 		  FROM jobs WHERE `+where, arg).
-		Scan(&j.ID, &j.AccountID, &j.DeviceID, &j.ServerAddr, &name, &wait,
+		Scan(&j.ID, &j.AccountID, &j.DeviceID, &j.ServerAddr, &name, &serverID, &wait,
 			&group, &j.State, &j.Position, &j.Attempt, &detail, &rc, &rm, &created, &updated)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Job{}, ErrNotFound
@@ -125,7 +128,7 @@ func (s *Store) jobWhere(where string, arg any) (Job, error) {
 	if err != nil {
 		return Job{}, err
 	}
-	j.ServerName, j.GroupID, j.Detail = name.String, group.String, detail.String
+	j.ServerName, j.ServerID, j.GroupID, j.Detail = name.String, serverID.String, group.String, detail.String
 	j.ReasonCode, j.ReasonMessage = rc.String, rm.String
 	j.WaitForServerUp = wait == 1
 	j.CreatedAt, j.UpdatedAt = fromMs(created), fromMs(updated)
@@ -250,4 +253,13 @@ func (s *Store) RecentJobs(accountID string, limit int) ([]Job, error) {
 		out = append(out, j)
 	}
 	return out, nil
+}
+
+// UpdateAddress records a freshly looked-up address for a job. Rust server IPs
+// change, so the address is resolved again just before we connect rather than
+// trusted from whenever the job was created.
+func (s *Store) UpdateAddress(jobID, addr, name string) error {
+	_, err := s.db.Exec(
+		`UPDATE jobs SET server_addr = ?, server_name = ? WHERE id = ?`, addr, name, jobID)
+	return err
 }

@@ -2,9 +2,17 @@
 /bin/
 *.exe
 
-# Local logs and scratch
+# Local database and logs
+*.db
+*.db-shm
+*.db-wal
 *.log
 !testdata/**/*.log
+
+# Node
+node_modules/
+.next/
+next-env.d.ts
 
 # Editor / OS noise
 .DS_Store

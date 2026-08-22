@@ -13,6 +13,59 @@ Two kinds of caller:
 
 Both send the token as `Authorization: Bearer <token>`.
 
+## Signing in
+
+The web app signs in with an email and a password and gets back a session token.
+It keeps that token in an http-only cookie on its own server, so the browser
+never holds a credential that could command somebody's PC.
+
+```bash
+curl -X POST http://127.0.0.1:8080/api/auth/register \
+  -d '{"email":"you@example.com","password":"at least eight characters"}'
+# {"session_token":"...","account":{"id":"acct_...","email":"you@example.com"}}
+
+curl -X POST http://127.0.0.1:8080/api/auth/login \
+  -d '{"email":"you@example.com","password":"at least eight characters"}'
+
+curl http://127.0.0.1:8080/api/auth/me -H "Authorization: Bearer $SESSION"
+curl -X POST http://127.0.0.1:8080/api/auth/logout -H "Authorization: Bearer $SESSION"
+```
+
+A session token and the long-lived account token below are interchangeable on
+every route. Sessions are what the web app uses; the account token stays for
+scripts and for this document.
+
+Sign-in refuses a wrong password and an unknown email address with the same
+message on purpose, so the page cannot be used to find out who has an account.
+
+## Finding servers
+
+```bash
+curl "http://127.0.0.1:8080/api/servers/search?q=rust&limit=25" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+```json
+{"source":"stub",
+ "servers":[{"id":"stub-1","name":"Rustopia EU Main","address":"51.83.128.10:28015",
+             "online":true,"players":198,"max_players":200,"queue":312,
+             "region":"EU","favourite":false}]}
+```
+
+`source` tells you which backend answered. See `docs/server-search.md`: the
+default is a built-in example list, because BattleMetrics now needs a paid
+subscription.
+
+Star a server so it appears on the dashboard:
+
+```bash
+curl -X POST http://127.0.0.1:8080/api/favourites -H "Authorization: Bearer $TOKEN" \
+  -d '{"server_id":"stub-1","name":"Rustopia EU Main","address":"51.83.128.10:28015"}'
+
+curl http://127.0.0.1:8080/api/favourites -H "Authorization: Bearer $TOKEN"
+curl -X DELETE http://127.0.0.1:8080/api/favourites/stub-1 -H "Authorization: Bearer $TOKEN"
+```
+
 ## Setup
 
 ```bash
@@ -78,13 +131,26 @@ curl -X POST http://127.0.0.1:8080/api/devices/$DEVICE_ID/revoke \
 
 ## Joins
 
-Start one:
+Start one. The normal way is by server id, from the search results, and the
+relay looks the address up:
+
+```bash
+curl -X POST http://127.0.0.1:8080/api/jobs \
+  -H "Authorization: Bearer $ACCOUNT_TOKEN" \
+  -d '{"device_id":"'"$DEVICE_ID"'","server_id":"stub-1"}'
+```
+
+A raw address still works, for testing or when you already know it:
 
 ```bash
 curl -X POST http://127.0.0.1:8080/api/jobs \
   -H "Authorization: Bearer $ACCOUNT_TOKEN" \
   -d '{"device_id":"'"$DEVICE_ID"'","server":"51.83.128.10:28015"}'
 ```
+
+When a job carries a server id, the address is looked up again in the moment
+before the job is handed to the PC, because Rust server addresses change between
+wipes. If it moved, the phone is told so.
 
 `wait_for_server_up: true` arms the "join as soon as the server comes back after
 wipe" mode. In phase 2 the relay reports the server as up straight away; phase 4

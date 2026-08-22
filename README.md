@@ -13,15 +13,15 @@ the game the same way you would.**
 
 ## Where the project is right now
 
-**Phases 1 and 2 are done.** The agent works, the relay works, and a PC can be
-paired to an account and sent a join from anywhere. There is no website yet, so
-for now the "web app" is a curl command.
+**Phases 1, 2 and 3 are done.** There is a working website: sign in on your
+phone, link your PC, find a server, tap join, and watch the queue position count
+down live.
 
 | Phase | What it is | Status |
 |---|---|---|
 | 1 | Agent brain + fake Rust simulator, running locally | **done** |
 | 2 | Relay server, agent holds an outbound connection, survives reboots | **done** |
-| 3 | Web app: login, pairing, server search, join now, live status | not started |
+| 3 | Web app: login, pairing, server search, join now, live status | **done** |
 | 4 | Scheduling, wipe-restart detection, notifications | not started |
 | 5 | Hardening, then the real wipe-day test on your PC | not started |
 
@@ -53,6 +53,30 @@ Every line there is a message that will end up on your phone in phase 3.
 Run `./scripts/demo.sh` to watch all seven scenarios back to back, including the
 nasty ones: a crash mid-queue, a banned account, Steam not signed in, and a
 server that flaps up and down through a wipe restart.
+
+## Run the website
+
+Three things run at once. Two terminals and one command each.
+
+```bash
+# 1. the relay
+QUEUEUP_ADDR=127.0.0.1:8080 QUEUEUP_DB=queueup-dev.db go run ./cmd/relay serve
+
+# 2. the website
+npm run dev            # http://localhost:3000
+
+# 3. your "PC", pretending to be Rust
+go run ./cmd/agent pair --relay http://127.0.0.1:8080
+go run ./cmd/agent run  --relay http://127.0.0.1:8080 \
+  --sim --scenario testdata/scenarios/long_queue.json --speed 4
+```
+
+Open http://localhost:3000, create an account, and type the code the agent is
+showing into the box. Then find a server and tap join.
+
+Server search uses a built-in example list until you set a key. See
+`docs/server-search.md`: BattleMetrics now charges for API access, so there is a
+decision to make there.
 
 ## Try the whole system
 
@@ -127,6 +151,7 @@ real `Player.log` yet. The agent prints a loud warning while that is true. See
 ```
 go test ./...          # everything
 go test -race ./...    # everything, checking for concurrency bugs
+npm --prefix web run build   # the website compiles and type checks
 ```
 
 Two to know about:
@@ -191,9 +216,15 @@ thousands of idle WebSocket connections open cheaply, which is the thing Go is
 best at. Sharing the language with the agent means one set of message definitions
 and no translation layer between them.
 
-**Web app (phase 3): Next.js.** Mobile-first, deploys to Vercel in one step,
-handles web push, and it is what you already run for your other projects, so
-there is nothing new for you to learn or pay for.
+**Web app: Next.js 16.** Mobile first, deploys to Vercel in one step, handles web
+push in phase 4, and it is what you already run for your other projects, so there
+is nothing new for you to learn or pay for. There is no CSS framework: the whole
+look is one stylesheet, which is less to keep up to date than a dependency.
+
+The browser never talks to the relay directly. It talks to the website, and the
+website adds the session token and forwards the call. That keeps the token in an
+http-only cookie where no script on the page can read it, and it means there is
+no cross-origin setup to get wrong.
 
 **Database: SQLite first, Postgres when it needs it.** A single file on the relay
 is enough for accounts, devices and jobs, and it removes an entire moving part.

@@ -15,6 +15,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -36,6 +37,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   id           TEXT PRIMARY KEY,
   email        TEXT NOT NULL UNIQUE,
   token_hash   TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL DEFAULT '',
   created_at   INTEGER NOT NULL
 );
 
@@ -76,6 +78,7 @@ CREATE TABLE IF NOT EXISTS jobs (
   device_id          TEXT NOT NULL REFERENCES devices(id),
   server_addr        TEXT NOT NULL,
   server_name        TEXT NOT NULL DEFAULT '',
+  server_id          TEXT NOT NULL DEFAULT '',
   wait_for_server_up INTEGER NOT NULL DEFAULT 0,
   -- group_id is unused in v1. It is here so that clan joins, the flagship v2
   -- feature, do not need a schema migration later.
@@ -132,10 +135,16 @@ func Open(path string) (*Store, error) {
 			return nil, fmt.Errorf("setting %s: %w", pragma, err)
 		}
 	}
-	if _, err := db.Exec(schema); err != nil {
-		return nil, fmt.Errorf("creating schema: %w", err)
+	for _, s := range []string{schema, authSchema, serversSchema} {
+		if _, err := db.Exec(s); err != nil {
+			return nil, fmt.Errorf("creating schema: %w", err)
+		}
 	}
-	return &Store{db: db, now: time.Now}, nil
+	st := &Store{db: db, now: time.Now}
+	if err := st.migrate(); err != nil {
+		return nil, err
+	}
+	return st, nil
 }
 
 // Close releases the database.
@@ -195,4 +204,97 @@ func fromMs(v int64) time.Time {
 		return time.Time{}
 	}
 	return time.UnixMilli(v).UTC()
+}
+
+// migrate adds columns that were introduced after a database was first created.
+// CREATE TABLE IF NOT EXISTS does nothing to a table that already exists, so new
+// columns have to be added explicitly or an upgraded relay would fail against an
+// older database file.
+func (s *Store) migrate() error {
+	for _, m := range []struct{ table, column, definition string }{
+		{"accounts", "password_hash", "TEXT NOT NULL DEFAULT ''"},
+		{"jobs", "server_id", "TEXT NOT NULL DEFAULT ''"},
+	} {
+		has, err := s.hasColumn(m.table, m.column)
+		if err != nil {
+			return err
+		}
+		if has {
+			continue
+		}
+		if _, err := s.db.Exec(fmt.Sprintf(
+			"ALTER TABLE %s ADD COLUMN %s %s", m.table, m.column, m.definition)); err != nil {
+			return fmt.Errorf("adding %s.%s: %w", m.table, m.column, err)
+		}
+	}
+	return nil
+}
+
+func (s *Store) hasColumn(table, column string) (bool, error) {
+	rows, err := s.db.Query("SELECT name FROM pragma_table_info(?)", table)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return false, err
+		}
+		if name == column {
+			return true, nil
+		}
+	}
+	return false, rows.Err()
+}
+
+// DebugDump returns every text value in the database, for tests that assert
+// something is NOT stored in readable form. It is not exposed over the API.
+func (s *Store) DebugDump() (string, error) {
+	var out strings.Builder
+	tables, err := s.db.Query(`SELECT name FROM sqlite_master WHERE type = 'table'`)
+	if err != nil {
+		return "", err
+	}
+	defer tables.Close()
+
+	var names []string
+	for tables.Next() {
+		var n string
+		if err := tables.Scan(&n); err != nil {
+			return "", err
+		}
+		names = append(names, n)
+	}
+	if err := tables.Err(); err != nil {
+		return "", err
+	}
+
+	for _, name := range names {
+		rows, err := s.db.Query(`SELECT * FROM ` + name)
+		if err != nil {
+			return "", err
+		}
+		cols, err := rows.Columns()
+		if err != nil {
+			rows.Close()
+			return "", err
+		}
+		for rows.Next() {
+			cells := make([]any, len(cols))
+			for i := range cells {
+				cells[i] = new(sql.NullString)
+			}
+			if err := rows.Scan(cells...); err != nil {
+				rows.Close()
+				return "", err
+			}
+			for _, c := range cells {
+				out.WriteString(c.(*sql.NullString).String)
+				out.WriteByte('\n')
+			}
+		}
+		rows.Close()
+	}
+	return out.String(), nil
 }

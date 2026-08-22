@@ -15,6 +15,7 @@ import (
 	"github.com/coder/websocket"
 
 	"queueup/internal/protocol"
+	"queueup/internal/servers"
 	"queueup/internal/store"
 )
 
@@ -24,6 +25,11 @@ type Config struct {
 	Store      *store.Store
 	Log        *slog.Logger
 	AdminToken string
+
+	// Servers is where server search and address lookups come from. It is
+	// swappable because the source turned out to be a decision with money
+	// attached: see internal/servers.
+	Servers servers.Provider
 
 	// HeartbeatSeconds is how often we expect to hear from an agent. Missing
 	// three in a row is treated as the PC having gone away.
@@ -80,7 +86,12 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /pair/result", s.handlePairResult)
 	s.mux.HandleFunc("GET /agent", s.handleAgentSocket)
 
-	// Account-facing. Phase 3 replaces the account token with a proper login.
+	// Signing in and out.
+	s.authRoutes()
+	// Finding servers and starring them.
+	s.serverRoutes()
+
+	// Account-facing.
 	s.mux.HandleFunc("POST /api/pair", s.withAccount(s.handleClaimCode))
 	s.mux.HandleFunc("GET /api/devices", s.withAccount(s.handleListDevices))
 	s.mux.HandleFunc("POST /api/devices/{id}/revoke", s.withAccount(s.handleRevokeDevice))
@@ -128,7 +139,13 @@ func (s *Server) withAccount(next accountHandler) http.HandlerFunc {
 			writeError(w, http.StatusUnauthorized, "You need to sign in.")
 			return
 		}
-		acct, err := s.st.AccountByToken(token)
+		// A browser session first, since that is how nearly every request
+		// arrives. The long-lived account token stays supported for scripts and
+		// for the curl walkthrough in docs/relay-api.md.
+		acct, err := s.st.AccountBySession(token)
+		if err != nil {
+			acct, err = s.st.AccountByToken(token)
+		}
 		if err != nil {
 			writeError(w, http.StatusUnauthorized, "That sign-in is no longer valid.")
 			return
@@ -248,6 +265,7 @@ func (s *Server) jobJSON(j store.Job) map[string]any {
 		"device_online":      s.hub.Online(j.DeviceID),
 		"server_addr":        j.ServerAddr,
 		"server_name":        j.ServerName,
+		"server_id":          j.ServerID,
 		"wait_for_server_up": j.WaitForServerUp,
 		"state":              j.State,
 		"position":           j.Position,
@@ -262,7 +280,12 @@ func (s *Server) jobJSON(j store.Job) map[string]any {
 
 func (s *Server) handleCreateJob(w http.ResponseWriter, r *http.Request, acct store.Account) {
 	var body struct {
-		DeviceID        string `json:"device_id"`
+		DeviceID string `json:"device_id"`
+		// ServerID is the normal way in, from the search results. The address is
+		// looked up from it, now and again at connect time.
+		ServerID string `json:"server_id"`
+		// Server is a raw IP:PORT, for testing and for anyone who already knows
+		// the address.
 		Server          string `json:"server"`
 		ServerName      string `json:"server_name"`
 		WaitForServerUp bool   `json:"wait_for_server_up"`
@@ -271,9 +294,30 @@ func (s *Server) handleCreateJob(w http.ResponseWriter, r *http.Request, acct st
 		writeError(w, http.StatusBadRequest, "Couldn't read that request.")
 		return
 	}
-	if body.Server == "" {
+	if body.Server == "" && body.ServerID == "" {
 		writeError(w, http.StatusBadRequest, "Which server should we join?")
 		return
+	}
+
+	if body.ServerID != "" {
+		if s.cfg.Servers == nil {
+			writeError(w, http.StatusServiceUnavailable, "Server search isn't set up on this relay.")
+			return
+		}
+		sv, err := s.cfg.Servers.ByID(r.Context(), body.ServerID)
+		if err != nil {
+			writeError(w, http.StatusBadGateway, err.Error())
+			return
+		}
+		if sv.Address == "" {
+			writeError(w, http.StatusBadGateway,
+				"We couldn't work out that server's address. Try again in a moment.")
+			return
+		}
+		body.Server = sv.Address
+		if body.ServerName == "" {
+			body.ServerName = sv.Name
+		}
 	}
 
 	d, err := s.st.DeviceByID(body.DeviceID)
@@ -299,6 +343,7 @@ func (s *Server) handleCreateJob(w http.ResponseWriter, r *http.Request, acct st
 		DeviceID:        d.ID,
 		ServerAddr:      body.Server,
 		ServerName:      body.ServerName,
+		ServerID:        body.ServerID,
 		WaitForServerUp: body.WaitForServerUp,
 	})
 	if err != nil {
@@ -307,7 +352,7 @@ func (s *Server) handleCreateJob(w http.ResponseWriter, r *http.Request, acct st
 		return
 	}
 
-	s.dispatch(j, false)
+	s.dispatch(j, false, body.ServerID != "")
 	j, _ = s.st.JobByID(j.ID)
 	writeJSON(w, http.StatusCreated, s.jobJSON(j))
 }
@@ -315,7 +360,32 @@ func (s *Server) handleCreateJob(w http.ResponseWriter, r *http.Request, acct st
 // dispatch hands a job to the PC, or records that the PC is not there. The job
 // is already saved either way: the relay is the source of truth, so nothing is
 // lost if the agent is offline, mid-reboot, or halfway through reconnecting.
-func (s *Server) dispatch(j store.Job, resumed bool) {
+//
+// addressIsFresh says we looked the address up moments ago as part of this same
+// request, so there is no point asking again.
+func (s *Server) dispatch(j store.Job, resumed, addressIsFresh bool) {
+	// Otherwise look the address up again right before we hand the job over.
+	// Rust server IPs change, and a job that was created hours ago, or that is
+	// being resumed after a reboot, may be holding a stale one.
+	if !addressIsFresh && j.ServerID != "" && s.cfg.Servers != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		sv, err := s.cfg.Servers.ByID(ctx, j.ServerID)
+		cancel()
+		switch {
+		case err != nil:
+			s.log.Warn("couldn't refresh the server address, using the one we have",
+				"job", j.ID, "server", j.ServerID, "err", err)
+		case sv.Address != "" && sv.Address != j.ServerAddr:
+			s.log.Info("the server has moved, using its new address",
+				"job", j.ID, "was", j.ServerAddr, "now", sv.Address)
+			if err := s.st.UpdateAddress(j.ID, sv.Address, sv.Name); err != nil {
+				s.log.Error("saving the new address", "err", err)
+			}
+			j.ServerAddr, j.ServerName = sv.Address, sv.Name
+			s.note(j.ID, j.State, "That server has changed address. Using the new one.")
+		}
+	}
+
 	err := s.hub.SendTo(j.DeviceID, protocol.TypeAssign, protocol.Assign{Job: protocol.Job{
 		ID:              j.ID,
 		ServerAddr:      j.ServerAddr,
@@ -611,8 +681,10 @@ func (s *Server) readLoop(ctx context.Context, ac *AgentConn, device store.Devic
 	// Reboot-resume. The agent does not have to remember anything across a
 	// restart: the relay holds the job and hands it straight back.
 	if j, err := s.st.ActiveJobForDevice(device.ID); err == nil {
-		s.log.Info("resuming job for reconnected agent", "device", device.ID, "job", j.ID)
-		s.dispatch(j, true)
+		s.log.Info("handing an outstanding job to the agent", "device", device.ID, "job", j.ID)
+		// A job that never started is not being "resumed", it is simply starting
+		// now, and the message on the phone should say so.
+		s.dispatch(j, j.State != "pending", false)
 	}
 
 	defer func() {

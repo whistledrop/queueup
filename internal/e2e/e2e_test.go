@@ -25,6 +25,7 @@ import (
 	"queueup/internal/relay"
 	"queueup/internal/relayclient"
 	"queueup/internal/scenario"
+	"queueup/internal/servers"
 	"queueup/internal/store"
 )
 
@@ -36,6 +37,7 @@ type harness struct {
 	srv       *relay.Server
 	http      *httptest.Server
 	acctToken string
+	provider  servers.Provider
 }
 
 func newHarness(t *testing.T) *harness {
@@ -52,11 +54,14 @@ func newHarness(t *testing.T) *harness {
 	}
 
 	quiet := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := relay.New(relay.Config{Store: st, Log: quiet, AdminToken: "admin-test-token"})
+	provider := servers.NewStub()
+	srv := relay.New(relay.Config{
+		Store: st, Log: quiet, AdminToken: "admin-test-token", Servers: provider,
+	})
 	ts := httptest.NewServer(srv)
 	t.Cleanup(ts.Close)
 
-	return &harness{t: t, st: st, srv: srv, http: ts, acctToken: token}
+	return &harness{t: t, st: st, srv: srv, http: ts, acctToken: token, provider: provider}
 }
 
 // call makes an authenticated API request, the way the web app will.

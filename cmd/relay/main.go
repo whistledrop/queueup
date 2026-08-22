@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"queueup/internal/relay"
+	"queueup/internal/servers"
 	"queueup/internal/store"
 )
 
@@ -43,6 +44,14 @@ Settings come from environment variables, never from files in the repo:
   QUEUEUP_ADDR          address to listen on          (default :8080)
   QUEUEUP_DB            database file                 (default queueup.db)
   QUEUEUP_ADMIN_TOKEN   token for /admin/status       (admin view is off if unset)
+
+  QUEUEUP_SERVER_SOURCE where server search comes from (default stub)
+                          stub           a built-in list. No key, works offline.
+                          steam          Steam's server list. Needs a FREE key in
+                                         QUEUEUP_STEAM_API_KEY, from
+                                         https://steamcommunity.com/dev/apikey
+                          battlemetrics  Needs a PAID subscription token in
+                                         QUEUEUP_BATTLEMETRICS_TOKEN
 `)
 }
 
@@ -97,7 +106,18 @@ func serve(st *store.Store) error {
 		log.Warn("QUEUEUP_ADMIN_TOKEN is not set, so /admin/status is switched off")
 	}
 
-	srv := relay.New(relay.Config{Store: st, Log: log, AdminToken: adminToken})
+	provider, err := servers.FromEnv()
+	if err != nil {
+		return err
+	}
+	if provider.Name() == "stub" {
+		log.Warn("server search is using the built-in stub list. " +
+			"Set QUEUEUP_SERVER_SOURCE to steam or battlemetrics for real servers")
+	}
+
+	srv := relay.New(relay.Config{
+		Store: st, Log: log, AdminToken: adminToken, Servers: provider,
+	})
 	httpSrv := &http.Server{
 		Addr:    addr,
 		Handler: srv,
