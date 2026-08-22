@@ -70,3 +70,32 @@ func (s *Scripted) Poll() Status {
 	}
 	return cur
 }
+
+// Feed is a Source whose value is pushed in from outside. The agent uses it to
+// hold whatever the relay last told it about the target server, because the
+// relay is the one doing the polling, not the PC.
+type Feed struct {
+	mu   sync.Mutex
+	last Status
+}
+
+// NewFeed starts out reporting the server as down, so a job that is waiting for
+// a wipe restart does not charge off and connect before we have heard anything.
+func NewFeed() *Feed { return &Feed{last: Status{Online: false}} }
+
+// Push records the latest word from the relay.
+func (f *Feed) Push(s Status) {
+	if s.At.IsZero() {
+		s.At = time.Now()
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.last = s
+}
+
+// Poll returns the most recent status we were told about.
+func (f *Feed) Poll() Status {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.last
+}

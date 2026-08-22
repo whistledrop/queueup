@@ -13,14 +13,14 @@ the game the same way you would.**
 
 ## Where the project is right now
 
-**Phase 1 is done.** That means the agent that will live on your PC exists and
-works, but it only runs from a command line on this machine and there is no relay
-and no website yet.
+**Phases 1 and 2 are done.** The agent works, the relay works, and a PC can be
+paired to an account and sent a join from anywhere. There is no website yet, so
+for now the "web app" is a curl command.
 
 | Phase | What it is | Status |
 |---|---|---|
 | 1 | Agent brain + fake Rust simulator, running locally | **done** |
-| 2 | Relay server, agent holds an outbound connection, survives reboots | not started |
+| 2 | Relay server, agent holds an outbound connection, survives reboots | **done** |
 | 3 | Web app: login, pairing, server search, join now, live status | not started |
 | 4 | Scheduling, wipe-restart detection, notifications | not started |
 | 5 | Hardening, then the real wipe-day test on your PC | not started |
@@ -53,6 +53,17 @@ Every line there is a message that will end up on your phone in phase 3.
 Run `./scripts/demo.sh` to watch all seven scenarios back to back, including the
 nasty ones: a crash mid-queue, a banned account, Steam not signed in, and a
 server that flaps up and down through a wipe restart.
+
+## Try the whole system
+
+`./scripts/phase2-demo.sh` runs the real thing on your machine: it starts a
+relay, pairs a "PC" to an account, sends it a join the way the web app will,
+streams the live status, then kills the PC mid-queue and shows the job carrying
+on by itself when it comes back.
+
+Everything it does is a curl command, all of them written out in
+`docs/relay-api.md`. That file is the contract the website will be built against
+in phase 3.
 
 ## The pieces
 
@@ -118,10 +129,33 @@ go test ./...          # everything
 go test -race ./...    # everything, checking for concurrency bugs
 ```
 
-The one to know about is `TestScenarioLinesParseAsDeclared`. Every log line the
-fake client writes carries a note saying what it is supposed to mean, and that
-test checks the real parser agrees. When the real `Player.log` arrives and the
-patterns get rewritten, this test is what proves the simulator was updated too.
+Two to know about:
+
+`TestScenarioLinesParseAsDeclared`. Every log line the fake client writes carries
+a note saying what it is supposed to mean, and that test checks the real parser
+agrees. When the real `Player.log` arrives and the patterns get rewritten, this
+test is what proves the simulator was updated too.
+
+`TestJobResumesAfterTheAgentRestarts` in `internal/e2e`. A real relay, a real
+agent over a real WebSocket, a join that reaches the queue, and then the agent is
+killed outright, the way a forced Windows update kills it. The test fails unless
+the job survives and finishes on its own after the agent comes back.
+
+## Setup on the gaming PC (things you do by hand, once)
+
+QueueUp deliberately does not try to automate any of these. They are one-time
+Windows and Steam settings, and a tool that changed them for you would be doing
+something you did not ask for on a machine you cannot see.
+
+1. **Windows signs in automatically after a restart.** Otherwise a forced update
+   leaves the PC sitting on the lock screen with nothing running.
+2. **Steam starts with Windows, and stays signed in.** Tick "remember my
+   password" in Steam. QueueUp never sees or stores this.
+3. **Sleep and hibernate are off.** The PC is expected to be awake all the time.
+   QueueUp does not wake sleeping machines and is not designed to.
+4. **Rust has been run at least once on that machine**, so its log folder exists.
+5. **The agent starts at login.** Phase 2 runs it from a terminal; the installer
+   in a later phase sets this up properly.
 
 ## What I need from you
 
@@ -152,7 +186,7 @@ with one command, which matters a lot while your test PC is in another country.
 It has good, boring support for Windows tray icons and background services when
 phase 2 needs them.
 
-**Relay (phase 2): Go, on Fly.io or Railway.** The relay's whole job is holding
+**Relay: Go, deployed to Fly.io or Railway.** The relay's whole job is holding
 thousands of idle WebSocket connections open cheaply, which is the thing Go is
 best at. Sharing the language with the agent means one set of message definitions
 and no translation layer between them.
@@ -161,6 +195,8 @@ and no translation layer between them.
 handles web push, and it is what you already run for your other projects, so
 there is nothing new for you to learn or pay for.
 
-**Database (phase 2): SQLite first, Postgres when it needs it.** A single file on
-the relay is enough for accounts, devices and jobs, and it removes an entire
-moving part. The code will use standard SQL so switching later is a config change.
+**Database: SQLite first, Postgres when it needs it.** A single file on the relay
+is enough for accounts, devices and jobs, and it removes an entire moving part.
+The SQLite driver is pure Go, so there is no C compiler involved and the relay
+still cross-compiles anywhere with one command. Everything is standard SQL, so
+switching later is a driver change rather than a rewrite.

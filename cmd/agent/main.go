@@ -1,169 +1,68 @@
-// Command agent is the QueueUp agent.
+// Command agent is the QueueUp agent. It runs on the player's gaming PC.
 //
-// Phase 1: it runs one join job on this machine and prints what it is doing to
-// the console. There is no relay connection and no tray icon yet; those arrive
-// in phase 2. Everything below the command-line layer is the code that will
-// ship on the player's PC.
+//	agent pair --relay https://relay.example.com
+//	    Link this PC to your account. Shows a code to type into the web app.
 //
-// Try it:
+//	agent run --relay https://relay.example.com
+//	    Stay connected to the relay and run joins on command. This is the mode
+//	    that will run in the background with a tray icon.
 //
-//	go run ./cmd/agent --sim --scenario testdata/scenarios/long_queue.json --server 1.2.3.4:28015
+//	agent sim --scenario testdata/scenarios/long_queue.json
+//	    Run one join against the fake Rust client, with no relay involved.
+//
+//	agent status
+//	    Show what this PC is set up with.
 package main
 
 import (
-	"context"
-	"flag"
 	"fmt"
 	"os"
-	"os/signal"
-	"path/filepath"
 	"strings"
-	"syscall"
-	"time"
-
-	"queueup/internal/game"
-	"queueup/internal/job"
-	"queueup/internal/logparse"
-	"queueup/internal/runner"
-	"queueup/internal/scenario"
-	"queueup/internal/serverstat"
 )
 
-// Version is stamped at build time later; kept here so update checks can be
-// added in a future phase without restructuring anything.
-const Version = "0.1.0-phase1"
+// Version is reported to the relay. Self-updates are out of scope for v1, but
+// the relay records this so an "your agent is out of date" check can be added
+// without changing the wire protocol.
+const Version = "0.2.0-phase2"
 
 func main() {
-	var (
-		sim          = flag.Bool("sim", false, "use the fake Rust simulator instead of the real game")
-		scenarioPath = flag.String("scenario", "", "scenario file to simulate (requires --sim)")
-		serverAddr   = flag.String("server", "127.0.0.1:28015", "target server as IP:PORT")
-		patternsPath = flag.String("patterns", "configs/patterns.json", "log pattern file")
-		logPath      = flag.String("log", "", "Rust log file to watch (default: the real Windows location, or a temp file in --sim)")
-		waitForUp    = flag.Bool("wait-for-server-up", false, "wait for the server to come back after a wipe restart before connecting")
-		speed        = flag.Float64("speed", 1, "simulator timeline speed multiplier")
-		jitter       = flag.Duration("jitter", time.Second, "maximum random delay before connecting after the server comes up")
-		maxAttempts  = flag.Int("max-attempts", 8, "how many times to try before giving up")
-		confirm      = flag.Duration("confirm", 5*time.Second, "how long to hold a slot before calling the job done")
-		showAllLines = flag.Bool("verbose", false, "print every log line, not just the ones we understand")
-	)
-	flag.Parse()
-
-	if err := run(*sim, *scenarioPath, *serverAddr, *patternsPath, *logPath, *waitForUp,
-		*speed, *jitter, *maxAttempts, *confirm, *showAllLines); err != nil {
+	if len(os.Args) < 2 {
+		fmt.Println(usage())
+		os.Exit(2)
+	}
+	var err error
+	switch os.Args[1] {
+	case "pair":
+		err = cmdPair(os.Args[2:])
+	case "run":
+		err = cmdRun(os.Args[2:])
+	case "sim":
+		err = cmdSim(os.Args[2:])
+	case "status":
+		err = cmdStatus(os.Args[2:])
+	case "-h", "--help", "help":
+		fmt.Println(usage())
+		return
+	default:
+		fmt.Println(usage())
+		fmt.Fprintf(os.Stderr, "\nunknown command %q\n", os.Args[1])
+		os.Exit(2)
+	}
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "\nerror:", err)
 		os.Exit(1)
 	}
 }
 
-func run(sim bool, scenarioPath, serverAddr, patternsPath, logPath string, waitForUp bool,
-	speed float64, jitter time.Duration, maxAttempts int, confirm time.Duration, verbose bool) error {
+func usage() string {
+	return strings.TrimSpace(`
+QueueUp agent ` + Version + `
 
-	addr, err := game.ParseAddr(serverAddr)
-	if err != nil {
-		return err
-	}
+  agent pair --relay <url>     link this PC to your account
+  agent run  --relay <url>     stay connected and run joins on command
+  agent sim  --scenario <file> run one join against the fake Rust client
+  agent status                 show what this PC is set up with
 
-	parser, err := logparse.Load(patternsPath)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("QueueUp agent %s\n", Version)
-	fmt.Printf("target server: %s\n", addr)
-	if un := parser.Unverified(); len(un) > 0 {
-		fmt.Printf("\n  WARNING: %d of the log patterns are still guesses, not confirmed against a\n"+
-			"  real Player.log: %s\n"+
-			"  Until they are verified the agent may misread the real game.\n"+
-			"  Fix by editing %s. No rebuild needed.\n\n",
-			len(un), strings.Join(un, ", "), patternsPath)
-	}
-
-	var launcher game.Launcher
-	var server serverstat.Source = serverstat.AlwaysUp{}
-
-	if sim {
-		if scenarioPath == "" {
-			return fmt.Errorf("--sim needs a --scenario file")
-		}
-		sc, err := scenario.Load(scenarioPath)
-		if err != nil {
-			return err
-		}
-		if logPath == "" {
-			logPath = filepath.Join(os.TempDir(), "queueup-fake-Player.log")
-		}
-		fmt.Printf("mode: SIMULATOR, scenario %q\n", sc.Name)
-		fmt.Printf("  %s\n", sc.Description)
-		fmt.Printf("fake log: %s\n\n", logPath)
-
-		launcher = &game.SimLauncher{Scenario: sc, Log: logPath, Speed: speed}
-		if len(sc.Server) > 0 {
-			server = serverstat.NewScripted(sc.Server, speed)
-			waitForUp = true
-		}
-	} else {
-		l, err := realLauncher(logPath)
-		if err != nil {
-			return err
-		}
-		launcher = l
-		fmt.Printf("mode: REAL GAME\nlog: %s\n\n", launcher.LogPath())
-	}
-
-	m := job.New(job.Config{
-		WaitForServerUp:  waitForUp,
-		MaxAttempts:      maxAttempts,
-		ConnectJitterMax: jitter,
-		InServerConfirm:  confirm,
-		RetryBase:        2 * time.Second,
-		RetryMax:         20 * time.Second,
-	})
-
-	start := time.Now()
-	r := &runner.Runner{
-		Machine:  m,
-		Launcher: launcher,
-		Parser:   parser,
-		Server:   server,
-		Addr:     addr,
-		OnTransition: func(t job.Transition) {
-			fmt.Printf("[%6.1fs] %-22s %s\n", time.Since(start).Seconds(), string(t.To), t.Detail)
-		},
-		OnLogLine: func(line string, understood bool) {
-			if verbose {
-				mark := " "
-				if understood {
-					mark = "*"
-				}
-				fmt.Printf("           %s log: %s\n", mark, line)
-			}
-		},
-	}
-
-	// Ctrl-C behaves like the phone's cancel button: cancel the job cleanly and
-	// close the game, rather than leaving Rust sitting in a queue.
-	ctx, cancelCtx := context.WithCancel(context.Background())
-	defer cancelCtx()
-
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
-	defer signal.Stop(sig)
-	go func() {
-		<-sig
-		fmt.Println("\ncancelling...")
-		r.Cancel("You cancelled the join.")
-		cancelCtx()
-	}()
-
-	final := r.Run(ctx)
-	_ = launcher.Close()
-
-	fmt.Printf("\nfinished in %s: %s\n", time.Since(start).Round(time.Second), final)
-	if f := m.Failure(); f != nil {
-		fmt.Printf("reason: %s\n", f.Message)
-	}
-	if final == job.StateFailed {
-		return fmt.Errorf("job failed")
-	}
-	return nil
+This tool never asks for, stores, or uses your Steam password.
+`)
 }
