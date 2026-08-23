@@ -1,0 +1,10 @@
+{
+  "name": "crash_mid_queue",
+  "description": "Rust dies while we are sitting at position 240. Agent should relaunch and requeue.",
+  "steps": [
+    {"after_ms": 500,  "line": "Connecting to {{connect}}", "expect": "connecting"},
+    {"after_ms": 1500, "line": "You are in queue position 300", "expect": "queued", "expect_position": 300},
+    {"after_ms": 1500, "line": "You are in queue position 240", "expect": "queued", "expect_position": 240},
+    {"after_ms": 1500, "exit": 1}
+  ]
+}

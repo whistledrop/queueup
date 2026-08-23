@@ -48,12 +48,21 @@ func Load(path string) (*Scenario, error) {
 	if err != nil {
 		return nil, fmt.Errorf("reading scenario: %w", err)
 	}
+	sc, err := Parse(raw)
+	if err != nil {
+		return nil, fmt.Errorf("scenario %s: %w", path, err)
+	}
+	return sc, nil
+}
+
+// Parse reads a scenario already in memory, e.g. one built into the agent.
+func Parse(raw []byte) (*Scenario, error) {
 	var s Scenario
 	if err := json.Unmarshal(raw, &s); err != nil {
-		return nil, fmt.Errorf("scenario %s is not valid JSON: %w", path, err)
+		return nil, fmt.Errorf("not valid JSON: %w", err)
 	}
 	if len(s.Steps) == 0 {
-		return nil, fmt.Errorf("scenario %s has no steps", path)
+		return nil, fmt.Errorf("no steps")
 	}
 	return &s, nil
 }

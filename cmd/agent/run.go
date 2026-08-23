@@ -18,10 +18,8 @@ import (
 	"queueup/internal/agentcfg"
 	"queueup/internal/game"
 	"queueup/internal/job"
-	"queueup/internal/logparse"
 	"queueup/internal/protocol"
 	"queueup/internal/relayclient"
-	"queueup/internal/scenario"
 )
 
 // statusSink, when set (by the tray), receives one-line status text.
@@ -35,7 +33,7 @@ func cmdRun(args []string) error {
 	var (
 		relayURL     = fs.String("relay", "", "the QueueUp relay address (defaults to the one saved at pairing)")
 		configPath   = fs.String("config", "", "settings file (default: your user config folder)")
-		patternsPath = fs.String("patterns", "configs/patterns.json", "log pattern file")
+		patternsPath = fs.String("patterns", "", "log pattern file (default: patterns.json next to the settings, else built in)")
 		useSim       = fs.Bool("sim", false, "run against the fake Rust client instead of the real game")
 		scenarioPath = fs.String("scenario", "", "which scenario the fake Rust client should play (with --sim)")
 		speed        = fs.Float64("speed", 1, "simulator timeline speed multiplier")
@@ -66,7 +64,7 @@ func cmdRun(args []string) error {
 		return fmt.Errorf("this PC isn't paired yet. Run: agent pair --relay %s", cfg.RelayURL)
 	}
 
-	parser, err := logparse.Load(*patternsPath)
+	parser, patternsFrom, err := loadPatterns(*patternsPath)
 	if err != nil {
 		return err
 	}
@@ -121,9 +119,10 @@ func cmdRun(args []string) error {
 	} else {
 		fmt.Printf("mode:  REAL GAME\n")
 	}
+	fmt.Printf("log patterns: %s\n", patternsFrom)
 	if un := parser.Unverified(); len(un) > 0 {
 		fmt.Printf("\n  WARNING: %d log patterns are still guesses, not yet confirmed against a\n"+
-			"  real Player.log. Fix by editing %s.\n", len(un), *patternsPath)
+			"  real Player.log.\n", len(un))
 	}
 	fmt.Println("\nwaiting for jobs. Press Ctrl-C to stop.")
 
@@ -155,7 +154,7 @@ func launcherFactory(useSim bool, scenarioPath, logPath string, speed float64) (
 	if scenarioPath == "" {
 		return nil, errors.New("--sim needs a --scenario file")
 	}
-	sc, err := scenario.Load(scenarioPath)
+	sc, err := loadScenario(scenarioPath)
 	if err != nil {
 		return nil, err
 	}

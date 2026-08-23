@@ -37,11 +37,10 @@ What you need: the relay and website deployed (docs/deploy.md), the
 4. **In the terminal on the PC**, start the agent in pretend mode:
 
    ```
-   QueueUpAgent.exe run --sim --scenario testdata/scenarios/long_queue.json
+   QueueUpAgent.exe run --sim --scenario long_queue
    ```
 
-   (Copy the `testdata` folder from the project alongside the exe first, or
-   give the full path to the scenario file.)
+   The pretend-Rust scenarios are built into the exe; nothing else to copy.
 
 5. **On your phone**: the dot goes green, with an amber "Simulator" badge. Tap
    a server, tap Join. Watch: Launching, Connecting, In the queue with the

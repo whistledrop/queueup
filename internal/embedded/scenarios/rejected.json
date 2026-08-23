@@ -1,0 +1,9 @@
+{
+  "name": "rejected",
+  "description": "Server refuses the account. This must NOT be retried, and the phone must say why.",
+  "steps": [
+    {"after_ms": 500,  "line": "Connecting to {{connect}}", "expect": "connecting"},
+    {"after_ms": 1500, "line": "Disconnected: You are banned from this server", "expect": "rejected"},
+    {"after_ms": 500,  "exit": 0}
+  ]
+}

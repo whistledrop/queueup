@@ -20,10 +20,11 @@ import (
 	"strings"
 )
 
-// Version is reported to the relay. Self-updates are out of scope for v1, but
-// the relay records this so an "your agent is out of date" check can be added
-// without changing the wire protocol.
-const Version = "0.2.0-phase2"
+// Version is reported to the relay and stamped at build time by
+// scripts/build-agent.sh. Self-updates are out of scope for v1, but the relay
+// records this so an "your agent is out of date" check can be added without
+// changing the wire protocol.
+var Version = "dev"
 
 func main() {
 	if len(os.Args) < 2 {

@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "note": [
+    "THIS FILE IS THE ONLY PLACE RUST LOG WORDING LIVES.",
+    "When a Rust patch changes the log text, edit this file. Do not edit Go code.",
+    "Patterns are tried in order, top to bottom. First match wins, so put the most",
+    "specific pattern above the more general one.",
+    "",
+    "'verified': false means the wording is a GUESS and has not yet been checked",
+    "against a real Player.log. The agent prints a loud warning at startup while any",
+    "pattern is still unverified. Flip to true only after confirming against a real log.",
+    "",
+    "Named capture groups the parser understands:",
+    "  (?P<position>\\d+)  -> queue position number",
+    "  any other named group can be referenced in 'detail' as {groupname}"
+  ],
+  "patterns": [
+    {
+      "id": "steam_not_running",
+      "event": "steam_problem",
+      "verified": false,
+      "regex": "(?i)steam(works)?[^a-z]{0,3}(is )?(not|failed to) (running|init|initialize|initialized|initialised|start)",
+      "detail": "Steam isn't running on your PC.",
+      "example": "Steamworks failed to initialize"
+    },
+    {
+      "id": "steam_not_logged_in",
+      "event": "steam_problem",
+      "verified": false,
+      "regex": "(?i)(no steam user|steam.{0,20}not logged in|auth(entication)? ticket.{0,20}(fail|invalid|denied))",
+      "detail": "Steam isn't logged in on your PC.",
+      "example": "Auth ticket request failed"
+    },
+    {
+      "id": "connecting",
+      "event": "connecting",
+      "verified": false,
+      "regex": "(?i)connecting to (?P<address>[0-9A-Za-z._-]+:[0-9]{1,5})",
+      "detail": "Connecting to {address}",
+      "example": "Connecting to 51.83.128.10:28015"
+    },
+    {
+      "id": "queued_position_explicit",
+      "event": "queued",
+      "verified": false,
+      "regex": "(?i)queue.{0,20}position[^0-9]{0,5}(?P<position>[0-9]+)",
+      "detail": "In queue, position {position}",
+      "example": "You are in queue position 212"
+    },
+    {
+      "id": "queued_position_slash",
+      "event": "queued",
+      "verified": false,
+      "regex": "(?i)\\bqueued?\\b[^0-9]{0,20}(?P<position>[0-9]+)\\s*(?:/|of|out of|players? ahead)",
+      "detail": "In queue, position {position}",
+      "example": "Queued 212 / 340"
+    },
+    {
+      "id": "queued_no_position",
+      "event": "queued",
+      "verified": false,
+      "regex": "(?i)\\b(entered|joined|in) the queue\\b|\\bserver is full, queuing\\b",
+      "detail": "In queue",
+      "example": "Server is full, queuing"
+    },
+    {
+      "id": "server_full_no_queue",
+      "event": "server_full",
+      "verified": false,
+      "regex": "(?i)server is full",
+      "detail": "The server is full and isn't letting anyone queue.",
+      "example": "Disconnected: Server is full"
+    },
+    {
+      "id": "rejected_banned",
+      "event": "rejected",
+      "verified": false,
+      "regex": "(?i)(you are banned|banned from this server|game ban|vac ban)",
+      "detail": "This account is banned from that server.",
+      "example": "Disconnected: You are banned from this server"
+    },
+    {
+      "id": "rejected_generic",
+      "event": "rejected",
+      "verified": false,
+      "regex": "(?i)(connection rejected|kicked: (?P<reason>.*)$|invalid connection|incorrect password|wrong password)",
+      "detail": "The server refused the connection. {reason}",
+      "example": "Kicked: incorrect password"
+    },
+    {
+      "id": "joined_spawned",
+      "event": "joined",
+      "verified": false,
+      "regex": "(?i)(finished loading|level loaded|spawned into|you have entered the server)",
+      "detail": "You're in the server.",
+      "example": "Finished loading level"
+    },
+    {
+      "id": "joined_connected",
+      "event": "joined",
+      "verified": false,
+      "regex": "(?i)connected to (?P<address>[0-9A-Za-z._-]+:[0-9]{1,5})",
+      "detail": "You're in the server.",
+      "example": "Connected to 51.83.128.10:28015"
+    },
+    {
+      "id": "disconnected_timeout",
+      "event": "disconnected",
+      "verified": false,
+      "regex": "(?i)(connection timed out|timed out|no response from server)",
+      "detail": "The connection timed out.",
+      "example": "Disconnected: connection timed out"
+    },
+    {
+      "id": "disconnected_generic",
+      "event": "disconnected",
+      "verified": false,
+      "regex": "(?i)disconnect(ed|ing)?[:\\s]+(?P<reason>.+)$",
+      "detail": "Disconnected: {reason}",
+      "example": "Disconnected: server shutting down"
+    }
+  ]
+}

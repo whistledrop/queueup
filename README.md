@@ -220,13 +220,13 @@ reconnects), a job that finishes while the relay is unreachable (the agent
 re-reports the result instead of re-running the join), Steam signed out, the
 game crashing mid-queue, and a server flapping through a wipe restart.
 
-## What I need from you
+## What happens next
 
-1. **Run the manual Steam link test** in `docs/steam-uri-test.md`, on your gaming
-   PC, before you lose access to it. Everything depends on it.
-2. **A real `Player.log`** from a full session: launch, sit in a queue, join,
-   leave. Instructions are in the same file.
-3. **The BattleMetrics ID of your test server**, for phase 4.
+Everything that can be built is built. The rest needs your accounts or your
+hands on the PC, and it is written out in order in `docs/launch-checklist.md`:
+deploy the relay and website, put the agent on the PC, the dress rehearsal,
+then the two real-game checks (`docs/steam-uri-test.md` and a real
+`Player.log`) that turn the last assumptions into facts.
 
 ## Things you will be asked and the answers
 

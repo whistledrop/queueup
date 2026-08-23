@@ -17,6 +17,7 @@ import (
 func cmdPair(args []string) error {
 	fs := flag.NewFlagSet("pair", flag.ExitOnError)
 	relayURL := fs.String("relay", "", "the QueueUp relay address, e.g. https://relay.example.com")
+	webURL := fs.String("web", "", "the QueueUp website address, for the tray menu (optional)")
 	configPath := fs.String("config", "", "settings file (default: your user config folder)")
 	name := fs.String("name", "", "a name for this PC, shown in the web app")
 	if err := fs.Parse(args); err != nil {
@@ -36,6 +37,9 @@ func cmdPair(args []string) error {
 	}
 	if cfg.RelayURL == "" {
 		return fmt.Errorf("which relay should this PC connect to? Pass --relay")
+	}
+	if *webURL != "" {
+		cfg.WebURL = *webURL
 	}
 	if *name != "" {
 		cfg.DeviceName = *name

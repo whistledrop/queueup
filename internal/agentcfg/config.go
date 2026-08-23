@@ -15,7 +15,10 @@ import (
 
 // Config is what lives in agent.json.
 type Config struct {
-	RelayURL    string `json:"relay_url"`
+	RelayURL string `json:"relay_url"`
+	// WebURL is where the QueueUp website lives, for the tray's "open the
+	// website" item. Optional; defaults to the relay address.
+	WebURL      string `json:"web_url,omitempty"`
 	DeviceToken string `json:"device_token,omitempty"`
 	DeviceID    string `json:"device_id,omitempty"`
 	DeviceName  string `json:"device_name,omitempty"`

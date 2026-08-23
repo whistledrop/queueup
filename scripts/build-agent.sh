@@ -8,7 +8,7 @@ VERSION=$(git describe --tags --always 2>/dev/null || echo dev)
 mkdir -p dist
 
 CGO_ENABLED=0 GOOS=windows GOARCH=amd64 \
-  go build -trimpath -ldflags "-s -w -H windowsgui" \
+  go build -trimpath -ldflags "-s -w -H windowsgui -X main.Version=$VERSION" \
   -o dist/QueueUpAgent.exe ./cmd/agent
 
 # -H windowsgui stops a console window flashing up at login. The pair and

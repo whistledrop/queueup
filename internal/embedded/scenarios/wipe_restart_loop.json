@@ -1,0 +1,18 @@
+{
+  "name": "wipe_restart_loop",
+  "description": "Wipe day. Server is down, flickers up and down twice, then stays up. Agent must tolerate the flapping without burning its retries, then get in.",
+  "server": [
+    {"after_ms": 0,    "online": false},
+    {"after_ms": 3000, "online": true,  "players": 12,  "max": 200, "queue": 0},
+    {"after_ms": 1500, "online": false},
+    {"after_ms": 2000, "online": true,  "players": 190, "max": 200, "queue": 320},
+    {"after_ms": 1000, "online": false},
+    {"after_ms": 2500, "online": true,  "players": 198, "max": 200, "queue": 512}
+  ],
+  "steps": [
+    {"after_ms": 500,  "line": "Connecting to {{connect}}", "expect": "connecting"},
+    {"after_ms": 2000, "line": "You are in queue position 512", "expect": "queued", "expect_position": 512},
+    {"after_ms": 2500, "line": "You are in queue position 96",  "expect": "queued", "expect_position": 96},
+    {"after_ms": 2500, "line": "Finished loading level Procedural Map", "expect": "joined"}
+  ]
+}

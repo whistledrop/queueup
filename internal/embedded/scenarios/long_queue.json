@@ -1,0 +1,13 @@
+{
+  "name": "long_queue",
+  "description": "The normal wipe-day case: a long queue that counts down to zero, then a join.",
+  "steps": [
+    {"after_ms": 500,  "line": "Connecting to {{connect}}", "expect": "connecting"},
+    {"after_ms": 2000, "line": "You are in queue position 212", "expect": "queued", "expect_position": 212},
+    {"after_ms": 2000, "line": "You are in queue position 148", "expect": "queued", "expect_position": 148},
+    {"after_ms": 2000, "line": "You are in queue position 61",  "expect": "queued", "expect_position": 61},
+    {"after_ms": 2000, "line": "You are in queue position 12",  "expect": "queued", "expect_position": 12},
+    {"after_ms": 2000, "line": "You are in queue position 1",   "expect": "queued", "expect_position": 1},
+    {"after_ms": 2000, "line": "Finished loading level Procedural Map", "expect": "joined"}
+  ]
+}

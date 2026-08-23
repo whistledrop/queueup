@@ -80,8 +80,6 @@ func webURL() string {
 	if u := os.Getenv("QUEUEUP_WEB_URL"); u != "" {
 		return u
 	}
-	// Fall back to the relay address with the port dropped, which is right when
-	// both are served from the same host; otherwise set QUEUEUP_WEB_URL.
 	p, err := agentcfg.DefaultPath()
 	if err != nil {
 		return ""
@@ -90,6 +88,11 @@ func webURL() string {
 	if err != nil {
 		return ""
 	}
+	if cfg.WebURL != "" {
+		return cfg.WebURL
+	}
+	// Fall back to the relay address; pass --web at pairing time (or set
+	// QUEUEUP_WEB_URL) when the site lives elsewhere.
 	return strings.TrimSuffix(cfg.RelayURL, "/")
 }
 

@@ -104,8 +104,10 @@ func TestScheduledJoinFiresOnTimeAndRuns(t *testing.T) {
 		return h.srv.Hub().Online(deviceID)
 	})
 
-	// One second from now, written the way a phone in Madrid would write it.
-	fireAt := time.Now().Add(1 * time.Second).In(time.FixedZone("CEST", 2*3600))
+	// A few seconds from now, written the way a phone in Madrid would write it.
+	const fireDelay = 3 * time.Second
+	armed := time.Now()
+	fireAt := armed.Add(fireDelay).In(time.FixedZone("CEST", 2*3600))
 	status, out := h.call(http.MethodPost, "/api/schedules", map[string]any{
 		"device_id": deviceID, "server_id": "stub-1",
 		"fire_at": fireAt.Format(time.RFC3339),
@@ -115,10 +117,14 @@ func TestScheduledJoinFiresOnTimeAndRuns(t *testing.T) {
 	}
 	schedID := out["id"].(string)
 
-	// Nothing may happen before the time comes.
+	// Nothing may happen before the time comes. Under the race detector on a
+	// loaded machine the clock really can pass fireAt before this line runs, so
+	// the assertion only counts when we are genuinely still early.
 	time.Sleep(300 * time.Millisecond)
-	if _, err := h.st.ActiveJobForDevice(deviceID); err == nil {
-		t.Fatal("the join started before its time")
+	if time.Since(armed) < fireDelay-time.Second {
+		if _, err := h.st.ActiveJobForDevice(deviceID); err == nil {
+			t.Fatal("the join started before its time")
+		}
 	}
 
 	box.waitFor(t, "Scheduled join started", 10*time.Second)
