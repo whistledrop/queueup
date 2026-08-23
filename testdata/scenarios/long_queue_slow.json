@@ -1,0 +1,16 @@
+{
+  "name": "long_queue_slow",
+  "description": "A long queue that takes its time. Used by the relay-outage test, where the queue must outlive the relay being down.",
+  "steps": [
+    {"after_ms": 500,  "line": "Connecting to {{connect}}", "expect": "connecting"},
+    {"after_ms": 3000, "line": "You are in queue position 300", "expect": "queued", "expect_position": 300},
+    {"after_ms": 3000, "line": "You are in queue position 260", "expect": "queued", "expect_position": 260},
+    {"after_ms": 3000, "line": "You are in queue position 220", "expect": "queued", "expect_position": 220},
+    {"after_ms": 3000, "line": "You are in queue position 180", "expect": "queued", "expect_position": 180},
+    {"after_ms": 3000, "line": "You are in queue position 140", "expect": "queued", "expect_position": 140},
+    {"after_ms": 3000, "line": "You are in queue position 90",  "expect": "queued", "expect_position": 90},
+    {"after_ms": 3000, "line": "You are in queue position 40",  "expect": "queued", "expect_position": 40},
+    {"after_ms": 3000, "line": "You are in queue position 5",   "expect": "queued", "expect_position": 5},
+    {"after_ms": 3000, "line": "Finished loading level Procedural Map", "expect": "joined"}
+  ]
+}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -22,6 +23,9 @@ import (
 	"queueup/internal/relayclient"
 	"queueup/internal/scenario"
 )
+
+// statusSink, when set (by the tray), receives one-line status text.
+var statusSink func(string)
 
 // cmdRun is the mode the agent lives in on a player's PC: connected to the
 // relay, waiting for something to do. In phase 2 it runs in a terminal; the tray
@@ -67,7 +71,19 @@ func cmdRun(args []string) error {
 		return err
 	}
 
-	log := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	// The log goes to the console AND to a file next to the settings, so the
+	// tray's "Open the log file" always has something to show and a problem on
+	// a headless PC can still be diagnosed afterwards.
+	logOut := io.Writer(os.Stdout)
+	if lf := logFilePath(); lf != "" {
+		if err := os.MkdirAll(filepath.Dir(lf), 0o700); err == nil {
+			if f, ferr := os.OpenFile(lf, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600); ferr == nil {
+				defer f.Close()
+				logOut = io.MultiWriter(os.Stdout, f)
+			}
+		}
+	}
+	log := slog.New(slog.NewTextHandler(logOut, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
 	newGame, err := launcherFactory(*useSim, *scenarioPath, *logPath, *speed)
 	if err != nil {
@@ -90,6 +106,7 @@ func cmdRun(args []string) error {
 		NewGame:      newGame,
 		Log:          log,
 		SendLogLines: *verbose,
+		OnStatusText: statusSink,
 		JobConfig: job.Config{
 			MaxAttempts:     *maxAttempts,
 			InServerConfirm: *confirm,

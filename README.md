@@ -13,7 +13,10 @@ the game the same way you would.**
 
 ## Where the project is right now
 
-**Phases 1 to 4 are done.** Sign in on your phone, link your PC, find a server,
+**All five build phases are done.** What remains is the part only you can do:
+the real test on your actual PC, laid out step by step in `TESTING.md`.
+
+ Sign in on your phone, link your PC, find a server,
 join now or schedule a join for wipe day, get notified as the queue counts down,
 and let the relay watch the server through its restart and pounce the moment it
 comes back.
@@ -24,7 +27,7 @@ comes back.
 | 2 | Relay server, agent holds an outbound connection, survives reboots | **done** |
 | 3 | Web app: login, pairing, server search, join now, live status | **done** |
 | 4 | Scheduling, wipe-restart detection, notifications | **done** |
-| 5 | Hardening, then the real wipe-day test on your PC | not started |
+| 5 | Hardening pass and the Windows tray build | **done, pending the real-PC test** |
 
 ## Try it right now
 
@@ -182,6 +185,40 @@ something you did not ask for on a machine you cannot see.
 4. **Rust has been run at least once on that machine**, so its log folder exists.
 5. **The agent starts at login.** Phase 2 runs it from a terminal; the installer
    in a later phase sets this up properly.
+
+## The Windows agent
+
+`./scripts/build-agent.sh` produces `dist/QueueUpAgent.exe`: one 7 MB file,
+nothing to install alongside it. On the PC:
+
+```
+QueueUpAgent.exe pair --relay https://your-relay
+QueueUpAgent.exe install-autostart
+```
+
+From the next sign-in it runs as a tray icon showing live status, with menu
+items to open the website, the log file and the settings folder. Autostart is
+the per-user registry Run key: no administrator rights, runs in your session
+(which Steam and the game need anyway), undone with `uninstall-autostart`.
+
+## Deploying
+
+`docs/deploy.md`: the relay goes to Fly.io as one container with its SQLite
+file on a volume; the website goes to Vercel with one environment variable.
+
+## The full test suite
+
+```
+go test -race ./...   # every scenario, including the nasty ones
+./scripts/e2e.sh      # scripted: a SCHEDULED join through a mid-job reboot
+./scripts/demo.sh     # watch all the simulator scenarios play out
+```
+
+The resilience cases all have automated tests: surprise reboot mid-queue, the
+relay itself dying and coming back mid-queue (the agent rides it out and
+reconnects), a job that finishes while the relay is unreachable (the agent
+re-reports the result instead of re-running the join), Steam signed out, the
+game crashing mid-queue, and a server flapping through a wipe restart.
 
 ## What I need from you
 

@@ -22,3 +22,6 @@ next-env.d.ts
 # Secrets: never commit these. Config comes from environment variables.
 .env
 .env.*
+
+# Build artifacts
+/dist/

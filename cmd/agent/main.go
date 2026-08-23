@@ -36,6 +36,12 @@ func main() {
 		err = cmdPair(os.Args[2:])
 	case "run":
 		err = cmdRun(os.Args[2:])
+	case "tray":
+		err = cmdTray(os.Args[2:])
+	case "install-autostart":
+		err = cmdInstallAutostart(os.Args[2:])
+	case "uninstall-autostart":
+		err = cmdUninstallAutostart(os.Args[2:])
 	case "sim":
 		err = cmdSim(os.Args[2:])
 	case "status":
@@ -60,6 +66,9 @@ QueueUp agent ` + Version + `
 
   agent pair --relay <url>     link this PC to your account
   agent run  --relay <url>     stay connected and run joins on command
+  agent tray                   the same, with a system tray icon (Windows)
+  agent install-autostart      start QueueUp automatically at Windows login
+  agent uninstall-autostart    stop doing that
   agent sim  --scenario <file> run one join against the fake Rust client
   agent status                 show what this PC is set up with
 

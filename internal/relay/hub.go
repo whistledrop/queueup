@@ -199,3 +199,12 @@ func (h *Hub) Publish(e store.Event) {
 		}
 	}
 }
+
+// DisconnectAll drops every agent connection. Tests use it to simulate the
+// relay process dying (which severs all sockets); an admin can use it to force
+// a clean reconnect wave after a config change.
+func (h *Hub) DisconnectAll() {
+	for _, a := range h.Connections() {
+		a.cancel()
+	}
+}

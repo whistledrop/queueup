@@ -38,8 +38,17 @@ type App struct {
 	// SendLogLines mirrors raw Rust log lines to the relay for the debug view.
 	SendLogLines bool
 
+	// OnStatusText, when set, receives a one-line plain-language description of
+	// what the agent is doing right now. The tray icon shows it.
+	OnStatusText func(string)
+
 	mu      sync.Mutex
 	current *activeJob
+	// finished remembers how recently completed jobs ended. If the relay was
+	// unreachable at the moment a job finished, the report was dropped; when the
+	// relay reconnects it will hand the job back, and the right response is to
+	// re-send the result, not to run the whole join again.
+	finished map[string]protocol.JobStatus
 }
 
 type activeJob struct {
@@ -53,6 +62,13 @@ type activeJob struct {
 // OnConnected is called each time the socket comes up.
 func (a *App) OnConnected(w protocol.Welcome) {
 	a.Log.Info("relay connection is up", "device", w.DeviceID)
+	a.statusText("Connected. Waiting for jobs.")
+}
+
+func (a *App) statusText(s string) {
+	if a.OnStatusText != nil {
+		a.OnStatusText(s)
+	}
 }
 
 // OnDisconnected is called when it goes down. Nothing is torn down here on
@@ -60,6 +76,7 @@ func (a *App) OnConnected(w protocol.Welcome) {
 // catch the relay up when it returns.
 func (a *App) OnDisconnected(err error) {
 	a.Log.Warn("relay connection is down; the current join keeps running", "err", err)
+	a.statusText("Reconnecting to QueueUp. Any running join carries on.")
 }
 
 // OnServerStatus passes the relay's view of the target server to the running job.
@@ -100,6 +117,13 @@ func (a *App) OnCancel(c protocol.Cancel) {
 // OnAssign starts a job, or resumes one after a reconnection or a reboot.
 func (a *App) OnAssign(j protocol.Job) {
 	a.mu.Lock()
+	if final, ok := a.finished[j.ID]; ok {
+		// Already done; the relay just never heard. Tell it again.
+		a.mu.Unlock()
+		a.Log.Info("job already finished, re-sending the result", "job", j.ID, "state", final.State)
+		a.Client.Send(protocol.TypeJobStatus, final)
+		return
+	}
 	if a.current != nil && a.current.id == j.ID {
 		// The relay hands the job back every time we reconnect. If we are already
 		// on it, carry on rather than starting over and losing our queue place.
@@ -166,6 +190,9 @@ func (a *App) OnAssign(j protocol.Job) {
 			if t.Reason != nil {
 				st.ReasonCode, st.ReasonMessage = t.Reason.Code, t.Reason.Message
 			}
+			if t.To.Terminal() {
+				a.rememberFinished(st)
+			}
 			a.report(st)
 		},
 		OnLogLine: func(line string, understood bool) {
@@ -207,6 +234,23 @@ func (a *App) OnAssign(j protocol.Job) {
 	}()
 }
 
+// rememberFinished keeps the final result of recent jobs, bounded so it can
+// never grow without limit on a long-running agent.
+func (a *App) rememberFinished(st protocol.JobStatus) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.finished == nil {
+		a.finished = map[string]protocol.JobStatus{}
+	}
+	if len(a.finished) >= 16 {
+		for k := range a.finished {
+			delete(a.finished, k)
+			break
+		}
+	}
+	a.finished[st.JobID] = st
+}
+
 // Stop ends the running job WITHOUT reporting it as finished, so that the relay
 // hands it straight back when the agent starts up again. This is what a clean
 // shutdown does, and it is exactly what a surprise Windows reboot looks like
@@ -234,5 +278,8 @@ func (a *App) CurrentJobID() string {
 
 func (a *App) report(st protocol.JobStatus) {
 	a.Log.Info("job status", "job", st.JobID, "state", st.State, "detail", st.Detail)
+	if st.Detail != "" {
+		a.statusText(st.Detail)
+	}
 	a.Client.Send(protocol.TypeJobStatus, st)
 }
