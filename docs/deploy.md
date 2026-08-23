@@ -1,9 +1,9 @@
 # Putting QueueUp on the internet
 
 Two deployments: the relay (a Go program that must be reachable by the agent
-and the web app) and the website (Next.js, goes to Vercel like your other
-projects). Total cost at this scale: roughly the price of one Fly.io shared VM,
-a few dollars a month.
+and the web app) and the website (Next.js, on Netlify; Vercel works identically
+if you ever prefer it). Total cost at this scale: roughly the price of one
+Fly.io shared VM, a few dollars a month; the website tier is free.
 
 ## The relay, on Fly.io
 
@@ -58,20 +58,42 @@ Accounts are created from the machine itself:
 fly ssh console -C "relay create-account you@example.com"
 ```
 
-## The website, on Vercel
+## The website, on Netlify
+
+One-time, from the project root:
 
 ```bash
-cd web
-vercel --prod
+npm i -g netlify-cli
+netlify login
+netlify init          # create a new site; the repo's netlify.toml points it at web/
 ```
 
-Set one environment variable in the Vercel project settings:
+Set the one environment variable (the only place the website learns where the
+relay is):
 
-```
-RELAY_URL=https://queueup-relay.fly.dev
+```bash
+netlify env:set RELAY_URL https://queueup-relay.fly.dev
 ```
 
-That is the only place the website learns where the relay is.
+Then, and after every change:
+
+```bash
+netlify deploy --prod
+```
+
+Check: the site loads on your phone, and creating an account works, which
+proves the site can reach the relay.
+
+Notes:
+
+- Netlify's Next.js runtime is detected automatically; nothing to configure
+  beyond `netlify.toml`, which is in the repo.
+- The live status screen streams over a connection that hosting platforms cap
+  after a while. The page is built for that: the browser reconnects by itself
+  and filters duplicates, so at worst you get an invisible reconnect. The same
+  is true on Vercel.
+- Prefer Vercel instead? `cd web && vercel --prod`, set the same RELAY_URL in
+  the project settings. Everything else is identical.
 
 ## The agent, on the PC
 

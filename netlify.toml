@@ -1,0 +1,10 @@
+# The QueueUp website on Netlify. The Go relay is NOT deployed here; it lives
+# on Fly.io (see docs/deploy.md). Netlify's Next.js runtime is picked up
+# automatically for the web/ folder.
+
+[build]
+  base    = "web"
+  command = "npm run build"
+
+# RELAY_URL is set in the Netlify dashboard (Site configuration, Environment
+# variables), not here, so this file carries nothing environment-specific.

@@ -22,14 +22,15 @@ Check: `https://<your-app>.fly.dev/healthz` says ok.
 ## 2. Deploy the website (~5 minutes)
 
 ```bash
-npm i -g vercel
-cd web && vercel --prod
+npm i -g netlify-cli
+netlify login
+netlify init
+netlify env:set RELAY_URL https://<your-app>.fly.dev
+netlify deploy --prod
 ```
 
-In the Vercel project settings add one environment variable:
-`RELAY_URL=https://<your-app>.fly.dev`, then redeploy (`vercel --prod` again).
-
-Check: the site loads on your phone and you can create an account.
+Check: the site loads on your phone and you can create an account. (Vercel
+works too; see docs/deploy.md.)
 
 ## 3. Get the agent onto the PC (~10 minutes, remote is fine)
 

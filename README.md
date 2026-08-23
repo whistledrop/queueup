@@ -204,7 +204,8 @@ the per-user registry Run key: no administrator rights, runs in your session
 ## Deploying
 
 `docs/deploy.md`: the relay goes to Fly.io as one container with its SQLite
-file on a volume; the website goes to Vercel with one environment variable.
+file on a volume; the website goes to Netlify (or Vercel, identically) with one
+environment variable.
 
 ## The full test suite
 
@@ -254,9 +255,9 @@ thousands of idle WebSocket connections open cheaply, which is the thing Go is
 best at. Sharing the language with the agent means one set of message definitions
 and no translation layer between them.
 
-**Web app: Next.js 16.** Mobile first, deploys to Vercel in one step, handles web
-push in phase 4, and it is what you already run for your other projects, so there
-is nothing new for you to learn or pay for. There is no CSS framework: the whole
+**Web app: Next.js 16.** Mobile first, deploys to Netlify or Vercel in one step,
+handles web push, and it is a stack you already run elsewhere, so there is
+nothing new to learn or pay for. There is no CSS framework: the whole
 look is one stylesheet, which is less to keep up to date than a dependency.
 
 The browser never talks to the relay directly. It talks to the website, and the
