@@ -84,7 +84,7 @@ export default function ServersPage() {
   }
 
   return (
-    <>
+    <div className="shell">
       <header className="top">
         <Link href="/" className="brand">Queue<span>Up</span></Link>
         <Link href="/" className="btn small" style={{ minHeight: 36, padding: '6px 12px' }}>
@@ -165,6 +165,6 @@ export default function ServersPage() {
           </div>
         ))}
       </div>
-    </>
+    </div>
   )
 }

@@ -75,7 +75,7 @@ function ScheduleForm() {
   }
 
   return (
-    <>
+    <div className="shell">
       <header className="top">
         <Link href="/" className="brand">Queue<span>Up</span></Link>
         <Link href="/" className="btn small" style={{ minHeight: 36, padding: '6px 12px' }}>
@@ -164,7 +164,7 @@ function ScheduleForm() {
           {busy ? 'Saving' : 'Schedule the join'}
         </button>
       </form>
-    </>
+    </div>
   )
 }
 

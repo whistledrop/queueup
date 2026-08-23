@@ -66,7 +66,7 @@ export default function LiveStatus({ jobId }: { jobId: string }) {
   const running = isActive(state)
 
   return (
-    <>
+    <div className="shell">
       <header className="top">
         <Link href="/" className="brand">Queue<span>Up</span></Link>
         <Link href="/" className="btn small" style={{ minHeight: 36, padding: '6px 12px' }}>
@@ -128,6 +128,6 @@ export default function LiveStatus({ jobId }: { jobId: string }) {
           {events.length === 0 && <li className="muted">Waiting for the first update</li>}
         </ul>
       </div>
-    </>
+    </div>
   )
 }

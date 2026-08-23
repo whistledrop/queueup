@@ -1,11 +1,21 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  )
+}
+
+function LoginForm() {
   const router = useRouter()
-  const [creating, setCreating] = useState(false)
+  // The landing page's buttons land people straight on the create form.
+  const wantsCreate = useSearchParams().get('mode') === 'create'
+  const [creating, setCreating] = useState(wantsCreate)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -36,7 +46,7 @@ export default function LoginPage() {
   }
 
   return (
-    <>
+    <div className="shell">
       <header className="top">
         <span className="brand">Queue<span>Up</span></span>
       </header>
@@ -79,6 +89,6 @@ export default function LoginPage() {
       >
         {creating ? 'I already have an account' : 'Create an account'}
       </button>
-    </>
+    </div>
   )
 }
