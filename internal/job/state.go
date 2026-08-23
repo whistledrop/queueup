@@ -274,14 +274,17 @@ func (m *Machine) Handle(in Input) Result {
 
 	// Cancel is honoured from any live state.
 	if c, ok := in.(Cancel); ok {
-		msg := c.Reason
-		if msg == "" {
-			msg = ReasonCancelled.Message
+		reason := ReasonCancelled
+		if c.Reason != "" {
+			reason.Message = c.Reason
 		}
 		if m.state == StateConnecting || m.state == StateQueued || m.state == StateInServer || m.state == StateLaunching {
 			res.Actions = append(res.Actions, ActionCloseGame)
 		}
-		res.Transitions = append(res.Transitions, m.moveTo(StateDone, msg, nil))
+		// The reason is carried even though this is not a failure, so that the
+		// phone can tell "you cancelled it" apart from "you got in". Both end up
+		// in the done state, and they should not look the same.
+		res.Transitions = append(res.Transitions, m.moveTo(StateDone, reason.Message, &reason))
 		return res
 	}
 

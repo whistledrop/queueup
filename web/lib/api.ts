@@ -36,6 +36,7 @@ export type Job = {
   position: number
   attempt: number
   detail: string
+  reason_code: string
   reason_message: string
   created_at: string
   updated_at: string
@@ -79,4 +80,19 @@ export function stateLabel(state: string): string {
 
 export function isActive(state: string): boolean {
   return state !== 'done' && state !== 'failed'
+}
+
+/** How a finished job should be summed up. Cancelling is not the same as
+ *  getting in, and they must not look the same on the screen. */
+export function outcome(job: { state: string; reason_code: string }): {
+  label: string
+  tone: 'good' | 'bad' | 'warn' | ''
+} {
+  if (job.state === 'failed') return { label: 'Did not work', tone: 'bad' }
+  if (job.state === 'done') {
+    return job.reason_code === 'cancelled'
+      ? { label: 'Cancelled', tone: '' }
+      : { label: 'Joined', tone: 'good' }
+  }
+  return { label: stateLabel(job.state), tone: 'warn' }
 }

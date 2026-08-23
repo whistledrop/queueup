@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { api, isActive, stateLabel, type Job, type JobEvent } from '@/lib/api'
+import { api, isActive, outcome, stateLabel, type Job, type JobEvent } from '@/lib/api'
 
 export default function LiveStatus({ jobId }: { jobId: string }) {
   const [job, setJob] = useState<Job | null>(null)
@@ -74,7 +74,9 @@ export default function LiveStatus({ jobId }: { jobId: string }) {
 
       <div className="card">
         <h2>{job?.server_name || job?.server_addr || 'Join'}</h2>
-        <p className="state">{stateLabel(state)}</p>
+        <p className="state">
+          {running || !job ? stateLabel(state) : outcome(job).label}
+        </p>
         <p className="muted" style={{ margin: 0 }}>
           {latest?.detail || job?.detail || ''}
         </p>

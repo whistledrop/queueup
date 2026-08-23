@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { api, isActive, stateLabel, type Device, type Job } from '@/lib/api'
+import { api, isActive, outcome, stateLabel, type Device, type Job } from '@/lib/api'
 import type { Favourite } from '@/lib/types'
 
 export default function Dashboard({ email }: { email: string }) {
@@ -191,9 +191,7 @@ export default function Dashboard({ email }: { email: string }) {
                   <div className="name">{j.server_name || j.server_addr}</div>
                   <div className="muted small">{j.detail || stateLabel(j.state)}</div>
                 </div>
-                <span className={`pill ${j.state === 'done' ? 'good' : j.state === 'failed' ? 'bad' : 'warn'}`}>
-                  {stateLabel(j.state)}
-                </span>
+                <span className={`pill ${outcome(j).tone}`}>{outcome(j).label}</span>
               </Link>
             </div>
           ))}

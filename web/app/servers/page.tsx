@@ -120,7 +120,9 @@ export default function ServersPage() {
       </div>
 
       <div className="card">
-        <h2>{loading ? 'Searching' : `${servers.length} servers`}</h2>
+        <h2>
+          {loading ? 'Searching' : `${servers.length} server${servers.length === 1 ? '' : 's'}`}
+        </h2>
         {!loading && servers.length === 0 && (
           <div className="muted">Nothing matched that. Try a shorter search.</div>
         )}
