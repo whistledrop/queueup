@@ -14,6 +14,7 @@ import (
 
 	"github.com/coder/websocket"
 
+	"queueup/internal/notify"
 	"queueup/internal/protocol"
 	"queueup/internal/servers"
 	"queueup/internal/store"
@@ -34,15 +35,20 @@ type Config struct {
 	// HeartbeatSeconds is how often we expect to hear from an agent. Missing
 	// three in a row is treated as the PC having gone away.
 	HeartbeatSeconds int
+
+	// Notifier delivers messages to phones. Optional: when nil, notifications
+	// are only logged, and everything still lands in the job timeline.
+	Notifier *notify.Notifier
 }
 
 // Server is the relay.
 type Server struct {
-	cfg Config
-	st  *store.Store
-	log *slog.Logger
-	hub *Hub
-	mux *http.ServeMux
+	cfg      Config
+	st       *store.Store
+	log      *slog.Logger
+	hub      *Hub
+	mux      *http.ServeMux
+	notifier *notify.Notifier
 
 	// debugLogs keeps the last few raw Rust log lines per PC, in memory only, for
 	// the admin view. They are never shown to a player and never written to disk.
@@ -58,12 +64,16 @@ func New(cfg Config) *Server {
 	if cfg.HeartbeatSeconds == 0 {
 		cfg.HeartbeatSeconds = 20
 	}
+	if cfg.Notifier == nil {
+		cfg.Notifier = &notify.Notifier{Store: cfg.Store, Log: cfg.Log}
+	}
 	s := &Server{
 		cfg:       cfg,
 		st:        cfg.Store,
 		log:       cfg.Log,
 		hub:       NewHub(cfg.Log),
 		mux:       http.NewServeMux(),
+		notifier:  cfg.Notifier,
 		debugLogs: map[string][]string{},
 	}
 	s.routes()
@@ -90,6 +100,10 @@ func (s *Server) routes() {
 	s.authRoutes()
 	// Finding servers and starring them.
 	s.serverRoutes()
+	// Planned joins.
+	s.scheduleRoutes()
+	// Phone notifications.
+	s.pushRoutes()
 
 	// Account-facing.
 	s.mux.HandleFunc("POST /api/pair", s.withAccount(s.handleClaimCode))
@@ -404,12 +418,8 @@ func (s *Server) dispatch(j store.Job, resumed, addressIsFresh bool) {
 		s.note(j.ID, j.State, "Sent to your PC.")
 	}
 
-	// Phase 2 stub: tell the agent the server is up so a "wait for the server"
-	// job can proceed. Phase 4 replaces this with real A2S and BattleMetrics
-	// polling, which is what actually detects a wipe restart.
-	_ = s.hub.SendTo(j.DeviceID, protocol.TypeServerStatus, protocol.ServerStatus{
-		JobID: j.ID, Online: true,
-	})
+	// The watcher takes it from here: it polls the target server and streams
+	// what it sees to the agent, which is what drives wait-for-wipe jobs.
 }
 
 // note appends a line to a job's timeline and pushes it to anyone watching.
@@ -684,7 +694,11 @@ func (s *Server) readLoop(ctx context.Context, ac *AgentConn, device store.Devic
 		s.log.Info("handing an outstanding job to the agent", "device", device.ID, "job", j.ID)
 		// A job that never started is not being "resumed", it is simply starting
 		// now, and the message on the phone should say so.
-		s.dispatch(j, j.State != "pending", false)
+		resumed := j.State != "pending"
+		s.dispatch(j, resumed, false)
+		if resumed {
+			s.notifyAgentBack(device, j)
+		}
 	}
 
 	defer func() {
@@ -697,6 +711,7 @@ func (s *Server) readLoop(ctx context.Context, ac *AgentConn, device store.Devic
 		}
 		if j, err := s.st.ActiveJobForDevice(device.ID); err == nil {
 			s.note(j.ID, j.State, "Your PC went offline. We'll pick this back up when it returns.")
+			s.notifyAgentOffline(device, j)
 		}
 	}()
 
@@ -740,6 +755,7 @@ func (s *Server) handleAgentMessage(ac *AgentConn, device store.Device, env prot
 		if !changed {
 			return
 		}
+		s.notifyStatusChange(j, st)
 		events, err := s.st.Events(st.JobID, 0)
 		if err == nil && len(events) > 0 {
 			s.hub.Publish(events[len(events)-1])

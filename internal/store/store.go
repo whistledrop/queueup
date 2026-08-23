@@ -95,6 +95,39 @@ CREATE TABLE IF NOT EXISTS jobs (
 CREATE INDEX IF NOT EXISTS jobs_device ON jobs(device_id, state);
 CREATE INDEX IF NOT EXISTS jobs_account ON jobs(account_id, created_at);
 
+-- A scheduled join. Times are stored as UTC milliseconds, always. The user's
+-- timezone is a display concern that lives entirely in the browser: Logan sets
+-- a time from Spain, the PC sits in the UK, and neither fact is allowed to
+-- touch what is stored here.
+CREATE TABLE IF NOT EXISTS schedules (
+  id                 TEXT PRIMARY KEY,
+  account_id         TEXT NOT NULL REFERENCES accounts(id),
+  device_id          TEXT NOT NULL REFERENCES devices(id),
+  server_id          TEXT NOT NULL DEFAULT '',
+  server_addr        TEXT NOT NULL DEFAULT '',
+  server_name        TEXT NOT NULL DEFAULT '',
+  fire_at            INTEGER NOT NULL,
+  wait_for_server_up INTEGER NOT NULL DEFAULT 0,
+  state              TEXT NOT NULL DEFAULT 'pending',  -- pending | fired | cancelled | failed
+  note               TEXT NOT NULL DEFAULT '',
+  job_id             TEXT NOT NULL DEFAULT '',
+  created_at         INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS schedules_due ON schedules(state, fire_at);
+CREATE INDEX IF NOT EXISTS schedules_account ON schedules(account_id, created_at);
+
+-- A browser that asked to receive push notifications. One account can have
+-- several (phone and laptop). The endpoint and keys are exactly what the
+-- browser's push service handed over; we store nothing else about the device.
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  endpoint    TEXT PRIMARY KEY,
+  account_id  TEXT NOT NULL REFERENCES accounts(id),
+  p256dh      TEXT NOT NULL,
+  auth        TEXT NOT NULL,
+  created_at  INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS push_account ON push_subscriptions(account_id);
+
 -- Every state change, kept forever. This is the phone's timeline and the
 -- debug view, and it is what lets us work out afterwards what went wrong.
 CREATE TABLE IF NOT EXISTS job_events (
@@ -298,3 +331,6 @@ func (s *Store) DebugDump() (string, error) {
 	}
 	return out.String(), nil
 }
+
+// SetClockForTest replaces the store's idea of "now". Tests only.
+func (s *Store) SetClockForTest(now func() time.Time) { s.now = now }

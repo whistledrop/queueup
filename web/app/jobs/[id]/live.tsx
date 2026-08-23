@@ -57,7 +57,11 @@ export default function LiveStatus({ jobId }: { jobId: string }) {
   }
 
   const latest = events[events.length - 1]
-  const state = latest?.state ?? job?.state ?? 'pending'
+  // The stream is usually the freshest view, but a job the relay says is
+  // finished IS finished: a cancel must flip the screen at once, not wait for
+  // the agent's confirming event to arrive.
+  const state =
+    job && isActive(job.state) === false ? job.state : (latest?.state ?? job?.state ?? 'pending')
   const position = state === 'queued' ? (latest?.position ?? job?.position ?? 0) : 0
   const running = isActive(state)
 

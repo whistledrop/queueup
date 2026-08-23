@@ -201,6 +201,61 @@ a tunnel.
 server-sent events automatically, and it means only one long-lived protocol to
 debug at three in the morning. Commands go over ordinary POSTs.
 
+## Scheduled joins
+
+Schedules live on the relay and fire on the relay's clock. The phone can be off,
+the PC can be mid-reboot: the join still starts, and whatever cannot happen is
+notified instead of silently dropped.
+
+Times travel as RFC3339 and are stored as UTC. The browser converts from the
+user's local time; a phone in Spain and a PC in the UK agree by construction.
+
+```bash
+curl -X POST http://127.0.0.1:8080/api/schedules \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"device_id":"'"$DEVICE_ID"'","server_id":"stub-1",
+       "fire_at":"2026-09-03T18:00:00Z","wait_for_server_up":true}'
+
+curl http://127.0.0.1:8080/api/schedules -H "Authorization: Bearer $TOKEN"
+curl -X POST http://127.0.0.1:8080/api/schedules/$SCHED_ID/cancel -H "Authorization: Bearer $TOKEN"
+```
+
+`wait_for_server_up: true` is wipe mode: from the scheduled moment the relay
+polls the server directly (Valve's query protocol, one UDP packet, no API or
+key involved) and the instant it answers again after the restart, the agent is
+told to connect. Down/up flapping during the restart is tolerated; the agent's
+own jitter and rate cap decide when to actually launch.
+
+## Notifications
+
+Web push, with email as fallback when SMTP is configured. Run `relay gen-vapid`
+once and set the two keys, or notifications quietly stay off and everything
+still lands in the job timeline.
+
+```bash
+curl http://127.0.0.1:8080/api/push/config -H "Authorization: Bearer $TOKEN"
+# {"enabled":true,"public_key":"...","subscriptions":1}
+
+# The body is the browser's PushSubscription.toJSON(), verbatim:
+curl -X POST http://127.0.0.1:8080/api/push/subscribe -H "Authorization: Bearer $TOKEN" \
+  -d '{"endpoint":"https://...","keys":{"p256dh":"...","auth":"..."}}'
+
+curl -X POST http://127.0.0.1:8080/api/push/test -H "Authorization: Bearer $TOKEN"
+```
+
+What gets sent, and when:
+
+| Moment | Notification |
+|---|---|
+| Entered the queue | "In the queue", with the position |
+| Position crosses 100, 50, 10 | "Position N" (only the crossings; every change would be spam) |
+| In the server | "You're in" |
+| Join failed | The plain-language reason |
+| PC went offline mid-job | "Your PC went offline" |
+| PC came back mid-job | "Your PC is back online" |
+| Scheduled join started | "Scheduled join started" |
+| Schedule fired but the PC is off | "Your PC is offline", immediately, while there is still time to fix it |
+
 ## Admin view
 
 ```bash

@@ -13,16 +13,17 @@ the game the same way you would.**
 
 ## Where the project is right now
 
-**Phases 1, 2 and 3 are done.** There is a working website: sign in on your
-phone, link your PC, find a server, tap join, and watch the queue position count
-down live.
+**Phases 1 to 4 are done.** Sign in on your phone, link your PC, find a server,
+join now or schedule a join for wipe day, get notified as the queue counts down,
+and let the relay watch the server through its restart and pounce the moment it
+comes back.
 
 | Phase | What it is | Status |
 |---|---|---|
 | 1 | Agent brain + fake Rust simulator, running locally | **done** |
 | 2 | Relay server, agent holds an outbound connection, survives reboots | **done** |
 | 3 | Web app: login, pairing, server search, join now, live status | **done** |
-| 4 | Scheduling, wipe-restart detection, notifications | not started |
+| 4 | Scheduling, wipe-restart detection, notifications | **done** |
 | 5 | Hardening, then the real wipe-day test on your PC | not started |
 
 ## Try it right now

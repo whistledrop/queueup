@@ -145,6 +145,13 @@ export default function ServersPage() {
                 >
                   {s.favourite ? 'Saved' : 'Save'}
                 </button>
+                <Link
+                  href={`/schedule?server_id=${encodeURIComponent(s.id)}&name=${encodeURIComponent(s.name)}`}
+                  className="btn"
+                  style={{ minHeight: 40, padding: '6px 12px' }}
+                >
+                  Later
+                </Link>
                 <button
                   className="primary"
                   disabled={!device || busyJob || joining === s.id}

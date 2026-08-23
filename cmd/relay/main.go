@@ -20,6 +20,7 @@ import (
 	"syscall"
 	"time"
 
+	"queueup/internal/notify"
 	"queueup/internal/relay"
 	"queueup/internal/servers"
 	"queueup/internal/store"
@@ -38,6 +39,7 @@ QueueUp relay
 
   relay serve                        start the relay
   relay create-account <email>       create an account and print its token
+  relay gen-vapid                    generate the notification keys (run once)
 
 Settings come from environment variables, never from files in the repo:
 
@@ -52,6 +54,12 @@ Settings come from environment variables, never from files in the repo:
                                          https://steamcommunity.com/dev/apikey
                           battlemetrics  Needs a PAID subscription token in
                                          QUEUEUP_BATTLEMETRICS_TOKEN
+
+  Notifications (all optional; without them, everything still lands in the app):
+  QUEUEUP_VAPID_PUBLIC   web push keys, from: relay gen-vapid
+  QUEUEUP_VAPID_PRIVATE
+  QUEUEUP_PUSH_SUBJECT   contact address for push services, e.g. mailto:you@example.com
+  QUEUEUP_SMTP_HOST      email fallback; also _PORT, _USER, _PASS, _FROM
 `)
 }
 
@@ -71,6 +79,16 @@ func run(args []string) error {
 	switch args[0] {
 	case "serve":
 		return serve(st)
+	case "gen-vapid":
+		priv, pub, err := notify.GenerateVAPIDKeys()
+		if err != nil {
+			return err
+		}
+		fmt.Println("Add these to the relay's environment:")
+		fmt.Printf("\n  QUEUEUP_VAPID_PUBLIC=%s\n  QUEUEUP_VAPID_PRIVATE=%s\n\n", pub, priv)
+		fmt.Println("Generate them once and keep them: changing the keys silently breaks")
+		fmt.Println("every browser that already subscribed.")
+		return nil
 	case "create-account":
 		if len(args) < 2 {
 			return errors.New("usage: relay create-account <email>")
@@ -115,8 +133,25 @@ func serve(st *store.Store) error {
 			"Set QUEUEUP_SERVER_SOURCE to steam or battlemetrics for real servers")
 	}
 
+	notifier := &notify.Notifier{
+		Store:           st,
+		Log:             log,
+		VAPIDPublicKey:  os.Getenv("QUEUEUP_VAPID_PUBLIC"),
+		VAPIDPrivateKey: os.Getenv("QUEUEUP_VAPID_PRIVATE"),
+		Subject:         envOr("QUEUEUP_PUSH_SUBJECT", "mailto:queueup@example.com"),
+		SMTPHost:        os.Getenv("QUEUEUP_SMTP_HOST"),
+		SMTPPort:        envOr("QUEUEUP_SMTP_PORT", "587"),
+		SMTPUser:        os.Getenv("QUEUEUP_SMTP_USER"),
+		SMTPPass:        os.Getenv("QUEUEUP_SMTP_PASS"),
+		SMTPFrom:        os.Getenv("QUEUEUP_SMTP_FROM"),
+	}
+	if !notifier.PushConfigured() {
+		log.Warn("web push is off: run `relay gen-vapid` and set QUEUEUP_VAPID_PUBLIC/PRIVATE")
+	}
+
 	srv := relay.New(relay.Config{
 		Store: st, Log: log, AdminToken: adminToken, Servers: provider,
+		Notifier: notifier,
 	})
 	httpSrv := &http.Server{
 		Addr:    addr,
@@ -128,6 +163,12 @@ func serve(st *store.Store) error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	// The scheduler fires planned joins; the watcher polls each active job's
+	// server and is what detects a wipe restart.
+	go srv.RunScheduler(ctx, 5*time.Second)
+	watcher := &relay.Watcher{Store: st, Hub: srv.Hub(), Log: log}
+	go watcher.Run(ctx)
 
 	go func() {
 		<-ctx.Done()

@@ -68,3 +68,20 @@ func (s *Store) AccountByEmail(email string) (Account, error) {
 	a.CreatedAt = fromMs(created)
 	return a, nil
 }
+
+// AccountByID reads one account.
+func (s *Store) AccountByID(id string) (Account, error) {
+	var a Account
+	var created int64
+	err := s.db.QueryRow(
+		`SELECT id, email, created_at FROM accounts WHERE id = ?`, id).
+		Scan(&a.ID, &a.Email, &created)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Account{}, ErrNotFound
+	}
+	if err != nil {
+		return Account{}, err
+	}
+	a.CreatedAt = fromMs(created)
+	return a, nil
+}

@@ -4,13 +4,18 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { api, isActive, outcome, stateLabel, type Device, type Job } from '@/lib/api'
-import type { Favourite } from '@/lib/types'
+import type { Favourite, Schedule } from '@/lib/types'
+import { disablePush, enablePush, pushState, sendTestPush, type PushState } from '@/lib/push'
 
 export default function Dashboard({ email }: { email: string }) {
   const router = useRouter()
   const [devices, setDevices] = useState<Device[]>([])
   const [jobs, setJobs] = useState<Job[]>([])
   const [favourites, setFavourites] = useState<Favourite[]>([])
+  const [schedules, setSchedules] = useState<Schedule[]>([])
+  const [push, setPush] = useState<PushState>('unsupported')
+  const [pushBusy, setPushBusy] = useState(false)
+  const [pushNote, setPushNote] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [code, setCode] = useState('')
@@ -19,14 +24,16 @@ export default function Dashboard({ email }: { email: string }) {
 
   const load = useCallback(async () => {
     try {
-      const [d, j, f] = await Promise.all([
+      const [d, j, f, sc] = await Promise.all([
         api<{ devices: Device[] }>('/api/devices'),
         api<{ jobs: Job[] }>('/api/jobs?limit=8'),
         api<{ favourites: Favourite[] }>('/api/favourites'),
+        api<{ schedules: Schedule[] }>('/api/schedules'),
       ])
       setDevices(d.devices ?? [])
       setJobs(j.jobs ?? [])
       setFavourites(f.favourites ?? [])
+      setSchedules(sc.schedules ?? [])
       setError('')
     } catch (e) {
       setError((e as Error).message)
@@ -39,8 +46,48 @@ export default function Dashboard({ email }: { email: string }) {
     load()
     // Keep the PC's online light honest without the user pulling to refresh.
     const t = setInterval(load, 5000)
+    pushState().then(setPush).catch(() => {})
     return () => clearInterval(t)
   }, [load])
+
+  async function togglePush() {
+    setPushBusy(true)
+    setPushNote('')
+    try {
+      if (push === 'on') {
+        await disablePush()
+      } else {
+        await enablePush()
+      }
+      setPush(await pushState())
+    } catch (e) {
+      setPushNote((e as Error).message)
+    } finally {
+      setPushBusy(false)
+    }
+  }
+
+  async function testPush() {
+    setPushBusy(true)
+    setPushNote('')
+    try {
+      await sendTestPush()
+      setPushNote('Sent. It should pop up on this device in a moment.')
+    } catch (e) {
+      setPushNote((e as Error).message)
+    } finally {
+      setPushBusy(false)
+    }
+  }
+
+  async function cancelSchedule(id: string) {
+    try {
+      await api(`/api/schedules/${id}/cancel`, { method: 'POST' })
+      await load()
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
 
   const pc = devices[0]
   const active = jobs.find((j) => isActive(j.state))
@@ -179,6 +226,58 @@ export default function Dashboard({ email }: { email: string }) {
             ))}
           </div>
         )}
+      </div>
+
+      <div className="card">
+        <h2>Scheduled joins</h2>
+        <Link href="/schedule" className="btn btn-wide">Schedule a join</Link>
+        {schedules.filter((sc) => sc.state === 'pending').map((sc) => (
+          <div className="server" key={sc.id}>
+            <div className="row">
+              <div style={{ minWidth: 0 }}>
+                <div className="name">{sc.server_name || sc.server_addr}</div>
+                <div className="muted small">
+                  {new Date(sc.fire_at).toLocaleString()}
+                  {sc.wait_for_server_up && ' - waits for the wipe restart'}
+                </div>
+              </div>
+              <button onClick={() => cancelSchedule(sc.id)} style={{ minHeight: 40, padding: '6px 12px' }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="card">
+        <h2>Notifications</h2>
+        {push === 'unsupported' && (
+          <p className="muted small" style={{ margin: 0 }}>
+            This browser can't show push notifications. On iPhone, add QueueUp to
+            your home screen first (Share, then Add to Home Screen).
+          </p>
+        )}
+        {push === 'relay-off' && (
+          <p className="muted small" style={{ margin: 0 }}>
+            Notifications aren't set up on the relay yet. See the README.
+          </p>
+        )}
+        {push === 'denied' && (
+          <p className="muted small" style={{ margin: 0 }}>
+            Notifications are blocked for this site in your browser settings.
+          </p>
+        )}
+        {(push === 'off' || push === 'on') && (
+          <div className="spread">
+            <button onClick={togglePush} disabled={pushBusy} className={push === 'on' ? '' : 'primary'}>
+              {push === 'on' ? 'Turn off' : 'Turn on notifications'}
+            </button>
+            {push === 'on' && (
+              <button onClick={testPush} disabled={pushBusy}>Send a test</button>
+            )}
+          </div>
+        )}
+        {pushNote && <p className="muted small" style={{ marginBottom: 0 }}>{pushNote}</p>}
       </div>
 
       {jobs.length > 0 && (
