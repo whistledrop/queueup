@@ -4,6 +4,10 @@
 [build]
   base    = "web"
   command = "npm run build"
+  # Relative to base, so this is web/.next: the Next.js build output. Pinned
+  # here because the value saved at site creation (before Netlify knew this was
+  # a Next.js app) pointed at the base folder itself, which the runtime rejects.
+  publish = ".next"
 
 # Declared explicitly rather than relying on auto-detection: with the app in a
 # subfolder, Netlify's Next.js detection can miss at site-creation time, and
