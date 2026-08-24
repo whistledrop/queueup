@@ -20,6 +20,7 @@ func cmdPair(args []string) error {
 	webURL := fs.String("web", "", "the QueueUp website address, for the tray menu (optional)")
 	configPath := fs.String("config", "", "settings file (default: your user config folder)")
 	name := fs.String("name", "", "a name for this PC, shown in the web app")
+	andRun := fs.Bool("run", true, "start the agent straight after pairing")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -36,7 +37,13 @@ func cmdPair(args []string) error {
 		cfg.RelayURL = *relayURL
 	}
 	if cfg.RelayURL == "" {
+		cfg.RelayURL = DefaultRelayURL
+	}
+	if cfg.RelayURL == "" {
 		return fmt.Errorf("which relay should this PC connect to? Pass --relay")
+	}
+	if cfg.WebURL == "" {
+		cfg.WebURL = DefaultWebURL
 	}
 	if *webURL != "" {
 		cfg.WebURL = *webURL
@@ -61,6 +68,9 @@ func cmdPair(args []string) error {
 	}
 
 	fmt.Println()
+	if cfg.WebURL != "" {
+		fmt.Printf("  On your phone, sign in at %s\n", cfg.WebURL)
+	}
 	fmt.Println("  Type this code into the QueueUp web app:")
 	fmt.Println()
 	fmt.Printf("        %s\n", spaced(start.Code))
@@ -80,8 +90,16 @@ func cmdPair(args []string) error {
 
 	fmt.Println("  This PC is now linked to your account.")
 	fmt.Printf("  Settings saved to %s\n\n", path)
-	fmt.Println("  Next: leave the agent running with")
-	fmt.Printf("    agent run --relay %s\n", cfg.RelayURL)
+	fmt.Println("  Starting up. QueueUp will now sit in your system tray.")
+	fmt.Println("  To have it start automatically when you sign in to Windows,")
+	fmt.Println("  run this once:   QueueUpAgent.exe install-autostart")
+	fmt.Println()
+
+	// Straight into normal operation: pairing and then having to start the
+	// thing again is a step nobody should have to be told about.
+	if *andRun {
+		return cmdTray(nil)
+	}
 	return nil
 }
 

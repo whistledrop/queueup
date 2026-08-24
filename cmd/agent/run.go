@@ -58,6 +58,9 @@ func cmdRun(args []string) error {
 		cfg.RelayURL = *relayURL
 	}
 	if cfg.RelayURL == "" {
+		cfg.RelayURL = DefaultRelayURL
+	}
+	if cfg.RelayURL == "" {
 		return errors.New("this PC has no relay set. Run: agent pair --relay <url>")
 	}
 	if !cfg.Paired() {

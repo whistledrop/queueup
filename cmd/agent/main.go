@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"queueup/internal/agentcfg"
 )
 
 // Version is reported to the relay and stamped at build time by
@@ -26,39 +28,73 @@ import (
 // changing the wire protocol.
 var Version = "dev"
 
+// DefaultRelayURL and DefaultWebURL are baked in at build time by
+// scripts/build-agent.sh, so the downloaded exe knows where its own service
+// lives. Without them the user would have to type a URL, which is the kind of
+// step that loses people.
+var (
+	DefaultRelayURL = ""
+	DefaultWebURL   = ""
+)
+
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println(usage())
-		os.Exit(2)
+	args := os.Args[1:]
+	if len(args) == 0 {
+		// Double-clicked. Do the obvious thing rather than printing usage at a
+		// window that is not there: pair if this PC has never been linked,
+		// otherwise start up and sit in the tray.
+		args = []string{defaultCommand()}
 	}
+	if args[0] != "tray" {
+		// These commands talk to the person, so make sure there is somewhere for
+		// the words to go.
+		ensureConsole()
+	}
+
 	var err error
-	switch os.Args[1] {
+	switch args[0] {
 	case "pair":
-		err = cmdPair(os.Args[2:])
+		err = cmdPair(args[1:])
 	case "run":
-		err = cmdRun(os.Args[2:])
+		err = cmdRun(args[1:])
 	case "tray":
-		err = cmdTray(os.Args[2:])
+		err = cmdTray(args[1:])
 	case "install-autostart":
-		err = cmdInstallAutostart(os.Args[2:])
+		err = cmdInstallAutostart(args[1:])
 	case "uninstall-autostart":
-		err = cmdUninstallAutostart(os.Args[2:])
+		err = cmdUninstallAutostart(args[1:])
 	case "sim":
-		err = cmdSim(os.Args[2:])
+		err = cmdSim(args[1:])
 	case "status":
-		err = cmdStatus(os.Args[2:])
+		err = cmdStatus(args[1:])
 	case "-h", "--help", "help":
 		fmt.Println(usage())
 		return
 	default:
 		fmt.Println(usage())
-		fmt.Fprintf(os.Stderr, "\nunknown command %q\n", os.Args[1])
+		fmt.Fprintf(os.Stderr, "\nunknown command %q\n", args[0])
+		waitForReader()
 		os.Exit(2)
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "\nerror:", err)
+		waitForReader()
 		os.Exit(1)
 	}
+}
+
+// defaultCommand is what a double-click means: link this PC if it has never
+// been linked, otherwise get on with the job.
+func defaultCommand() string {
+	path, err := agentcfg.DefaultPath()
+	if err != nil {
+		return "pair"
+	}
+	cfg, err := agentcfg.Load(path)
+	if err != nil || !cfg.Paired() {
+		return "pair"
+	}
+	return "tray"
 }
 
 func usage() string {

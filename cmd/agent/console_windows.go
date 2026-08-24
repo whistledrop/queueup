@@ -9,6 +9,8 @@ package main
 // that terminal's console before doing anything else.
 
 import (
+	"bufio"
+	"fmt"
 	"os"
 
 	"golang.org/x/sys/windows"
@@ -17,6 +19,12 @@ import (
 var (
 	kernel32          = windows.NewLazySystemDLL("kernel32.dll")
 	procAttachConsole = kernel32.NewProc("AttachConsole")
+	procAllocConsole  = kernel32.NewProc("AllocConsole")
+
+	// hasConsole records whether we borrowed someone else's terminal (true) or
+	// had to make our own window (false). A window we made is ours to keep
+	// open until the person has read it.
+	borrowedConsole bool
 )
 
 const attachParentProcess = ^uintptr(0) // ATTACH_PARENT_PROCESS
@@ -29,6 +37,7 @@ func init() {
 	if r == 0 {
 		return
 	}
+	borrowedConsole = true
 	for _, f := range []struct {
 		name string
 		mode int
@@ -43,4 +52,43 @@ func init() {
 			*f.std = h
 		}
 	}
+}
+
+// ensureConsole gives the program somewhere to print. Started from a terminal
+// it already has one; double-clicked it has none, so make a window.
+func ensureConsole() {
+	if borrowedConsole {
+		return
+	}
+	if r, _, _ := procAllocConsole.Call(); r == 0 {
+		return
+	}
+	reopenStdHandles()
+}
+
+func reopenStdHandles() {
+	for _, f := range []struct {
+		name string
+		mode int
+		std  **os.File
+	}{
+		{"CONOUT$", os.O_WRONLY, &os.Stdout},
+		{"CONOUT$", os.O_WRONLY, &os.Stderr},
+		{"CONIN$", os.O_RDONLY, &os.Stdin},
+	} {
+		if h, err := os.OpenFile(f.name, f.mode, 0); err == nil {
+			*f.std = h
+		}
+	}
+}
+
+// waitForReader keeps a window we created open long enough to be read.
+// A window we borrowed belongs to the person's terminal, so leave it alone.
+func waitForReader() {
+	if borrowedConsole {
+		return
+	}
+	fmt.Println()
+	fmt.Println("Press Enter to close this window.")
+	_, _ = bufio.NewReader(os.Stdin).ReadString('\n')
 }
