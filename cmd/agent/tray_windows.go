@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/getlantern/systray"
@@ -110,18 +111,25 @@ func webURL() string {
 	return strings.TrimSuffix(cfg.RelayURL, "/")
 }
 
+// hidden stops the helper that opens a browser or folder from flashing its own
+// console window on the way past.
+func hidden(cmd *exec.Cmd) *exec.Cmd {
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
+	return cmd
+}
+
 func openBrowser(url string) {
 	if url == "" {
 		return
 	}
-	_ = exec.Command("cmd", "/c", "start", "", url).Run()
+	_ = hidden(exec.Command("cmd", "/c", "start", "", url)).Run()
 }
 
 func openFile(path string) {
 	if path == "" {
 		return
 	}
-	_ = exec.Command("cmd", "/c", "start", "", path).Run()
+	_ = hidden(exec.Command("cmd", "/c", "start", "", path)).Run()
 }
 
 // trayIcon is a tiny generated 16x16 ICO: an orange square with a white Q-ish

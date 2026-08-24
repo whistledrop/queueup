@@ -10,8 +10,22 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
+
+// createNoWindow is the Windows flag for "start this child without giving it a
+// console". The agent itself is built windowless, so without this every helper
+// it runs gets a brand new console window of its own. Since the running check
+// happens every couple of seconds, that means a black window blinking on the
+// player's screen forever. Anything we spawn must be silent.
+const createNoWindow = 0x08000000
+
+// silent prepares a command to run without flashing a window.
+func silent(cmd *exec.Cmd) *exec.Cmd {
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: createNoWindow}
+	return cmd
+}
 
 // rustProcess is the Rust client's executable name, used only for "is it
 // running" and "please close". We never open, read or write the process itself.
@@ -93,7 +107,7 @@ func (w *WindowsLauncher) Launch(a Addr) error {
 	uri := SteamConnectURI(a)
 	// "start" is the shell's own URL opener. cmd needs the empty "" title argument
 	// before the URL, otherwise it treats the quoted URL as a window title.
-	cmd := exec.Command("cmd", "/c", "start", "", uri)
+	cmd := silent(exec.Command("cmd", "/c", "start", "", uri))
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("Windows refused to open the Steam link: %w", err)
 	}
@@ -172,17 +186,17 @@ func (w *WindowsLauncher) Close() error {
 	if !processRunning(rustProcess) {
 		return nil
 	}
-	_ = exec.Command("taskkill", "/IM", rustProcess).Run()
+	_ = silent(exec.Command("taskkill", "/IM", rustProcess)).Run()
 	if waitForProcessGone(rustProcess, 15*time.Second) {
 		return nil
 	}
-	return exec.Command("taskkill", "/F", "/IM", rustProcess).Run()
+	return silent(exec.Command("taskkill", "/F", "/IM", rustProcess)).Run()
 }
 
 // processRunning shells out to tasklist. Boring, dependency-free, and it needs
 // no special privileges.
 func processRunning(name string) bool {
-	out, err := exec.Command("tasklist", "/FI", "IMAGENAME eq "+name, "/NH").Output()
+	out, err := silent(exec.Command("tasklist", "/FI", "IMAGENAME eq "+name, "/NH")).Output()
 	if err != nil {
 		return false
 	}
