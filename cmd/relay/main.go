@@ -20,6 +20,7 @@ import (
 	"syscall"
 	"time"
 
+	"queueup/internal/a2s"
 	"queueup/internal/notify"
 	"queueup/internal/relay"
 	"queueup/internal/servers"
@@ -39,7 +40,12 @@ QueueUp relay
 
   relay serve                        start the relay
   relay create-account <email>       create an account and print its token
+                                     (token only: to sign in on the website,
+                                     register there instead)
+  relay delete-account <email>       remove an account that has no PCs or joins
   relay gen-vapid                    generate the notification keys (run once)
+  relay query <ip:port>              ask a Rust server how it is doing, right
+                                     now, the same way the wipe watcher does
   relay set-subscription <email> <active|none>
                                      open or close the gate for one account by
                                      hand (used for testing and comped accounts
@@ -102,6 +108,32 @@ func run(args []string) error {
 			return errors.New("usage: relay create-account <email>")
 		}
 		return createAccount(st, args[1])
+	case "query":
+		if len(args) < 2 {
+			return errors.New("usage: relay query <ip:port>")
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		info, err := a2s.Query(ctx, args[1], 3*time.Second)
+		cancel()
+		if err != nil {
+			return fmt.Errorf("that server did not answer: %w", err)
+		}
+		fmt.Printf("  name:     %s\n  map:      %s\n  players:  %d / %d\n  queue:    %d\n  keywords: %s\n",
+			info.Name, info.Map, info.Players, info.MaxPlayers, info.Queue, info.Keywords)
+		return nil
+	case "delete-account":
+		if len(args) < 2 {
+			return errors.New("usage: relay delete-account <email>")
+		}
+		acct, err := st.AccountByEmail(args[1])
+		if err != nil {
+			return fmt.Errorf("no account for %s", args[1])
+		}
+		if err := st.DeleteAccount(acct.ID); err != nil {
+			return err
+		}
+		fmt.Printf("Deleted %s.\n", acct.Email)
+		return nil
 	case "set-subscription":
 		if len(args) < 3 {
 			return errors.New("usage: relay set-subscription <email> <active|none>")

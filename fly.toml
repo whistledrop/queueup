@@ -1,0 +1,30 @@
+# The QueueUp relay. One small machine that agents hold connections open to.
+app = 'queueup-relay'
+primary_region = 'lhr'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[env]
+  QUEUEUP_ADDR = ':8080'
+  QUEUEUP_DB = '/data/queueup.db'
+  QUEUEUP_SERVER_SOURCE = 'steam'
+
+# The database is one SQLite file. It lives on a volume so it survives every
+# redeploy.
+[mounts]
+  source = 'queueup_data'
+  destination = '/data'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Never stop the machine: the whole design rests on agents keeping one
+  # connection open. A sleeping relay is an offline PC.
+  auto_stop_machines = 'off'
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '512mb'

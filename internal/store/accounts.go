@@ -3,6 +3,7 @@ package store
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 )
@@ -84,4 +85,36 @@ func (s *Store) AccountByID(id string) (Account, error) {
 	}
 	a.CreatedAt = fromMs(created)
 	return a, nil
+}
+
+// DeleteAccount removes an account, but only a clean one: an account that has
+// ever paired a PC or run a job keeps its history, and the command refuses
+// rather than quietly destroying it. Used to tidy up test accounts.
+func (s *Store) DeleteAccount(accountID string) error {
+	var devices, jobs int
+	if err := s.db.QueryRow(
+		`SELECT COUNT(*) FROM devices WHERE account_id = ?`, accountID).Scan(&devices); err != nil {
+		return err
+	}
+	if err := s.db.QueryRow(
+		`SELECT COUNT(*) FROM jobs WHERE account_id = ?`, accountID).Scan(&jobs); err != nil {
+		return err
+	}
+	if devices > 0 || jobs > 0 {
+		return fmt.Errorf("that account has %d linked PCs and %d joins on record, so it will not be deleted", devices, jobs)
+	}
+	if _, err := s.db.Exec(`DELETE FROM sessions WHERE account_id = ?`, accountID); err != nil {
+		return err
+	}
+	if _, err := s.db.Exec(`DELETE FROM favourites WHERE account_id = ?`, accountID); err != nil {
+		return err
+	}
+	res, err := s.db.Exec(`DELETE FROM accounts WHERE id = ?`, accountID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
