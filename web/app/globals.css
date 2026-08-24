@@ -264,3 +264,111 @@ label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 6px
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   color: var(--text);
 }
+
+/* The Windows SmartScreen walkthrough.
+   This dialog is the single biggest drop-off point in setup: the button people
+   need is a small grey text link that does not look like a button, and the
+   whole thing looks like a virus warning. So we show it to them before they
+   see it, with the thing to click marked. */
+.warnBox {
+  background: rgba(214, 161, 58, 0.08);
+  border: 1px solid var(--warn);
+  border-radius: 12px;
+  padding: 14px;
+  margin: 10px 0 4px;
+}
+
+.warnBox h4 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  color: #f0d69b;
+}
+
+/* The setup list makes its strongs block-level headings. Inside this box they
+   are mid-sentence emphasis, so put them back inline or the instructions read
+   as broken fragments. */
+.warnBox strong {
+  display: inline;
+  margin-bottom: 0;
+}
+
+.warnBox p { margin: 0 0 10px; font-size: 14px; line-height: 1.5; color: var(--muted); }
+
+/* A small recreation of the Windows dialog. */
+.winDialog {
+  background: #f3f3f3;
+  color: #1b1b1b;
+  border-radius: 8px;
+  padding: 14px 14px 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  margin-bottom: 10px;
+}
+
+.winDialog .winTitle {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #1b1b1b;
+}
+
+.winDialog .winBody { color: #444; margin-bottom: 12px; }
+
+.winDialog .winRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* The easily missed text link, marked so it cannot be missed here. */
+.winLink {
+  color: #0067b8;
+  text-decoration: underline;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 5px;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  white-space: nowrap;
+}
+
+.winBtn {
+  background: #e1e1e1;
+  border: 1px solid #adadad;
+  border-radius: 4px;
+  padding: 5px 14px;
+  font-size: 12px;
+  color: #1b1b1b;
+  white-space: nowrap;
+}
+
+.winBtn.marked {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  font-weight: 600;
+}
+
+.clickOrder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 11px;
+  font-weight: 700;
+  margin-right: 7px;
+  flex: none;
+}
+
+.clickStep {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+  font-size: 14px;
+  margin-top: 8px;
+  color: var(--text);
+}

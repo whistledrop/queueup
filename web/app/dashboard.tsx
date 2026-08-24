@@ -197,9 +197,9 @@ export default function Dashboard({ email }: { email: string }) {
                 <strong>Put it somewhere permanent and double-click it.</strong>
                 <span className="muted small">
                   A folder like C:\QueueUp is ideal. Not Downloads: it lives there
-                  from now on. Windows may warn that it does not recognise the app;
-                  choose More info, then Run anyway.
+                  from now on.
                 </span>
+                <SmartScreenHelp />
               </li>
               <li>
                 <strong>Type the six character code it shows, here.</strong>
@@ -350,5 +350,63 @@ export default function Dashboard({ email }: { email: string }) {
 
       <p className="muted small" style={{ textAlign: 'center' }}>{email}</p>
     </>
+  )
+}
+
+/* Windows blocks apps it has not seen before, and QueueUp is new, so every
+   customer meets this dialog once. The button they need is a small grey text
+   link that does not look like a button, and the whole thing reads like a virus
+   warning, so people stop here. Showing them the dialog before they see it,
+   with the two clicks numbered, turns a scare into a formality. */
+function SmartScreenHelp() {
+  return (
+    <div className="warnBox">
+      <h4>Windows will try to stop you. This is expected.</h4>
+      <p>
+        QueueUp is new, so Windows does not recognise it yet. You will see this
+        exact box. Here is what to press.
+      </p>
+
+      <div className="winDialog">
+        <div className="winTitle">Windows protected your PC</div>
+        <div className="winBody">
+          Microsoft Defender SmartScreen prevented an unrecognised app from
+          starting. Running this app might put your PC at risk.
+        </div>
+        <div className="winRow">
+          <span className="winLink">More info</span>
+          <span className="winBtn">Don&apos;t run</span>
+        </div>
+      </div>
+
+      <div className="clickStep">
+        <span className="clickOrder">1</span>
+        <span>
+          Click <strong>More info</strong>. It is the small underlined text on
+          the left, not a button. This is the bit everyone misses.
+        </span>
+      </div>
+
+      <div className="winDialog" style={{ marginTop: 10 }}>
+        <div className="winTitle">Windows protected your PC</div>
+        <div className="winBody">
+          App: QueueUpAgent.exe
+          <br />
+          Publisher: Unknown publisher
+        </div>
+        <div className="winRow" style={{ justifyContent: 'flex-end' }}>
+          <span className="winBtn marked">Run anyway</span>
+          <span className="winBtn">Don&apos;t run</span>
+        </div>
+      </div>
+
+      <div className="clickStep">
+        <span className="clickOrder">2</span>
+        <span>
+          A <strong>Run anyway</strong> button appears. Click it. You only ever
+          do this once.
+        </span>
+      </div>
+    </div>
   )
 }
