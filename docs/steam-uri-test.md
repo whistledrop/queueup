@@ -96,9 +96,9 @@ that turns the prompt off and put it in the setup instructions.
 These save a second trip:
 
 1. **Does this file exist?**
-   `C:\Users\<your name>\AppData\LocalLow\Facepunch\Rust\Player.log`
+   `C:\Users\<your name>\AppData\LocalLow\Facepunch Studios LTD\Rust\Player.log`
    Paste the exact full path. Fastest way: press `Windows + R`, paste
-   `%USERPROFILE%\AppData\LocalLow\Facepunch\Rust` and press Enter. A folder
+   `%USERPROFILE%\AppData\LocalLow\Facepunch Studios LTD\Rust` and press Enter. A folder
    should open. Tell me what files are in it.
 
 2. **Grab me a real Player.log.** Launch Rust, join a server that has a queue if

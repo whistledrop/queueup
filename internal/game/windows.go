@@ -34,13 +34,13 @@ type WindowsLauncher struct {
 	closing bool
 }
 
-// DefaultLogPath is where the Rust client writes its log on Windows.
+// DefaultLogPath is where the Rust client writes its log on this machine.
 func DefaultLogPath() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return ""
 	}
-	return filepath.Join(home, "AppData", "LocalLow", "Facepunch", "Rust", "Player.log")
+	return FindRustLog(home)
 }
 
 func (w *WindowsLauncher) LogPath() string {

@@ -94,7 +94,7 @@ Two unknowns need real answers before wipe day. Both are described in detail in
    a queue), wait, get in, disconnect, close Rust. Then send me the file:
 
    ```
-   %USERPROFILE%\AppData\LocalLow\Facepunch\Rust\Player.log
+   %USERPROFILE%\AppData\LocalLow\Facepunch Studios LTD\Rust\Player.log
    ```
 
    (Paste that into the File Explorer address bar and copy the file out.)
