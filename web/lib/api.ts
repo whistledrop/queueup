@@ -10,9 +10,26 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   })
   const body = await res.json().catch(() => ({}))
   if (!res.ok) {
+    // 402 means the subscription gate. Wherever it comes from, the answer is
+    // the same page, so handle it once here rather than in every button.
+    if (res.status === 402 && typeof window !== 'undefined') {
+      window.location.href = '/subscribe'
+    }
     throw new Error(body.error ?? 'Something went wrong. Try again.')
   }
   return body as T
+}
+
+export type Billing = {
+  enabled: boolean
+  subscribed: boolean
+  price_line: string
+}
+
+/** The subscription gate's state. With billing off, everyone reads subscribed,
+ *  so no paywall ever shows that cannot be honoured. */
+export function getBilling(): Promise<Billing> {
+  return api<Billing>('/api/billing')
 }
 
 export type Device = {

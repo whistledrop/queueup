@@ -55,6 +55,13 @@ func (s *Server) fireSchedule(sc store.Schedule) {
 		return
 	}
 
+	if s.cfg.BillingEnabled {
+		if sub, err := s.st.SubscriptionFor(sc.AccountID); err != nil || !sub.Active() {
+			fail("Your subscription ended before this join fired. Resubscribe and schedule it again.")
+			return
+		}
+	}
+
 	// One PC, one job: a scheduled join yields to whatever is already running,
 	// and says so, rather than tearing down a queue place already earned.
 	if existing, err := s.st.ActiveJobForDevice(sc.DeviceID); err == nil {

@@ -256,6 +256,37 @@ What gets sent, and when:
 | Scheduled join started | "Scheduled join started" |
 | Schedule fired but the PC is off | "Your PC is offline", immediately, while there is still time to fix it |
 
+## The subscription gate
+
+The rule: setting up is free, joining is the product. Accounts, pairing,
+watching and cancelling are never gated. Creating a join or a schedule is,
+once billing is on.
+
+Billing is OFF by default (every account runs free) until Stripe is connected.
+Turn it on with `QUEUEUP_BILLING=on`. With it on, an unsubscribed join returns
+`402` with a plain-language message, and the web app sends the person to the
+paywall at `/subscribe`.
+
+```bash
+curl http://127.0.0.1:8080/api/billing -H "Authorization: Bearer $TOKEN"
+# {"enabled":true,"subscribed":false,"price_line":"£4.99 a month",...}
+
+# Where Stripe Checkout will start (honest 501 placeholder until then):
+curl -X POST http://127.0.0.1:8080/api/billing/checkout -H "Authorization: Bearer $TOKEN"
+```
+
+Open or close the gate by hand (testing, comped accounts) until the Stripe
+webhook does it automatically:
+
+```bash
+go run ./cmd/relay set-subscription you@example.com active
+go run ./cmd/relay set-subscription you@example.com none
+```
+
+A schedule firing after a subscription lapsed fails politely and notifies,
+and control of an already running join is never gated: someone whose card
+expires mid queue can still watch and cancel their own PC.
+
 ## Admin view
 
 ```bash

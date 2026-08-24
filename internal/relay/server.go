@@ -36,6 +36,10 @@ type Config struct {
 	// three in a row is treated as the PC having gone away.
 	HeartbeatSeconds int
 
+	// BillingEnabled turns the subscription gate on. Off (the default), every
+	// account runs free, which is the state until Stripe is connected.
+	BillingEnabled bool
+
 	// Notifier delivers messages to phones. Optional: when nil, notifications
 	// are only logged, and everything still lands in the job timeline.
 	Notifier *notify.Notifier
@@ -102,6 +106,8 @@ func (s *Server) routes() {
 	s.serverRoutes()
 	// Planned joins.
 	s.scheduleRoutes()
+	// The subscription gate.
+	s.billingRoutes()
 	// Phone notifications.
 	s.pushRoutes()
 
@@ -341,6 +347,11 @@ func (s *Server) handleCreateJob(w http.ResponseWriter, r *http.Request, acct st
 	}
 	if d.Revoked() {
 		writeError(w, http.StatusForbidden, "That PC has been unlinked. Pair it again to use it.")
+		return
+	}
+
+	// The gate. Everything before this point was free; joining is the product.
+	if !s.requireSubscription(w, acct) {
 		return
 	}
 

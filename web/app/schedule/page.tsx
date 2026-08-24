@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { api, type Device } from '@/lib/api'
+import { api, getBilling, type Billing, type Device } from '@/lib/api'
 import type { Favourite } from '@/lib/types'
 
 export default function SchedulePage() {
@@ -26,8 +26,10 @@ function ScheduleForm() {
   const [waitForUp, setWaitForUp] = useState(true)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [billing, setBilling] = useState<Billing | null>(null)
 
   useEffect(() => {
+    getBilling().then(setBilling).catch(() => {})
     api<{ devices: Device[] }>('/api/devices')
       .then((d) => setDevice(d.devices?.[0] ?? null))
       .catch(() => {})
@@ -48,6 +50,10 @@ function ScheduleForm() {
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!device) return
+    if (billing?.enabled && !billing.subscribed) {
+      router.push('/subscribe')
+      return
+    }
     setBusy(true)
     setError('')
     try {

@@ -246,6 +246,9 @@ func fromMs(v int64) time.Time {
 func (s *Store) migrate() error {
 	for _, m := range []struct{ table, column, definition string }{
 		{"accounts", "password_hash", "TEXT NOT NULL DEFAULT ''"},
+		{"accounts", "subscription_status", "TEXT NOT NULL DEFAULT 'none'"},
+		{"accounts", "subscription_id", "TEXT NOT NULL DEFAULT ''"},
+		{"accounts", "subscribed_at", "INTEGER NOT NULL DEFAULT 0"},
 		{"jobs", "server_id", "TEXT NOT NULL DEFAULT ''"},
 	} {
 		has, err := s.hasColumn(m.table, m.column)

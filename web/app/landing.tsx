@@ -31,7 +31,7 @@ export default function Landing() {
               Get QueueUp
             </Link>
             <span className={s.ctaNote}>
-              {priceLine()}. Cancel anytime.
+              {priceLine()}. Setting up is free, you pay when you first join.
             </span>
           </div>
         </div>
@@ -192,8 +192,9 @@ export default function Landing() {
             Create your account
           </Link>
           <p className={s.priceNote}>
-            Cancel anytime. Payments are not switched on yet, so early accounts
-            run free until they are.
+            Setting up is free: account, linking your PC, all of it. You pay
+            when you first join a server, and you can cancel anytime. Payments
+            are not switched on yet, so early accounts run free until they are.
           </p>
         </div>
       </section>

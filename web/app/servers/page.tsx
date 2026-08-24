@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { api, isActive, type Device, type Job, type ServerInfo } from '@/lib/api'
+import { api, getBilling, isActive, type Billing, type Device, type Job, type ServerInfo } from '@/lib/api'
 
 export default function ServersPage() {
   const router = useRouter()
@@ -15,6 +15,7 @@ export default function ServersPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [joining, setJoining] = useState('')
+  const [billing, setBilling] = useState<Billing | null>(null)
 
   const search = useCallback(async (q: string) => {
     setLoading(true)
@@ -39,6 +40,7 @@ export default function ServersPage() {
     api<{ jobs: Job[] }>('/api/jobs?limit=5')
       .then((j) => setBusyJob((j.jobs ?? []).some((x) => isActive(x.state))))
       .catch(() => {})
+    getBilling().then(setBilling).catch(() => {})
   }, [])
 
   // Search as you type, but wait for a pause so every keystroke is not a request.
@@ -69,6 +71,10 @@ export default function ServersPage() {
 
   async function join(s: ServerInfo) {
     if (!device) return
+    if (billing?.enabled && !billing.subscribed) {
+      router.push('/subscribe')
+      return
+    }
     setJoining(s.id)
     setError('')
     try {

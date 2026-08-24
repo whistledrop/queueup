@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { api, isActive, outcome, stateLabel, type Device, type Job } from '@/lib/api'
+import { api, getBilling, isActive, outcome, stateLabel, type Billing, type Device, type Job } from '@/lib/api'
 import type { Favourite, Schedule } from '@/lib/types'
 import { disablePush, enablePush, pushState, sendTestPush, type PushState } from '@/lib/push'
 
@@ -13,6 +13,7 @@ export default function Dashboard({ email }: { email: string }) {
   const [jobs, setJobs] = useState<Job[]>([])
   const [favourites, setFavourites] = useState<Favourite[]>([])
   const [schedules, setSchedules] = useState<Schedule[]>([])
+  const [billing, setBilling] = useState<Billing | null>(null)
   const [push, setPush] = useState<PushState>('unsupported')
   const [pushBusy, setPushBusy] = useState(false)
   const [pushNote, setPushNote] = useState('')
@@ -47,8 +48,12 @@ export default function Dashboard({ email }: { email: string }) {
     // Keep the PC's online light honest without the user pulling to refresh.
     const t = setInterval(load, 5000)
     pushState().then(setPush).catch(() => {})
+    getBilling().then(setBilling).catch(() => {})
     return () => clearInterval(t)
   }, [load])
+
+  // The gate, stated up front so the paywall is never a surprise later.
+  const needsSub = billing !== null && billing.enabled && !billing.subscribed
 
   async function togglePush() {
     setPushBusy(true)
@@ -109,6 +114,10 @@ export default function Dashboard({ email }: { email: string }) {
 
   async function join(serverId: string, name: string) {
     if (!pc) return
+    if (needsSub) {
+      router.push('/subscribe')
+      return
+    }
     setJoining(serverId)
     setError('')
     try {
@@ -198,6 +207,11 @@ export default function Dashboard({ email }: { email: string }) {
               {pc.simulator && <span className="pill warn">Simulator</span>}
             </div>
           </>
+        )}
+        {needsSub && (
+          <p className="muted small" style={{ marginBottom: 0 }}>
+            Setting up is free. Joining needs the subscription, {billing?.price_line}.
+          </p>
         )}
       </div>
 

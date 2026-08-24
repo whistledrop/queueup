@@ -40,6 +40,10 @@ QueueUp relay
   relay serve                        start the relay
   relay create-account <email>       create an account and print its token
   relay gen-vapid                    generate the notification keys (run once)
+  relay set-subscription <email> <active|none>
+                                     open or close the gate for one account by
+                                     hand (used for testing and comped accounts
+                                     until Stripe does this automatically)
 
 Settings come from environment variables, never from files in the repo:
 
@@ -60,6 +64,10 @@ Settings come from environment variables, never from files in the repo:
   QUEUEUP_VAPID_PRIVATE
   QUEUEUP_PUSH_SUBJECT   contact address for push services, e.g. mailto:you@example.com
   QUEUEUP_SMTP_HOST      email fallback; also _PORT, _USER, _PASS, _FROM
+
+  QUEUEUP_BILLING=on     turn the subscription gate on. Off by default, which
+                         means every account runs free. Flip it when Stripe is
+                         connected.
 `)
 }
 
@@ -94,6 +102,19 @@ func run(args []string) error {
 			return errors.New("usage: relay create-account <email>")
 		}
 		return createAccount(st, args[1])
+	case "set-subscription":
+		if len(args) < 3 {
+			return errors.New("usage: relay set-subscription <email> <active|none>")
+		}
+		acct, err := st.AccountByEmail(args[1])
+		if err != nil {
+			return fmt.Errorf("no account for %s", args[1])
+		}
+		if err := st.SetSubscription(acct.ID, args[2], ""); err != nil {
+			return err
+		}
+		fmt.Printf("Done. %s is now %q.\n", acct.Email, args[2])
+		return nil
 	default:
 		fmt.Println(usage())
 		return fmt.Errorf("unknown command %q", args[0])
@@ -149,9 +170,14 @@ func serve(st *store.Store) error {
 		log.Warn("web push is off: run `relay gen-vapid` and set QUEUEUP_VAPID_PUBLIC/PRIVATE")
 	}
 
+	billing := os.Getenv("QUEUEUP_BILLING") == "on"
+	if !billing {
+		log.Warn("billing is off: every account runs free. Set QUEUEUP_BILLING=on once Stripe is connected")
+	}
+
 	srv := relay.New(relay.Config{
 		Store: st, Log: log, AdminToken: adminToken, Servers: provider,
-		Notifier: notifier,
+		Notifier: notifier, BillingEnabled: billing,
 	})
 	httpSrv := &http.Server{
 		Addr:    addr,

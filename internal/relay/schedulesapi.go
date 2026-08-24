@@ -48,6 +48,11 @@ func (s *Server) handleCreateSchedule(w http.ResponseWriter, r *http.Request, ac
 		return
 	}
 
+	// The same gate the Join button has: scheduling a join IS joining.
+	if !s.requireSubscription(w, acct) {
+		return
+	}
+
 	addr, name := body.Server, body.ServerName
 	if body.ServerID != "" && s.cfg.Servers != nil {
 		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
