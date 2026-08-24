@@ -139,6 +139,18 @@ func cmdRun(args []string) error {
 	// the same path a surprise Windows reboot takes.
 	app.Stop()
 
+	if errors.Is(err, relayclient.ErrUnlinked) {
+		// The user unlinked this PC from the web app. Forget the dead token, or
+		// every future start would retry it forever with no way back to pairing.
+		cfg.DeviceToken, cfg.DeviceID = "", ""
+		if saveErr := agentcfg.Save(path, cfg); saveErr != nil {
+			return fmt.Errorf("this PC was unlinked, and clearing its saved login failed: %w", saveErr)
+		}
+		fmt.Println()
+		fmt.Println("This PC has been unlinked from the QueueUp account.")
+		fmt.Println("To use it again, start QueueUp and it will show a new pairing code.")
+		return nil
+	}
 	if err != nil {
 		return err
 	}

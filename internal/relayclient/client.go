@@ -139,7 +139,7 @@ func (c *Client) Run(ctx context.Context) error {
 		switch {
 		case ctx.Err() != nil:
 			return nil
-		case errors.Is(err, errUnlinked):
+		case errors.Is(err, ErrUnlinked):
 			return err
 		case err != nil:
 			wait := Backoff(attempt, c.MaxBackoff)
@@ -157,8 +157,10 @@ func (c *Client) Run(ctx context.Context) error {
 	}
 }
 
-// errUnlinked means reconnecting will never help.
-var errUnlinked = errors.New("this PC has been unlinked from the account")
+// ErrUnlinked means reconnecting will never help: this PC's token is no longer
+// accepted, because the user unlinked it from their account. The caller should
+// forget the token so the next start goes back to pairing.
+var ErrUnlinked = errors.New("this PC has been unlinked from the account")
 
 // session is one connection, from dial to disconnect.
 func (c *Client) session(ctx context.Context, socket string) error {
@@ -169,7 +171,7 @@ func (c *Client) session(ctx context.Context, socket string) error {
 	cancelDial()
 	if err != nil {
 		if resp != nil && (resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusUnauthorized) {
-			return fmt.Errorf("%w (the relay said: %s)", errUnlinked, resp.Status)
+			return fmt.Errorf("%w (the relay said: %s)", ErrUnlinked, resp.Status)
 		}
 		return err
 	}
