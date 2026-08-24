@@ -36,6 +36,18 @@ type Runner struct {
 	OnTransition func(job.Transition)
 	// OnLogLine is optional, for the debug log viewer.
 	OnLogLine func(string, bool)
+
+	// OnNote reports something worth telling the player that is not a state
+	// change, such as Steam downloading a game update on force wipe.
+	OnNote func(string)
+
+	lastNote string
+}
+
+// updateReporter is the optional part of the Launcher contract that says
+// whether Steam is busy updating the game.
+type updateReporter interface {
+	UpdateProgress() game.UpdateState
 }
 
 type launchResult struct {
@@ -109,6 +121,7 @@ func (r *Runner) Run(ctx context.Context) job.State {
 			return r.Machine.State()
 
 		case <-ticker.C:
+			r.noteSteamUpdate()
 			r.feed(job.Tick{}, launches, cancel)
 
 		case st := <-statuses:
@@ -146,6 +159,22 @@ func (r *Runner) Run(ctx context.Context) job.State {
 		}
 	}
 	return r.Machine.State()
+}
+
+// noteSteamUpdate keeps the player informed while Steam downloads a game
+// update, which on force wipe day can take a long time and would otherwise look
+// like nothing happening.
+func (r *Runner) noteSteamUpdate() {
+	reporter, ok := r.Launcher.(updateReporter)
+	if !ok || r.OnNote == nil {
+		return
+	}
+	note := reporter.UpdateProgress().Describe()
+	if note == "" || note == r.lastNote {
+		return
+	}
+	r.lastNote = note
+	r.OnNote(note)
 }
 
 // Cancel stops a running job the way the user's cancel button will.

@@ -42,10 +42,12 @@ type WindowsLauncher struct {
 	// Log defaults to the standard Unity location if empty.
 	Log string
 
-	mu      sync.Mutex
-	exited  chan Exit
-	watch   chan struct{}
-	closing bool
+	mu            sync.Mutex
+	exited        chan Exit
+	watch         chan struct{}
+	closing       bool
+	update        UpdateState
+	updateChecked time.Time
 }
 
 // DefaultLogPath is where the Rust client writes its log on this machine.
@@ -131,8 +133,12 @@ func (w *WindowsLauncher) Launch(a Addr) error {
 
 // watchProcess waits for the game to appear, then reports when it disappears.
 func (w *WindowsLauncher) watchProcess(ch chan Exit, stop chan struct{}) {
-	deadline := time.Now().Add(3 * time.Minute) // Rust and EAC take a while to start
+	// Rust and Easy Anti-Cheat take a while to start, hence the grace period
+	// before we conclude the game is never coming.
+	const startupGrace = 3 * time.Minute
+	deadline := time.Now().Add(startupGrace)
 	appeared := false
+
 	for {
 		select {
 		case <-stop:
@@ -142,6 +148,7 @@ func (w *WindowsLauncher) watchProcess(ch chan Exit, stop chan struct{}) {
 		running := processRunning(rustProcess)
 		if running {
 			appeared = true
+			w.setUpdate(UpdateState{})
 			continue
 		}
 		if appeared {
@@ -154,6 +161,19 @@ func (w *WindowsLauncher) watchProcess(ch chan Exit, stop chan struct{}) {
 			}
 			return
 		}
+
+		// The game has not started yet. On force wipe that is expected and can
+		// last a long time: Rust ships an update with the wipe, and Steam must
+		// download several gigabytes first. Giving up here would fail on the one
+		// day this product exists for, so while Steam says it is working, we
+		// wait, and keep the phone informed.
+		update := RustUpdateState()
+		w.setUpdate(update)
+		if update.Known && update.Updating {
+			deadline = time.Now().Add(startupGrace)
+			continue
+		}
+
 		if time.Now().After(deadline) {
 			select {
 			case ch <- Exit{Code: -1}:
@@ -162,6 +182,40 @@ func (w *WindowsLauncher) watchProcess(ch chan Exit, stop chan struct{}) {
 			return
 		}
 	}
+}
+
+// UpdateProgress reports whether Steam is currently updating the game, for the
+// agent to relay to the player. It is an optional part of the Launcher
+// contract, discovered by type assertion.
+//
+// It also answers while a job is only WAITING for a wipe restart, so a pending
+// update can be flagged before the server even comes back, giving the player a
+// chance to start the download early rather than discovering it at the worst
+// moment.
+func (w *WindowsLauncher) UpdateProgress() UpdateState {
+	w.mu.Lock()
+	cached, checked := w.update, w.updateChecked
+	w.mu.Unlock()
+
+	// Reading a small file is cheap, but not every tick.
+	if time.Since(checked) < 5*time.Second {
+		return cached
+	}
+	if processRunning(rustProcess) {
+		// Already running, so nothing is pending by definition.
+		w.setUpdate(UpdateState{})
+		return UpdateState{}
+	}
+	fresh := RustUpdateState()
+	w.setUpdate(fresh)
+	return fresh
+}
+
+func (w *WindowsLauncher) setUpdate(u UpdateState) {
+	w.mu.Lock()
+	w.update = u
+	w.updateChecked = time.Now()
+	w.mu.Unlock()
 }
 
 func (w *WindowsLauncher) Running() bool { return processRunning(rustProcess) }

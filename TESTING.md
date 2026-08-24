@@ -128,6 +128,20 @@ The night before:
    same instant regardless of where it is.
 4. Leave the PC on, signed in, Steam running, Rust closed.
 
+### Force wipe also means a game update
+
+On force wipe, Rust ships a client update with the wipe, so Steam has to
+download several gigabytes before the game will start. QueueUp expects this:
+it waits rather than giving up, and your phone shows the progress ("Steam is
+updating Rust, 40% of 4.0 GB downloaded"). You do not need to do anything.
+
+Two things make it faster, both worth doing the night before:
+
+- In Steam, right-click Rust, Properties, Updates, set it to "Always keep this
+  game updated". Then Steam grabs the update the moment it is released rather
+  than when QueueUp asks for it.
+- Leave Steam running. A sleeping Steam downloads nothing.
+
 On the day, watch your phone:
 
 - At the scheduled time: "Scheduled join started".
@@ -149,3 +163,4 @@ to work out what happened.
 | "Rust closed unexpectedly", then retrying | The game crashed; QueueUp relaunches it and rejoins by itself. Only worry if it gives up. |
 | "Tried several times and couldn't get in" | It ran out of retries. Check the timeline for the underlying reason and just tap Join again. |
 | Stuck on "Waiting for the server" long after the server is visibly up | The server may have changed address in a way we could not follow. Cancel, search for the server again, Join. |
+| "Steam is updating Rust" | Normal on force wipe. It waits and connects as soon as the download finishes. Nothing to do. |

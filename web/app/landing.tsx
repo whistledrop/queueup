@@ -126,9 +126,11 @@ export default function Landing() {
           Set the join for a few minutes before the announced wipe. When the
           server goes down for its restart, QueueUp queries it directly, every
           couple of seconds, and connects the moment it answers again. Faster
-          than anyone mashing refresh in the server browser. If Windows forces
-          a reboot mid queue, the job survives that too: your PC reconnects and
-          picks it straight back up.
+          than anyone mashing refresh in the server browser. Force wipe also
+          ships a game update, so Steam has gigabytes to download before anyone
+          can play: QueueUp waits that out and shows you the progress, then
+          connects. If Windows forces a reboot mid queue, the job survives that
+          too.
         </p>
         <div className={s.stepVisual}>
           <SchedulePhone />

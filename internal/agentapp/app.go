@@ -195,6 +195,13 @@ func (a *App) OnAssign(j protocol.Job) {
 			}
 			a.report(st)
 		},
+		OnNote: func(note string) {
+			a.statusText(note)
+			a.Client.Send(protocol.TypeJobStatus, protocol.JobStatus{
+				JobID: j.ID, State: string(m.State()), Position: m.Position(),
+				Attempt: m.Attempt(), Detail: note, At: time.Now().UTC(),
+			})
+		},
 		OnLogLine: func(line string, understood bool) {
 			if a.SendLogLines {
 				a.Client.Send(protocol.TypeJobLog, protocol.JobLog{
