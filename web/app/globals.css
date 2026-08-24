@@ -219,3 +219,48 @@ label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 6px
 
 .spread { display: flex; gap: 10px; }
 .spread > * { flex: 1; }
+
+/* The one-time PC setup steps. Numbered, spaced, and each one a single
+   physical action, because this is where a new customer is most likely to
+   give up. */
+.setup {
+  list-style: none;
+  counter-reset: step;
+  margin: 4px 0 0;
+  padding: 0;
+}
+
+.setup li {
+  counter-increment: step;
+  position: relative;
+  padding: 0 0 18px 38px;
+  border-left: 2px solid var(--line);
+  margin-left: 12px;
+}
+.setup li:last-child { border-left-color: transparent; padding-bottom: 0; }
+
+.setup li::before {
+  content: counter(step);
+  position: absolute;
+  left: -14px;
+  top: -2px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.setup strong { display: block; font-weight: 600; margin-bottom: 4px; }
+.setup .small { display: block; line-height: 1.5; }
+.setup .btn { display: inline-block; }
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text);
+}

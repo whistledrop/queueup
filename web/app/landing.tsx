@@ -53,10 +53,11 @@ export default function Landing() {
             <span className={s.stepNumber}>1</span>
             <h3>Link your PC, once</h3>
             <p>
-              Run the QueueUp agent on your gaming PC. It is a single small file
-              and it shows a six character code. Type that code into the website
-              on your phone and the two are paired. The agent then sits in your
-              system tray, connected out to QueueUp, waiting.
+              Download one small file onto your gaming PC and double-click it.
+              It shows a six character code. Type that code into the website on
+              your phone and the two are paired. The agent then sits in your
+              system tray, connected out to QueueUp, waiting. There is nothing
+              to configure and no router settings to change.
             </p>
           </div>
           <div className={s.stepVisual}>
@@ -240,10 +241,20 @@ export default function Landing() {
           <details>
             <summary>What do I need to set up?</summary>
             <p>
-              One small program on the PC and about two minutes: run it, type
-              the code it shows into the website, done. Plus the settings any
-              always on gaming PC wants anyway: sleep off, Steam set to start
-              with Windows.
+              About two minutes. On your gaming PC, download the QueueUp agent
+              from your dashboard and double-click it. It shows a code, you type
+              that code into the website, and the PC is linked. Windows will warn
+              that it does not recognise the app, because it is not code signed
+              yet: choose More info, then Run anyway. After that, the only other
+              things are settings any always on gaming PC wants anyway: sleep
+              off, and Steam set to start with Windows.
+            </p>
+          </details>
+          <details>
+            <summary>Does it work on Mac?</summary>
+            <p>
+              The agent is Windows only, because Rust is. You can control it from
+              any phone, tablet or computer: the website works everywhere.
             </p>
           </details>
         </div>

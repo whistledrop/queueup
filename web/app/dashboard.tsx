@@ -7,6 +7,11 @@ import { api, getBilling, isActive, outcome, stateLabel, type Billing, type Devi
 import type { Favourite, Schedule } from '@/lib/types'
 import { disablePush, enablePush, pushState, sendTestPush, type PushState } from '@/lib/push'
 
+function siteHost(): string {
+  if (typeof window === 'undefined') return 'queueup'
+  return window.location.host
+}
+
 export default function Dashboard({ email }: { email: string }) {
   const router = useRouter()
   const [devices, setDevices] = useState<Device[]>([])
@@ -171,10 +176,37 @@ export default function Dashboard({ email }: { email: string }) {
         {!loading && !pc && (
           <>
             <p className="muted" style={{ marginTop: 0 }}>
-              Run the QueueUp agent on your gaming PC. It shows a six character code.
-              Type that code here.
+              Do this once, on the gaming PC you want QueueUp to use.
             </p>
-            <form onSubmit={pair} className="stack">
+
+            <ol className="setup">
+              <li>
+                <strong>Download the QueueUp agent on that PC.</strong>
+                <span className="muted small">
+                  Open this page in a browser on the PC itself, not on your phone.
+                </span>
+                <a className="btn btn-primary" href="/download" style={{ marginTop: 8 }}>
+                  Download for Windows
+                </a>
+                <span className="muted small" style={{ marginTop: 8, display: 'block' }}>
+                  Or type this into the PC&apos;s browser:{' '}
+                  <span className="mono">{siteHost()}/download</span>
+                </span>
+              </li>
+              <li>
+                <strong>Put it somewhere permanent and double-click it.</strong>
+                <span className="muted small">
+                  A folder like C:\QueueUp is ideal. Not Downloads: it lives there
+                  from now on. Windows may warn that it does not recognise the app;
+                  choose More info, then Run anyway.
+                </span>
+              </li>
+              <li>
+                <strong>Type the six character code it shows, here.</strong>
+              </li>
+            </ol>
+
+            <form onSubmit={pair} className="stack" style={{ marginTop: 14 }}>
               <input
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase())}
@@ -189,6 +221,11 @@ export default function Dashboard({ email }: { email: string }) {
                 {pairing ? 'Linking' : 'Link this PC'}
               </button>
             </form>
+
+            <p className="muted small" style={{ marginBottom: 0 }}>
+              Stuck? The code lasts ten minutes. Close the black window and
+              double-click the agent again for a fresh one.
+            </p>
           </>
         )}
 
