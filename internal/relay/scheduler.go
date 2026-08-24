@@ -70,13 +70,13 @@ func (s *Server) fireSchedule(sc store.Schedule) {
 		return
 	}
 
-	addr, name := sc.ServerAddr, sc.ServerName
+	addr, name, queryAddr := sc.ServerAddr, sc.ServerName, ""
 	if sc.ServerID != "" && s.cfg.Servers != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		sv, err := s.cfg.Servers.ByID(ctx, sc.ServerID)
 		cancel()
 		if err == nil && sv.Address != "" {
-			addr, name = sv.Address, sv.Name
+			addr, name, queryAddr = sv.Address, sv.Name, sv.QueryAddress
 		}
 	}
 	if addr == "" {
@@ -90,6 +90,7 @@ func (s *Server) fireSchedule(sc store.Schedule) {
 		ServerAddr:      addr,
 		ServerName:      name,
 		ServerID:        sc.ServerID,
+		QueryAddr:       queryAddr,
 		WaitForServerUp: sc.WaitForServerUp,
 	})
 	if err != nil {

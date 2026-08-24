@@ -127,14 +127,16 @@ func parseInfo(resp []byte, addr string) (Info, error) {
 		}
 		if edf&0x20 != 0 {
 			info.Keywords = r.cstring()
-			info.Queue = queueFromKeywords(info.Keywords)
+			info.Queue = QueueFromKeywords(info.Keywords)
 		}
 	}
 	return info, nil
 }
 
-// queueFromKeywords digs the queued-player count out of Rust's keyword tags.
-func queueFromKeywords(keywords string) int {
+// QueueFromKeywords digs the queued-player count out of Rust's keyword tags.
+// Steam's server list carries the same tags in its "gametype" field, so the
+// search results can show a queue length without querying anything.
+func QueueFromKeywords(keywords string) int {
 	for _, tag := range strings.Split(keywords, ",") {
 		if rest, ok := strings.CutPrefix(strings.TrimSpace(tag), "qp"); ok {
 			if n, err := strconv.Atoi(rest); err == nil && n >= 0 {

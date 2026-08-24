@@ -319,6 +319,7 @@ func (s *Server) handleCreateJob(w http.ResponseWriter, r *http.Request, acct st
 		return
 	}
 
+	queryAddr := ""
 	if body.ServerID != "" {
 		if s.cfg.Servers == nil {
 			writeError(w, http.StatusServiceUnavailable, "Server search isn't set up on this relay.")
@@ -335,6 +336,7 @@ func (s *Server) handleCreateJob(w http.ResponseWriter, r *http.Request, acct st
 			return
 		}
 		body.Server = sv.Address
+		queryAddr = sv.QueryAddress
 		if body.ServerName == "" {
 			body.ServerName = sv.Name
 		}
@@ -369,6 +371,7 @@ func (s *Server) handleCreateJob(w http.ResponseWriter, r *http.Request, acct st
 		ServerAddr:      body.Server,
 		ServerName:      body.ServerName,
 		ServerID:        body.ServerID,
+		QueryAddr:       queryAddr,
 		WaitForServerUp: body.WaitForServerUp,
 	})
 	if err != nil {
@@ -403,10 +406,10 @@ func (s *Server) dispatch(j store.Job, resumed, addressIsFresh bool) {
 		case sv.Address != "" && sv.Address != j.ServerAddr:
 			s.log.Info("the server has moved, using its new address",
 				"job", j.ID, "was", j.ServerAddr, "now", sv.Address)
-			if err := s.st.UpdateAddress(j.ID, sv.Address, sv.Name); err != nil {
+			if err := s.st.UpdateAddress(j.ID, sv.Address, sv.QueryAddress, sv.Name); err != nil {
 				s.log.Error("saving the new address", "err", err)
 			}
-			j.ServerAddr, j.ServerName = sv.Address, sv.Name
+			j.ServerAddr, j.QueryAddr, j.ServerName = sv.Address, sv.QueryAddress, sv.Name
 			s.note(j.ID, j.State, "That server has changed address. Using the new one.")
 		}
 	}

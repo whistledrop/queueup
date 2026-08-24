@@ -12,12 +12,15 @@ import (
 // truth: if the agent, the PC, or the relay itself restarts, this row is what
 // everything is rebuilt from.
 type Job struct {
-	ID              string
-	AccountID       string
-	DeviceID        string
-	ServerAddr      string
-	ServerName      string
-	ServerID        string // the search provider's id, which is the canonical identity
+	ID         string
+	AccountID  string
+	DeviceID   string
+	ServerAddr string
+	ServerName string
+	ServerID   string // the search provider's id, which is the canonical identity
+	// QueryAddr is where status questions go. Rust answers those on a different
+	// port from the one players connect to. Empty means "same as ServerAddr".
+	QueryAddr       string
 	WaitForServerUp bool
 	GroupID         string
 	State           string
@@ -51,6 +54,7 @@ type NewJob struct {
 	ServerAddr      string
 	ServerName      string
 	ServerID        string
+	QueryAddr       string
 	WaitForServerUp bool
 	GroupID         string
 }
@@ -67,6 +71,7 @@ func (s *Store) CreateJob(n NewJob) (Job, error) {
 		ServerAddr:      n.ServerAddr,
 		ServerName:      n.ServerName,
 		ServerID:        n.ServerID,
+		QueryAddr:       n.QueryAddr,
 		WaitForServerUp: n.WaitForServerUp,
 		GroupID:         n.GroupID,
 		State:           "pending",
@@ -84,10 +89,11 @@ func (s *Store) CreateJob(n NewJob) (Job, error) {
 	}
 	_, err := s.db.Exec(`
 		INSERT INTO jobs (id, account_id, device_id, server_addr, server_name, server_id,
-		                  wait_for_server_up, group_id, state, detail, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		                  query_addr, wait_for_server_up, group_id, state, detail,
+		                  created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		j.ID, j.AccountID, j.DeviceID, j.ServerAddr, j.ServerName, j.ServerID,
-		wait, group, j.State, j.Detail, ms(now), ms(now))
+		j.QueryAddr, wait, group, j.State, j.Detail, ms(now), ms(now))
 	if err != nil {
 		return Job{}, err
 	}
@@ -112,16 +118,16 @@ func (s *Store) ActiveJobForDevice(deviceID string) (Job, error) {
 
 func (s *Store) jobWhere(where string, arg any) (Job, error) {
 	var j Job
-	var name, serverID, group, detail, rc, rm sql.NullString
+	var name, serverID, queryAddr, group, detail, rc, rm sql.NullString
 	var wait int
 	var created, updated int64
 	err := s.db.QueryRow(`
-		SELECT id, account_id, device_id, server_addr, server_name, server_id, wait_for_server_up,
-		       group_id, state, position, attempt, detail, reason_code, reason_message,
-		       created_at, updated_at
+		SELECT id, account_id, device_id, server_addr, server_name, server_id, query_addr,
+		       wait_for_server_up, group_id, state, position, attempt, detail,
+		       reason_code, reason_message, created_at, updated_at
 		  FROM jobs WHERE `+where, arg).
-		Scan(&j.ID, &j.AccountID, &j.DeviceID, &j.ServerAddr, &name, &serverID, &wait,
-			&group, &j.State, &j.Position, &j.Attempt, &detail, &rc, &rm, &created, &updated)
+		Scan(&j.ID, &j.AccountID, &j.DeviceID, &j.ServerAddr, &name, &serverID, &queryAddr,
+			&wait, &group, &j.State, &j.Position, &j.Attempt, &detail, &rc, &rm, &created, &updated)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Job{}, ErrNotFound
 	}
@@ -129,6 +135,7 @@ func (s *Store) jobWhere(where string, arg any) (Job, error) {
 		return Job{}, err
 	}
 	j.ServerName, j.ServerID, j.GroupID, j.Detail = name.String, serverID.String, group.String, detail.String
+	j.QueryAddr = queryAddr.String
 	j.ReasonCode, j.ReasonMessage = rc.String, rm.String
 	j.WaitForServerUp = wait == 1
 	j.CreatedAt, j.UpdatedAt = fromMs(created), fromMs(updated)
@@ -258,8 +265,17 @@ func (s *Store) RecentJobs(accountID string, limit int) ([]Job, error) {
 // UpdateAddress records a freshly looked-up address for a job. Rust server IPs
 // change, so the address is resolved again just before we connect rather than
 // trusted from whenever the job was created.
-func (s *Store) UpdateAddress(jobID, addr, name string) error {
+func (s *Store) UpdateAddress(jobID, addr, queryAddr, name string) error {
 	_, err := s.db.Exec(
-		`UPDATE jobs SET server_addr = ?, server_name = ? WHERE id = ?`, addr, name, jobID)
+		`UPDATE jobs SET server_addr = ?, query_addr = ?, server_name = ? WHERE id = ?`,
+		addr, queryAddr, name, jobID)
 	return err
+}
+
+// PollAddr is where the watcher should send status queries for this job.
+func (j Job) PollAddr() string {
+	if j.QueryAddr != "" {
+		return j.QueryAddr
+	}
+	return j.ServerAddr
 }

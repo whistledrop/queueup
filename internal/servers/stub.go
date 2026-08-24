@@ -24,7 +24,8 @@ type Stub struct {
 func NewStub() *Stub {
 	return &Stub{started: time.Now(), servers: []Server{
 		{ID: "stub-1", Name: "Rustopia EU Main", Address: "51.83.128.10:28015",
-			Online: true, Players: 198, MaxPlayers: 200, Queue: 312, Map: "Procedural", Region: "EU"},
+			QueryAddress: "51.83.128.10:28010",
+			Online:       true, Players: 198, MaxPlayers: 200, Queue: 312, Map: "Procedural", Region: "EU"},
 		{ID: "stub-2", Name: "Rusty Moose |EU Main", Address: "51.83.128.20:28015",
 			Online: true, Players: 175, MaxPlayers: 250, Queue: 0, Map: "Procedural", Region: "EU"},
 		{ID: "stub-3", Name: "Rustafied EU Trio", Address: "45.62.160.30:28015",

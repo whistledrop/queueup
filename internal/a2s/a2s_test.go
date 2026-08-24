@@ -71,8 +71,8 @@ func TestQueueFromKeywords(t *testing.T) {
 		"qpnope,mp100":        0,  // not a number
 	}
 	for keywords, want := range cases {
-		if got := queueFromKeywords(keywords); got != want {
-			t.Errorf("queueFromKeywords(%q) = %d, want %d", keywords, got, want)
+		if got := QueueFromKeywords(keywords); got != want {
+			t.Errorf("QueueFromKeywords(%q) = %d, want %d", keywords, got, want)
 		}
 	}
 }

@@ -116,7 +116,9 @@ func (w *Watcher) pollJob(ctx context.Context, j store.Job) {
 	w.mu.Unlock()
 
 	qctx, cancel := context.WithTimeout(ctx, 3*time.Second)
-	info, err := w.Query(qctx, j.ServerAddr)
+	// Status questions go to the query address, which for Rust is a different
+	// port from the one players connect to.
+	info, err := w.Query(qctx, j.PollAddr())
 	cancel()
 	online := err == nil
 
@@ -139,7 +141,7 @@ func (w *Watcher) pollJob(ctx context.Context, j store.Job) {
 	if known && online != wasOnline && waiting {
 		if online {
 			w.note(j, "The server is back up. Connecting now.")
-			w.Log.Info("server came back", "job", j.ID, "addr", j.ServerAddr,
+			w.Log.Info("server came back", "job", j.ID, "addr", j.PollAddr(),
 				"players", info.Players, "queue", info.Queue)
 		} else {
 			w.note(j, "The server went down. This is normal during a wipe restart; watching for it to come back.")

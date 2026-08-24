@@ -40,6 +40,7 @@ type bmServer struct {
 		MaxPlayers int    `json:"maxPlayers"`
 		Status     string `json:"status"`
 		Country    string `json:"country"`
+		PortQuery  int    `json:"portQuery"`
 		Details    struct {
 			Map           string `json:"map"`
 			QueuedPlayers int    `json:"rust_queued_players"`
@@ -60,7 +61,12 @@ func (s bmServer) toServer() Server {
 		Region:     s.Attributes.Country,
 	}
 	if s.Attributes.IP != "" && s.Attributes.Port != 0 {
+		// BattleMetrics reports the game port as "port" and the query port
+		// separately, which is the distinction that matters here.
 		out.Address = fmt.Sprintf("%s:%d", s.Attributes.IP, s.Attributes.Port)
+		if s.Attributes.PortQuery != 0 {
+			out.QueryAddress = fmt.Sprintf("%s:%d", s.Attributes.IP, s.Attributes.PortQuery)
+		}
 	}
 	if t, err := time.Parse(time.RFC3339, s.Attributes.Details.LastWipe); err == nil {
 		out.LastWipe = t

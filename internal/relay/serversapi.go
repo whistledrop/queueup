@@ -47,7 +47,8 @@ func decorate(list []servers.Server, starred map[string]bool) []map[string]any {
 	out := make([]map[string]any, 0, len(list))
 	for _, sv := range list {
 		out = append(out, map[string]any{
-			"id": sv.ID, "name": sv.Name, "address": sv.Address, "online": sv.Online,
+			"id": sv.ID, "name": sv.Name, "address": sv.Address,
+			"query_address": sv.QueryAddress, "online": sv.Online,
 			"players": sv.Players, "max_players": sv.MaxPlayers, "queue": sv.Queue,
 			"map": sv.Map, "region": sv.Region, "favourite": starred[sv.ID],
 		})

@@ -79,6 +79,7 @@ CREATE TABLE IF NOT EXISTS jobs (
   server_addr        TEXT NOT NULL,
   server_name        TEXT NOT NULL DEFAULT '',
   server_id          TEXT NOT NULL DEFAULT '',
+  query_addr         TEXT NOT NULL DEFAULT '',
   wait_for_server_up INTEGER NOT NULL DEFAULT 0,
   -- group_id is unused in v1. It is here so that clan joins, the flagship v2
   -- feature, do not need a schema migration later.
@@ -104,6 +105,7 @@ CREATE TABLE IF NOT EXISTS schedules (
   account_id         TEXT NOT NULL REFERENCES accounts(id),
   device_id          TEXT NOT NULL REFERENCES devices(id),
   server_id          TEXT NOT NULL DEFAULT '',
+  query_addr         TEXT NOT NULL DEFAULT '',
   server_addr        TEXT NOT NULL DEFAULT '',
   server_name        TEXT NOT NULL DEFAULT '',
   fire_at            INTEGER NOT NULL,
@@ -250,6 +252,7 @@ func (s *Store) migrate() error {
 		{"accounts", "subscription_id", "TEXT NOT NULL DEFAULT ''"},
 		{"accounts", "subscribed_at", "INTEGER NOT NULL DEFAULT 0"},
 		{"jobs", "server_id", "TEXT NOT NULL DEFAULT ''"},
+		{"jobs", "query_addr", "TEXT NOT NULL DEFAULT ''"},
 	} {
 		has, err := s.hasColumn(m.table, m.column)
 		if err != nil {

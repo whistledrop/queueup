@@ -4,10 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
+
+	"queueup/internal/a2s"
 )
 
 // RustAppID is Rust's Steam application id, used to filter the server list.
@@ -15,10 +19,9 @@ const RustAppID = "252490"
 
 // Steam reads Steam's own master server list.
 //
-// The key is free: https://steamcommunity.com/dev/apikey. Steam does not report
-// a queue length, so Queue is always zero here; the live queue position comes
-// from the game's own log once we are connecting, and phase 4 adds direct A2S
-// polling for the rest.
+// The key is free: https://steamcommunity.com/dev/apikey. Steam does report a
+// queue length after all: its "gametype" field carries the same keyword tags a
+// direct query returns, Rust's qp tag among them.
 type Steam struct {
 	key    string
 	client *http.Client
@@ -34,15 +37,48 @@ func (s *Steam) Name() string { return "steam" }
 
 type steamResponse struct {
 	Response struct {
-		Servers []struct {
-			Addr       string `json:"addr"`
-			Name       string `json:"name"`
-			Players    int    `json:"players"`
-			MaxPlayers int    `json:"max_players"`
-			Map        string `json:"map"`
-			Region     int    `json:"region"`
-		} `json:"servers"`
+		Servers []steamServer `json:"servers"`
 	} `json:"response"`
+}
+
+type steamServer struct {
+	// Addr is the QUERY address (ip:queryport), despite the plain name.
+	Addr string `json:"addr"`
+	// GamePort is what a player actually connects to. For Rust these differ,
+	// typically 28015 for the game and 28010-ish for queries.
+	GamePort   int    `json:"gameport"`
+	Name       string `json:"name"`
+	Players    int    `json:"players"`
+	MaxPlayers int    `json:"max_players"`
+	Map        string `json:"map"`
+	// GameType carries the same keyword tags a direct query returns, including
+	// Rust's queue length. Free queue counts, no extra request.
+	GameType string `json:"gametype"`
+}
+
+// toServer turns Steam's record into ours, keeping both addresses straight.
+func (s steamServer) toServer() Server {
+	host, _, err := net.SplitHostPort(s.Addr)
+	if err != nil {
+		host = s.Addr
+	}
+	game := s.Addr // fall back to the query address if no game port was given
+	if s.GamePort > 0 && host != "" {
+		game = net.JoinHostPort(host, strconv.Itoa(s.GamePort))
+	}
+	return Server{
+		// The query address is the id: it is what search returns, and it is
+		// stable for as long as the server exists.
+		ID:           s.Addr,
+		Name:         s.Name,
+		Address:      game,
+		QueryAddress: s.Addr,
+		Online:       true,
+		Players:      s.Players,
+		MaxPlayers:   s.MaxPlayers,
+		Queue:        a2s.QueueFromKeywords(s.GameType),
+		Map:          s.Map,
+	}
 }
 
 // Search asks Steam for Rust servers whose name contains the query.
@@ -57,17 +93,31 @@ func (s *Steam) Search(ctx context.Context, query string, limit int) ([]Server, 
 	return s.query(ctx, filter, limit)
 }
 
-// ByID looks a server up by its address. For this source the id IS the address,
-// which is why Search returns the address as the id.
+// ByID looks a server up by its id, which is its query address.
+//
+// The gameaddr filter matches on the GAME port, and our id carries the query
+// port, so filtering by the full id finds nothing. Filter by IP alone, which
+// the filter allows, then pick the one we meant. Machines often host several
+// Rust servers on one IP, so the match matters.
 func (s *Steam) ByID(ctx context.Context, id string) (Server, error) {
-	found, err := s.query(ctx, `\appid\`+RustAppID+`\gameaddr\`+id, 1)
+	host, _, err := net.SplitHostPort(id)
 	if err != nil {
-		return Server{}, err
+		host = id
 	}
-	if len(found) == 0 {
-		return Server{}, fmt.Errorf("that server isn't in Steam's list right now, so it may be down")
+	found, qerr := s.query(ctx, `\appid\`+RustAppID+`\gameaddr\`+host, 50)
+	if qerr != nil {
+		return Server{}, qerr
 	}
-	return found[0], nil
+	for _, sv := range found {
+		if sv.ID == id || sv.Address == id {
+			return sv, nil
+		}
+	}
+	if len(found) == 1 {
+		// One server on that IP: it is unambiguous even if the port moved.
+		return found[0], nil
+	}
+	return Server{}, fmt.Errorf("that server isn't in Steam's list right now, so it may be down")
 }
 
 func (s *Steam) query(ctx context.Context, filter string, limit int) ([]Server, error) {
@@ -100,10 +150,7 @@ func (s *Steam) query(ctx context.Context, filter string, limit int) ([]Server, 
 	}
 	list := make([]Server, 0, len(out.Response.Servers))
 	for _, sv := range out.Response.Servers {
-		list = append(list, Server{
-			ID: sv.Addr, Name: sv.Name, Address: sv.Addr, Online: true,
-			Players: sv.Players, MaxPlayers: sv.MaxPlayers, Map: sv.Map,
-		})
+		list = append(list, sv.toServer())
 	}
 	return list, nil
 }

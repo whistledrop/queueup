@@ -25,17 +25,35 @@ import (
 )
 
 // Server is one Rust server, as much as we know about it.
+//
+// A Rust server has TWO addresses and they are not interchangeable. The game
+// port is what a player connects to; the query port is the only one that
+// answers status questions. Steam reports the query address as "addr" and the
+// game port separately, which is a very easy thing to get wrong: connecting to
+// the query port fails, and querying the game port times out.
 type Server struct {
-	ID         string    `json:"id"`
-	Name       string    `json:"name"`
-	Address    string    `json:"address"` // IP:PORT as of this lookup
-	Online     bool      `json:"online"`
-	Players    int       `json:"players"`
-	MaxPlayers int       `json:"max_players"`
-	Queue      int       `json:"queue"`
-	Map        string    `json:"map,omitempty"`
-	Region     string    `json:"region,omitempty"`
-	LastWipe   time.Time `json:"last_wipe,omitempty"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	// Address is the GAME address, IP:PORT, the one Rust connects to.
+	Address string `json:"address"`
+	// QueryAddress is where status questions go. Often the game port minus a
+	// few. Empty means "same as Address".
+	QueryAddress string    `json:"query_address,omitempty"`
+	Online       bool      `json:"online"`
+	Players      int       `json:"players"`
+	MaxPlayers   int       `json:"max_players"`
+	Queue        int       `json:"queue"`
+	Map          string    `json:"map,omitempty"`
+	Region       string    `json:"region,omitempty"`
+	LastWipe     time.Time `json:"last_wipe,omitempty"`
+}
+
+// PollAddress is where to send status queries for this server.
+func (s Server) PollAddress() string {
+	if s.QueryAddress != "" {
+		return s.QueryAddress
+	}
+	return s.Address
 }
 
 // Provider is a source of server information.
