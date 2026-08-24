@@ -52,16 +52,27 @@ func (w *WindowsLauncher) LogPath() string {
 
 // Preflight catches the failures we can explain properly, before we waste a
 // launch attempt on them.
+//
+// Only genuine blockers belong here. A missing Rust log folder is NOT one: the
+// folder is created the first time the game runs, so refusing to launch
+// because it is absent is refusing to do the very thing that would fix it.
+// That check used to live here and it deadlocked a freshly installed PC.
 func (w *WindowsLauncher) Preflight() error {
 	if !processRunning(steamProcess) {
 		return errors.New("Steam isn't running on your PC. Start Steam and sign in, then try again.")
 	}
-	if p := w.LogPath(); p != "" {
-		if _, err := os.Stat(filepath.Dir(p)); err != nil {
-			return errors.New("Couldn't find Rust's log folder on your PC. Has Rust been run at least once on this machine?")
-		}
-	}
 	return nil
+}
+
+// LogFolderExists reports whether Rust has ever run on this machine. Used only
+// to explain a quiet log, never to stop a launch.
+func (w *WindowsLauncher) LogFolderExists() bool {
+	p := w.LogPath()
+	if p == "" {
+		return false
+	}
+	_, err := os.Stat(filepath.Dir(p))
+	return err == nil
 }
 
 // Launch hands the Steam URI to Windows, exactly as if the user had clicked a

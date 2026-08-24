@@ -121,6 +121,16 @@ func cmdRun(args []string) error {
 		fmt.Printf("mode:  SIMULATOR (%s)\n", *scenarioPath)
 	} else {
 		fmt.Printf("mode:  REAL GAME\n")
+		// A PC where Rust has never run has no log folder yet. That is fine and
+		// must not stop a join: the folder appears the moment the game starts.
+		// It is worth saying though, because progress stays quiet until then.
+		if probe, perr := realLauncher(*logPath); perr == nil {
+			if f, ok := probe.(interface{ LogFolderExists() bool }); ok && !f.LogFolderExists() {
+				fmt.Println("note:  Rust has not run on this PC yet, so it has no log folder.")
+				fmt.Println("       Joins still work. Progress will start showing once the")
+				fmt.Println("       game creates it on first launch.")
+			}
+		}
 	}
 	fmt.Printf("log patterns: %s\n", patternsFrom)
 	if un := parser.Unverified(); len(un) > 0 {
