@@ -72,11 +72,9 @@ These are Windows and Steam settings QueueUp deliberately does not touch:
   Interface, "Run Steam when my computer starts", and stay signed in.
 - **Sleep is off.** Settings, System, Power, set "Put my device to sleep" to
   Never. QueueUp does not wake sleeping PCs, by design.
-- **The agent starts at login:** in a terminal, once:
-
-  ```
-  QueueUpAgent.exe install-autostart
-  ```
+- **The agent starts at login.** Right-click the QueueUp tray icon and tick
+  "Start with Windows". (There is also a command for it,
+  `QueueUpAgent.exe install-autostart`, if you prefer typing.)
 
 QueueUp never asks for, sees, or stores your Steam password. Steam stays signed
 in on the PC exactly as you left it.

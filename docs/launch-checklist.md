@@ -37,15 +37,8 @@ works too; see docs/deploy.md.)
 On this Mac: `./scripts/build-agent.sh`, then get `dist/QueueUpAgent.exe` to
 the PC however you normally move files. Put it somewhere permanent.
 
-In a terminal on the PC:
-
-```
-QueueUpAgent.exe pair --relay https://<your-app>.fly.dev --web https://<your-site>.vercel.app
-QueueUpAgent.exe install-autostart
-```
-
-Type the code into the website. Done: from the next sign-in the agent runs as
-a tray icon.
+Double-click it. Type the code it shows into the website. Then right-click the
+tray icon and tick "Start with Windows". No terminal needed.
 
 ## 4. One-time Windows settings on the PC (~10 minutes)
 

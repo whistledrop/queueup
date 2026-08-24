@@ -101,11 +101,10 @@ Build it from any machine (`./scripts/build-agent.sh`), copy
 `dist/QueueUpAgent.exe` anywhere permanent on the PC (not Downloads), then in a
 terminal on the PC:
 
-```
-QueueUpAgent.exe pair --relay https://queueup-relay.fly.dev
-QueueUpAgent.exe install-autostart
-```
+Double-click it. It shows a pairing code, and after pairing it moves itself
+into the system tray. Then right-click the tray icon and tick "Start with
+Windows".
 
 Autostart uses the per-user registry Run key: no administrator rights, runs in
-the user's session (which Steam and the game need anyway), removed with
-`uninstall-autostart`. From the next sign-in the agent runs as a tray icon.
+the user's session (which Steam and the game need anyway). The tray tick and
+the `install-autostart` / `uninstall-autostart` commands do the same thing.

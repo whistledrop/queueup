@@ -48,6 +48,8 @@ func trayReady() {
 	status.Disable()
 	systray.AddSeparator()
 	openWeb := systray.AddMenuItem("Open the QueueUp website", "")
+	autostart := systray.AddMenuItemCheckbox("Start with Windows", "", autostartInstalled())
+	systray.AddSeparator()
 	openLog := systray.AddMenuItem("Open the log file", "For debugging")
 	openCfg := systray.AddMenuItem("Open the settings folder", "")
 	systray.AddSeparator()
@@ -62,6 +64,18 @@ func trayReady() {
 				status.SetTitle(trayState.get())
 			case <-openWeb.ClickedCh:
 				openBrowser(webURL())
+			case <-autostart.ClickedCh:
+				// Toggle to the opposite of what the tick currently shows.
+				want := !autostart.Checked()
+				if err := setAutostart(want); err != nil {
+					trayState.set("Couldn't change that setting: " + err.Error())
+					break
+				}
+				if want {
+					autostart.Check()
+				} else {
+					autostart.Uncheck()
+				}
 			case <-openLog.ClickedCh:
 				openFile(logFilePath())
 			case <-openCfg.ClickedCh:

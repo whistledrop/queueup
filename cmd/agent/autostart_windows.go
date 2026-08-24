@@ -18,6 +18,28 @@ import (
 const runKeyPath = `Software\Microsoft\Windows\CurrentVersion\Run`
 const runKeyName = "QueueUp"
 
+// autostartInstalled reports whether QueueUp is in the startup list, so the
+// tray can show the setting's real state rather than a guess.
+func autostartInstalled() bool {
+	key, err := registry.OpenKey(registry.CURRENT_USER, runKeyPath, registry.QUERY_VALUE)
+	if err != nil {
+		return false
+	}
+	defer key.Close()
+	v, _, err := key.GetStringValue(runKeyName)
+	return err == nil && v != ""
+}
+
+// setAutostart is the tray's version of the two commands below: no terminal,
+// no typing. Most people who install this will never open a command prompt,
+// and should not have to.
+func setAutostart(on bool) error {
+	if on {
+		return cmdInstallAutostart(nil)
+	}
+	return cmdUninstallAutostart(nil)
+}
+
 func cmdInstallAutostart(args []string) error {
 	exe, err := os.Executable()
 	if err != nil {

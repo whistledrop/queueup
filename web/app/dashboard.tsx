@@ -245,6 +245,12 @@ export default function Dashboard({ email }: { email: string }) {
             </div>
           </>
         )}
+        {pc && (
+          <p className="muted small" style={{ marginBottom: needsSub ? 8 : 0 }}>
+            Tip: right-click the QueueUp icon in your PC&apos;s system tray and
+            tick &quot;Start with Windows&quot;, so it is always ready.
+          </p>
+        )}
         {needsSub && (
           <p className="muted small" style={{ marginBottom: 0 }}>
             Setting up is free. Joining needs the subscription, {billing?.price_line}.
