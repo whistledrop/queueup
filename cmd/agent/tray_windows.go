@@ -5,6 +5,8 @@ package main
 // The tray icon: the agent's face on the PC. Everything real happens in the
 // same code the `agent run` command uses; the tray only shows what is going on
 // and offers the few actions that make sense from a mouse.
+//
+// trayAvailable says whether this build has a tray at all. See tray_other.go.
 
 import (
 	"context"
@@ -20,6 +22,8 @@ import (
 
 	"queueup/internal/agentcfg"
 )
+
+const trayAvailable = true
 
 // cmdTray runs the agent under a system tray icon. It is the mode the shortcut
 // installed by `agent install-autostart` uses.

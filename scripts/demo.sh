@@ -10,8 +10,8 @@ for f in testdata/scenarios/*.json; do
   echo "=============================================================="
   echo " $name"
   echo "=============================================================="
-  go run ./cmd/agent \
-    --sim --scenario "$f" \
+  go run ./cmd/agent sim \
+    --scenario "$f" \
     --server 51.83.128.10:28015 --log "/tmp/queueup-demo-$name.log" \
     --speed 6 --confirm 2s --jitter 300ms \
     --max-attempts 2 2>&1 | grep -v "^  WARNING\|^  Until\|^  Fix by\|^  steam_not_running"

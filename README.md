@@ -16,10 +16,10 @@ the game the same way you would.**
 **All five build phases are done.** What remains is the part only you can do:
 the real test on your actual PC, laid out step by step in `TESTING.md`.
 
- Sign in on your phone, link your PC, find a server,
-join now or schedule a join for wipe day, get notified as the queue counts down,
-and let the relay watch the server through its restart and pounce the moment it
-comes back.
+The whole product works end to end: sign in on your phone, link your PC, find a
+server, join now or schedule a join for wipe day, get notified as the queue
+counts down, and let the relay watch the server through its restart and pounce
+the moment it comes back.
 
 | Phase | What it is | Status |
 |---|---|---|
@@ -34,7 +34,7 @@ comes back.
 You need Go installed (`brew install go` on a Mac). Then, from this folder:
 
 ```
-go run ./cmd/agent --sim --scenario testdata/scenarios/long_queue.json --server 51.83.128.10:28015 --speed 6 --confirm 2s
+go run ./cmd/agent sim --scenario testdata/scenarios/long_queue.json --server 51.83.128.10:28015 --speed 6 --confirm 2s
 ```
 
 That plays out a full wipe-day join against a fake Rust client, with no game and
@@ -52,7 +52,7 @@ no Windows PC involved:
 [   4.5s] done                   You're in. Slot is being held.
 ```
 
-Every line there is a message that will end up on your phone in phase 3.
+Every line there is a message that shows up on your phone.
 
 Run `./scripts/demo.sh` to watch all seven scenarios back to back, including the
 nasty ones: a crash mid-queue, a banned account, Steam not signed in, and a
@@ -96,7 +96,7 @@ in phase 3.
 ## The pieces
 
 ```
-cmd/agent          the agent. Phase 1: a command-line tool. Later: a Windows tray app.
+cmd/agent          the agent that runs on the PC: tray icon, or command line
 cmd/fakerust       the fake Rust client, runnable on its own
 
 internal/job       the state machine: idle -> waiting -> launching -> connecting

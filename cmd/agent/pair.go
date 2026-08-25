@@ -90,6 +90,16 @@ func cmdPair(args []string) error {
 
 	fmt.Println("  This PC is now linked to your account.")
 	fmt.Printf("  Settings saved to %s\n\n", path)
+
+	// On a machine with no tray, which means any machine that is not the
+	// player's PC, pairing is finished and that is a success. Falling through to
+	// the tray here used to report a failure for a job that had just worked.
+	if !trayAvailable {
+		fmt.Println("  Next: leave the agent running with")
+		fmt.Printf("    agent run --relay %s\n\n", cfg.RelayURL)
+		return nil
+	}
+
 	fmt.Println("  Starting up. QueueUp will now sit in your system tray.")
 	fmt.Println("  To have it start automatically when you sign in to Windows,")
 	fmt.Println("  run this once:   QueueUpAgent.exe install-autostart")

@@ -4,7 +4,10 @@ package main
 
 import "errors"
 
-// The tray, like the game, is Windows-only. Development machines use `run`.
+// trayAvailable says whether this build has a system tray. The tray, like the
+// game itself, is Windows-only; development machines use `agent run`.
+const trayAvailable = false
+
 func cmdTray([]string) error {
 	return errors.New("the tray icon only exists on Windows; use: agent run")
 }
