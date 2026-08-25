@@ -141,6 +141,9 @@ Two things make it faster, both worth doing the night before:
   game updated". Then Steam grabs the update the moment it is released rather
   than when QueueUp asks for it.
 - Leave Steam running. A sleeping Steam downloads nothing.
+- Check the PC has room for the download, and that Steam is not in offline mode.
+  QueueUp will tell you if the download stops moving, but the night before is a
+  much better time to find out than ten minutes into the wipe.
 
 On the day, watch your phone:
 
@@ -164,3 +167,6 @@ to work out what happened.
 | "Tried several times and couldn't get in" | It ran out of retries. Check the timeline for the underlying reason and just tap Join again. |
 | Stuck on "Waiting for the server" long after the server is visibly up | The server may have changed address in a way we could not follow. Cancel, search for the server again, Join. |
 | "Steam is updating Rust" | Normal on force wipe. It waits and connects as soon as the download finishes. Nothing to do. |
+| "Steam has paused the Rust download" | Open Steam on the PC and resume it. This will not fix itself. |
+| "Steam has stopped downloading Rust" | Nothing has moved for several minutes. Check Steam on the PC: usually offline mode, a full disk, or a paused download. |
+| "Steam isn't logged in on your PC" | Sign in to Steam on the PC. QueueUp tries twice before saying this, so a Steam that was merely restarting will already have sorted itself out. |

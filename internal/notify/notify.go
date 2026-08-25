@@ -15,12 +15,15 @@ package notify
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/smtp"
 	"strings"
 	"sync"
+	"time"
 
 	webpush "github.com/SherClockHolmes/webpush-go"
 
@@ -87,17 +90,26 @@ func (n *Notifier) Send(accountID string, m Message) {
 }
 
 func (n *Notifier) deliver(accountID string, m Message) {
+	// The lock covers the shared bookkeeping and the test hook, and is released
+	// before anything touches the network.
+	//
+	// Holding it across a send would put every notification in one queue, and on
+	// wipe day that is a lot of notifications: one unreachable mail server would
+	// delay everybody else's "you're in the queue, position 12" until it no
+	// longer meant anything.
 	n.mu.Lock()
-	defer n.mu.Unlock()
-
 	if n.Log == nil {
 		n.Log = slog.Default()
 	}
-	if n.SendHook != nil {
-		n.SendHook(accountID, m)
+	hook := n.SendHook
+	log := n.Log
+	n.mu.Unlock()
+
+	if hook != nil {
+		hook(accountID, m)
 		return
 	}
-	n.Log.Info("notify", "account", accountID, "title", m.Title, "body", m.Body)
+	log.Info("notify", "account", accountID, "title", m.Title, "body", m.Body)
 
 	pushed := false
 	if n.PushConfigured() {
@@ -185,6 +197,11 @@ func (n *Notifier) emailAccount(accountID string, m Message) {
 	}
 }
 
+// smtpTimeout bounds every stage of sending one email. Without it a mail server
+// that accepts the connection and then says nothing holds the sending goroutine
+// forever, and they accumulate.
+const smtpTimeout = 20 * time.Second
+
 func (n *Notifier) smtpSend(to, subject, body string) error {
 	msg := strings.Join([]string{
 		"From: " + n.SMTPFrom,
@@ -194,11 +211,51 @@ func (n *Notifier) smtpSend(to, subject, body string) error {
 		body,
 	}, "\r\n")
 	addr := n.SMTPHost + ":" + n.SMTPPort
-	var auth smtp.Auth
-	if n.SMTPUser != "" {
-		auth = smtp.PlainAuth("", n.SMTPUser, n.SMTPPass, n.SMTPHost)
+
+	// net/smtp's own SendMail has no timeout of any kind, so the connection is
+	// dialled here and given deadlines before the conversation starts.
+	conn, err := net.DialTimeout("tcp", addr, smtpTimeout)
+	if err != nil {
+		return fmt.Errorf("connecting to the mail server: %w", err)
 	}
-	return smtp.SendMail(addr, auth, n.SMTPFrom, []string{to}, []byte(msg))
+	defer conn.Close()
+	if err := conn.SetDeadline(time.Now().Add(smtpTimeout)); err != nil {
+		return err
+	}
+
+	client, err := smtp.NewClient(conn, n.SMTPHost)
+	if err != nil {
+		return fmt.Errorf("starting the mail conversation: %w", err)
+	}
+	defer client.Close()
+
+	if ok, _ := client.Extension("STARTTLS"); ok {
+		if err := client.StartTLS(&tls.Config{ServerName: n.SMTPHost}); err != nil {
+			return fmt.Errorf("securing the mail connection: %w", err)
+		}
+	}
+	if n.SMTPUser != "" {
+		if err := client.Auth(smtp.PlainAuth("", n.SMTPUser, n.SMTPPass, n.SMTPHost)); err != nil {
+			return fmt.Errorf("signing in to the mail server: %w", err)
+		}
+	}
+	if err := client.Mail(n.SMTPFrom); err != nil {
+		return err
+	}
+	if err := client.Rcpt(to); err != nil {
+		return err
+	}
+	w, err := client.Data()
+	if err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(msg)); err != nil {
+		return err
+	}
+	if err := w.Close(); err != nil {
+		return err
+	}
+	return client.Quit()
 }
 
 // GenerateVAPIDKeys makes the one-time key pair for `relay gen-vapid`.
