@@ -54,6 +54,9 @@ type Server struct {
 	mux      *http.ServeMux
 	notifier *notify.Notifier
 
+	// signIns throttles failed sign-ins, per account and per source.
+	signIns *throttle
+
 	// debugLogs keeps the last few raw Rust log lines per PC, in memory only, for
 	// the admin view. They are never shown to a player and never written to disk.
 	debugMu   sync.Mutex
@@ -78,6 +81,7 @@ func New(cfg Config) *Server {
 		hub:       NewHub(cfg.Log),
 		mux:       http.NewServeMux(),
 		notifier:  cfg.Notifier,
+		signIns:   newThrottle(signInLimit, signInWindow, time.Now),
 		debugLogs: map[string][]string{},
 	}
 	s.routes()

@@ -280,3 +280,34 @@ func TestAddressIsRefreshedWhenTheJobIsHandedOver(t *testing.T) {
 		t.Errorf("the timeline never mentions the address change:\n%v", h.timeline(jobID))
 	}
 }
+
+// Checking a password is deliberately expensive, which is what makes a stolen
+// password file useless. It also means unlimited sign-in attempts are a way to
+// eat the relay's processor, and the relay is one small machine that everybody's
+// join depends on. So attempts are capped.
+func TestRepeatedWrongPasswordsAreEventuallyRefused(t *testing.T) {
+	h := newHarness(t)
+	h.post("/api/auth/register", map[string]string{
+		"email": "target@queueup.test", "password": "correct horse battery",
+	})
+
+	var blocked bool
+	for i := 0; i < 12; i++ {
+		code, out := h.post("/api/auth/login", map[string]string{
+			"email": "target@queueup.test", "password": "wrong guess",
+		})
+		if code == http.StatusTooManyRequests {
+			blocked = true
+			if msg, _ := out["error"].(string); len(msg) < 20 {
+				t.Errorf("refusal %q is too terse to show a user", msg)
+			}
+			break
+		}
+		if code != http.StatusUnauthorized {
+			t.Fatalf("attempt %d returned %d: %v", i+1, code, out)
+		}
+	}
+	if !blocked {
+		t.Fatal("twelve wrong passwords in a row and it was still happily checking more")
+	}
+}

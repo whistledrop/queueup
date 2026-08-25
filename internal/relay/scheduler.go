@@ -2,6 +2,7 @@ package relay
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -50,15 +51,29 @@ func (s *Server) fireSchedule(sc store.Schedule) {
 	}
 
 	device, err := s.st.DeviceByID(sc.DeviceID)
-	if err != nil || device.Revoked() {
+	switch {
+	case errors.Is(err, store.ErrNotFound):
 		fail("The PC this join was scheduled for is no longer linked to your account.")
 		return
+	case err == nil && device.Revoked():
+		fail("The PC this join was scheduled for has been unlinked from your account.")
+		return
+	case err != nil:
+		// Could not tell. Carry on: creating the job will fail properly if the
+		// PC really is gone, and a revoked PC cannot connect anyway.
+		s.log.Error("reading the device for a due schedule, continuing",
+			"schedule", sc.ID, "err", err)
 	}
 
 	if s.cfg.BillingEnabled {
-		if sub, err := s.st.SubscriptionFor(sc.AccountID); err != nil || !sub.Active() {
+		sub, err := s.st.SubscriptionFor(sc.AccountID)
+		if subscriptionBlocks(sub, err) {
 			fail("Your subscription ended before this join fired. Resubscribe and schedule it again.")
 			return
+		}
+		if err != nil {
+			s.log.Error("reading the subscription for a due schedule, letting it through",
+				"schedule", sc.ID, "err", err)
 		}
 	}
 
@@ -120,4 +135,19 @@ func (s *Server) fireSchedule(sc store.Schedule) {
 			URL:   "/jobs/" + j.ID,
 		})
 	}
+}
+
+// subscriptionBlocks reports whether we POSITIVELY know this account may not
+// join. An unreadable answer is not a no.
+//
+// By the time a schedule fires it has already been claimed, so it cannot fire
+// again: there is no "try later", only proceed or cancel. Letting an unreadable
+// answer through costs at most one join that should not have run. Cancelling
+// costs a paying customer their wipe, and tells them their subscription ended
+// when it did not. The asymmetry is the whole argument.
+func subscriptionBlocks(sub store.Subscription, err error) bool {
+	if err != nil {
+		return false
+	}
+	return !sub.Active()
 }
