@@ -47,6 +47,7 @@ type WindowsLauncher struct {
 	watch         chan struct{}
 	closing       bool
 	update        UpdateState
+	stall         *stallWatch
 	updateChecked time.Time
 }
 
@@ -74,10 +75,17 @@ func (w *WindowsLauncher) LogPath() string {
 // because it is absent is refusing to do the very thing that would fix it.
 // That check used to live here and it deadlocked a freshly installed PC.
 func (w *WindowsLauncher) Preflight() error {
-	if !processRunning(steamProcess) {
-		return errors.New("Steam isn't running on your PC. Start Steam and sign in, then try again.")
+	if processRunning(steamProcess) {
+		return nil
 	}
-	return nil
+	// Steam restarts itself when it updates, and force wipe day is when it is
+	// most likely to. Give it a moment to come back rather than telling somebody
+	// in another country to go and start a Steam that is already starting.
+	if awaitProcess(func() bool { return processRunning(steamProcess) },
+		SteamRestartGrace, time.Now, time.Sleep) {
+		return nil
+	}
+	return errors.New("Steam isn't running on your PC. Start Steam and sign in, then try again.")
 }
 
 // LogFolderExists reports whether Rust has ever run on this machine. Used only
@@ -165,18 +173,24 @@ func (w *WindowsLauncher) watchProcess(ch chan Exit, stop chan struct{}) {
 		// The game has not started yet. On force wipe that is expected and can
 		// last a long time: Rust ships an update with the wipe, and Steam must
 		// download several gigabytes first. Giving up here would fail on the one
-		// day this product exists for, so while Steam says it is working, we
+		// day this product exists for, so while Steam is genuinely working, we
 		// wait, and keep the phone informed.
-		update := RustUpdateState()
+		update := w.freshUpdate()
 		w.setUpdate(update)
-		if update.Known && update.Updating {
+		if update.Known && update.Updating && !update.NeedsPlayer() {
 			deadline = time.Now().Add(startupGrace)
 			continue
 		}
 
 		if time.Now().After(deadline) {
+			// A wedged download is worth explaining. Waiting longer will not fix
+			// a paused Steam or a full disk, and the player needs to know that.
+			ex := Exit{Code: -1}
+			if update.NeedsPlayer() {
+				ex.Reason = update.Describe()
+			}
 			select {
-			case ch <- Exit{Code: -1}:
+			case ch <- ex:
 			default:
 			}
 			return
@@ -206,9 +220,23 @@ func (w *WindowsLauncher) UpdateProgress() UpdateState {
 		w.setUpdate(UpdateState{})
 		return UpdateState{}
 	}
-	fresh := RustUpdateState()
+	fresh := w.freshUpdate()
 	w.setUpdate(fresh)
 	return fresh
+}
+
+// freshUpdate reads Steam's manifest and folds in how long the download has
+// been sitting still.
+func (w *WindowsLauncher) freshUpdate() UpdateState {
+	u := RustUpdateState()
+	w.mu.Lock()
+	if w.stall == nil {
+		w.stall = newStallWatch(time.Now)
+	}
+	watch := w.stall
+	w.mu.Unlock()
+	u.StalledFor = watch.stalledFor(u)
+	return u
 }
 
 func (w *WindowsLauncher) setUpdate(u UpdateState) {

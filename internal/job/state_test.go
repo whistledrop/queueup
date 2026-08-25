@@ -1,6 +1,7 @@
 package job
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -87,17 +88,30 @@ func TestRepeatedSamePositionDoesNotSpamUpdates(t *testing.T) {
 	}
 }
 
-func TestSteamProblemFailsImmediatelyWithAPlainReason(t *testing.T) {
-	m, _ := newTestMachine(Config{MaxAttempts: 8})
-	feed(m, Start{}, LaunchOK{}, LogEvent{Kind: "steam_problem", Detail: "Steam isn't logged in."})
+// A Steam that is genuinely signed out cannot be fixed by waiting, so the job
+// has to conclude, say so plainly, and not spend its whole retry budget finding
+// out. It does get a couple of quick tries first, because a restarting Steam
+// looks identical for a few seconds: see
+// TestATransientSteamProblemIsRetriedBeforeGivingUp.
+func TestASignedOutSteamConcludesQuicklyWithAPlainReason(t *testing.T) {
+	m, c := newTestMachine(Config{MaxAttempts: 8, RetryBase: time.Second, RetryMax: time.Second})
+
+	feed(m, Start{})
+	for i := 0; i < 6 && m.State() != StateFailed; i++ {
+		feed(m, LaunchOK{}, LogEvent{Kind: "steam_problem", Detail: "Steam isn't logged in."})
+		c.advance(2 * time.Second)
+		feed(m, Tick{})
+	}
+
 	if m.State() != StateFailed {
-		t.Fatalf("state = %s, want failed (retrying cannot fix a logged-out Steam)", m.State())
+		t.Fatalf("state = %s, want failed", m.State())
 	}
 	if m.Failure() == nil || m.Failure().Code != "steam_problem" {
 		t.Fatalf("failure = %+v, want a steam_problem reason", m.Failure())
 	}
-	if m.Attempt() != 1 {
-		t.Fatalf("attempts = %d, want 1: we must not burn retries on this", m.Attempt())
+	if m.Attempt() > steamProblemRetries+1 {
+		t.Fatalf("attempts = %d, want no more than %d: we must not burn the whole budget on this",
+			m.Attempt(), steamProblemRetries+1)
 	}
 }
 
@@ -254,5 +268,98 @@ func TestFinishedJobsIgnoreEverything(t *testing.T) {
 	}
 	if res := m.Handle(LogEvent{Kind: "joined"}); len(res.Transitions) != 0 {
 		t.Fatal("a finished job moved again")
+	}
+}
+
+// On force wipe the game often cannot start because Steam is still fetching the
+// update that ships with the wipe. If Steam then wedges, the player must be told
+// that, not told their game crashed: one of those sentences sends them to look
+// at Steam, the other sends them nowhere.
+func TestAStuckSteamUpdateExplainsItselfRatherThanLookingLikeACrash(t *testing.T) {
+	m, c := newTestMachine(Config{MaxAttempts: 2, RetryBase: time.Second, RetryMax: time.Second})
+	const stuck = "Steam has stopped downloading Rust (1.0 GB of 4.0 GB done). Nothing has moved for 9 minutes."
+
+	feed(m, Start{}, LaunchOK{})
+	trs := m.Handle(GameExited{Code: -1, Reason: stuck}).Transitions
+
+	if m.State() != StateRetrying {
+		t.Fatalf("state = %s, want retrying", m.State())
+	}
+	if len(trs) == 0 || !strings.Contains(trs[0].Detail, "stopped downloading") {
+		t.Fatalf("the player was not told about Steam: %+v", trs)
+	}
+	if strings.Contains(trs[0].Detail, "closed unexpectedly") {
+		t.Fatalf("a stuck download was reported as a crash: %q", trs[0].Detail)
+	}
+
+	// And it still gives up eventually rather than retrying forever.
+	c.advance(2 * time.Second)
+	feed(m, Tick{}, LaunchOK{})
+	m.Handle(GameExited{Code: -1, Reason: stuck})
+	if m.State() != StateFailed {
+		t.Fatalf("state = %s, want failed after the attempts ran out", m.State())
+	}
+}
+
+// A plain crash with nothing known about it still reads as a crash.
+func TestAnExitWithNoReasonIsStillACrash(t *testing.T) {
+	m, _ := newTestMachine(Config{MaxAttempts: 3})
+	feed(m, Start{}, LaunchOK{})
+	trs := m.Handle(GameExited{Code: 1}).Transitions
+	if len(trs) == 0 || !strings.Contains(trs[0].Detail, "closed unexpectedly") {
+		t.Fatalf("expected the crash wording, got %+v", trs)
+	}
+}
+
+// Steam restarts itself when it updates, and on force wipe that is exactly when
+// it happens. Rust launched in that window can fail to reach Steam for a few
+// seconds. Failing permanently on the first sighting turns a blip into a missed
+// wipe, so it gets a couple of quick retries first.
+func TestATransientSteamProblemIsRetriedBeforeGivingUp(t *testing.T) {
+	m, c := newTestMachine(Config{MaxAttempts: 8, RetryBase: time.Second, RetryMax: time.Second})
+
+	feed(m, Start{}, LaunchOK{})
+	feed(m, LogEvent{Kind: "steam_problem", Detail: "Steam isn't logged in."})
+	if m.State() != StateFailed {
+		// good: it is retrying rather than giving up
+	}
+	if m.State() == StateFailed {
+		t.Fatal("the first Steam problem failed the job outright; a restarting Steam gets no second chance")
+	}
+
+	// Second sighting: still worth one more try.
+	c.advance(2 * time.Second)
+	feed(m, Tick{}, LaunchOK{})
+	feed(m, LogEvent{Kind: "steam_problem"})
+	if m.State() == StateFailed {
+		t.Fatal("gave up on the second Steam problem, sooner than intended")
+	}
+
+	// Third: Steam really is logged out. Stop, and say so plainly.
+	c.advance(2 * time.Second)
+	feed(m, Tick{}, LaunchOK{})
+	feed(m, LogEvent{Kind: "steam_problem"})
+	if m.State() != StateFailed {
+		t.Fatalf("state = %s, want failed: a genuinely logged-out Steam is not fixed by waiting", m.State())
+	}
+	if f := m.Failure(); f == nil || f.Code != "steam_problem" {
+		t.Fatalf("failure = %+v, want the Steam reason so the player knows where to look", f)
+	}
+}
+
+// It must not spend its whole retry budget on Steam, either.
+func TestSteamProblemsStopWellShortOfTheAttemptLimit(t *testing.T) {
+	m, c := newTestMachine(Config{MaxAttempts: 8, RetryBase: time.Second, RetryMax: time.Second})
+	feed(m, Start{})
+	for i := 0; i < 8 && m.State() != StateFailed; i++ {
+		feed(m, LaunchOK{}, LogEvent{Kind: "steam_problem"})
+		c.advance(2 * time.Second)
+		feed(m, Tick{})
+	}
+	if m.State() != StateFailed {
+		t.Fatal("never gave up on a logged-out Steam")
+	}
+	if m.Attempt() > 4 {
+		t.Errorf("used %d attempts on a Steam problem; it should conclude quickly", m.Attempt())
 	}
 }

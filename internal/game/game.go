@@ -45,6 +45,10 @@ func ParseAddr(s string) (Addr, error) {
 type Exit struct {
 	Code     int
 	Expected bool // true when we asked it to close
+	// Reason, when set, explains the exit in words meant for the player. It is
+	// used when we know something more useful than "the game stopped", such as
+	// Steam having wedged part way through a wipe-day update.
+	Reason string
 }
 
 // Launcher is everything the agent is allowed to do to the game.

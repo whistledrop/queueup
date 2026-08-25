@@ -93,8 +93,12 @@ type LogEvent struct { // a parsed line from the Rust client log
 	Position int
 	Detail   string
 }
-type GameExited struct{ Code int } // the Rust process is gone
-type Tick struct{}                 // "time has passed, re-check your timers"
+type GameExited struct {
+	Code int
+	// Reason, when set, is why, in words for the player.
+	Reason string
+}                  // the Rust process is gone
+type Tick struct{} // "time has passed, re-check your timers"
 
 func (Start) isInput()        {}
 func (Cancel) isInput()       {}
@@ -124,6 +128,10 @@ var (
 	ReasonGameCrashed   = Reason{"game_crashed", "Rust closed unexpectedly on your PC."}
 	ReasonConnectFailed = Reason{"connect_failed", "Couldn't connect to the server."}
 )
+
+// steamProblemRetries is how many times a Steam failure is treated as a blip
+// before it is treated as the truth.
+const steamProblemRetries = 2
 
 // Actions are side effects the runner must perform. The machine never does them.
 type Action string
@@ -175,13 +183,14 @@ type Machine struct {
 	now    func() time.Time
 	jitter func(max time.Duration) time.Duration
 
-	serverUp    bool
-	serverKnown bool
-	connectAt   time.Time // when we are allowed to launch (jitter / backoff)
-	haveTimer   bool
-	inServerAt  time.Time
-	launchTimes []time.Time // for the per-minute connect cap
-	lastDetail  string
+	serverUp      bool
+	serverKnown   bool
+	steamProblems int
+	connectAt     time.Time // when we are allowed to launch (jitter / backoff)
+	haveTimer     bool
+	inServerAt    time.Time
+	launchTimes   []time.Time // for the per-minute connect cap
+	lastDetail    string
 }
 
 // Option customises a Machine, mostly for tests.
@@ -373,8 +382,18 @@ func (m *Machine) handleConnectingOrQueued(in Input, res *Result) {
 		m.handleLogEvent(v, res)
 	case GameExited:
 		// The client died while we were connecting or queuing. Relaunch.
-		m.retryOrFail(ReasonGameCrashed, res)
+		m.retryOrFail(exitReason(v), res)
 	}
+}
+
+// exitReason prefers whatever the launcher knew over the generic crash text.
+// "Steam stopped downloading Rust" is a great deal more use to somebody staring
+// at their phone than "Rust closed unexpectedly".
+func exitReason(v GameExited) Reason {
+	if v.Reason != "" {
+		return Reason{Code: "game_unavailable", Message: v.Reason}
+	}
+	return ReasonGameCrashed
 }
 
 func (m *Machine) handleInServer(in Input, res *Result) {
@@ -384,7 +403,7 @@ func (m *Machine) handleInServer(in Input, res *Result) {
 			m.retryOrFail(Reason{"dropped", "You were dropped from the server."}, res)
 		}
 	case GameExited:
-		m.retryOrFail(ReasonGameCrashed, res)
+		m.retryOrFail(exitReason(v), res)
 	case Tick:
 		// Only call it a win once we have held the slot for a bit.
 		if !m.now().Before(m.inServerAt.Add(m.cfg.InServerConfirm)) {
@@ -416,8 +435,17 @@ func (m *Machine) handleRetrying(in Input, res *Result) {
 func (m *Machine) handleLogEvent(v LogEvent, res *Result) {
 	switch v.Kind {
 	case "steam_problem":
-		// Never retry this one. Retrying cannot fix a logged-out Steam, and the
-		// user needs to be told the actual problem.
+		// Steam restarts itself when it updates, and force wipe is exactly when
+		// it does. Rust launched during that window can fail to reach Steam for
+		// a few seconds, so the first sightings get a quick retry.
+		//
+		// A Steam that is genuinely signed out is not fixed by waiting, so this
+		// concludes fast rather than spending the whole retry budget on it.
+		m.steamProblems++
+		if m.steamProblems <= steamProblemRetries {
+			m.retryOrFail(ReasonSteamProblem, res)
+			return
+		}
 		m.fail(ReasonSteamProblem, res)
 	case "connecting":
 		if m.state != StateConnecting {

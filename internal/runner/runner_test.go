@@ -124,16 +124,23 @@ func TestRejectionStopsImmediately(t *testing.T) {
 	}
 }
 
-func TestSteamNotLoggedInIsExplainedNotRetried(t *testing.T) {
-	final, m, _ := runScenario(t, "steam_not_logged_in", job.Config{MaxAttempts: 5})
+// A signed-out Steam has to end the job with the real reason, and get there
+// quickly, without spending the whole retry budget. It does try a couple of
+// times first: Steam restarts itself when it updates, which on force wipe day
+// is exactly when it happens, and for those few seconds a perfectly healthy
+// setup is indistinguishable from a signed-out one.
+func TestSteamNotLoggedInIsExplainedAndConcludesQuickly(t *testing.T) {
+	final, m, _ := runScenario(t, "steam_not_logged_in", job.Config{
+		MaxAttempts: 8, RetryBase: 200 * time.Millisecond, RetryMax: 200 * time.Millisecond,
+	})
 	if final != job.StateFailed {
 		t.Fatalf("final = %s, want failed", final)
 	}
 	if m.Failure().Code != "steam_problem" {
 		t.Fatalf("reason = %+v, want steam_problem", m.Failure())
 	}
-	if m.Attempt() != 1 {
-		t.Errorf("made %d attempts, want 1", m.Attempt())
+	if m.Attempt() > 3 {
+		t.Errorf("made %d attempts on a signed-out Steam, want no more than 3", m.Attempt())
 	}
 }
 

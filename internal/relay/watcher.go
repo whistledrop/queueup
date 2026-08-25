@@ -41,8 +41,9 @@ type Watcher struct {
 	last map[string]time.Time
 }
 
-// Run polls until ctx ends.
-func (w *Watcher) Run(ctx context.Context) {
+// prepare fills in the defaults. Separate from Run so that a sweep can be
+// exercised on its own.
+func (w *Watcher) prepare() {
 	if w.Log == nil {
 		w.Log = slog.Default()
 	}
@@ -59,6 +60,11 @@ func (w *Watcher) Run(ctx context.Context) {
 	}
 	w.seen = map[string]bool{}
 	w.last = map[string]time.Time{}
+}
+
+// Run polls until ctx ends.
+func (w *Watcher) Run(ctx context.Context) {
+	w.prepare()
 
 	tick := time.NewTicker(w.WaitingPoll)
 	defer tick.Stop()
@@ -93,36 +99,78 @@ func (w *Watcher) sweep(ctx context.Context) {
 	}
 	w.mu.Unlock()
 
+	// Group the jobs that are due by the address they need asking about.
+	//
+	// On wipe day most of these are the SAME address: everybody is waiting for
+	// the same popular server. Asking it once per waiting player would be slow
+	// and rude, and a server hammered by the queue tool is a server that blocks
+	// the queue tool.
+	due := map[string][]store.Job{}
 	for _, j := range jobs {
-		w.pollJob(ctx, j)
+		if !w.due(j) {
+			continue
+		}
+		addr := j.PollAddr()
+		due[addr] = append(due[addr], j)
 	}
+	if len(due) == 0 {
+		return
+	}
+
+	// Ask them all at once. A server that is DOWN does not refuse the question,
+	// it just never answers, so every poll during a wipe restart costs the full
+	// timeout. Serially, the sweep would take servers x timeout, and the restart
+	// would be spotted minutes late on the one day that matters.
+	const maxParallel = 32
+	sem := make(chan struct{}, maxParallel)
+	var wg sync.WaitGroup
+
+	for addr, group := range due {
+		wg.Add(1)
+		go func(addr string, group []store.Job) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			qctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+			info, err := w.Query(qctx, addr)
+			cancel()
+
+			for _, j := range group {
+				w.applyStatus(j, info, err == nil)
+			}
+		}(addr, group)
+	}
+	wg.Wait()
 }
 
-func (w *Watcher) pollJob(ctx context.Context, j store.Job) {
-	waiting := j.State == "waiting_for_server_up" || j.State == "pending" || j.State == "retrying"
+// due reports whether this job is ready for another poll, and records that we
+// are about to make one.
+func (w *Watcher) due(j store.Job) bool {
 	interval := w.OtherPoll
-	if waiting {
+	if waitingForRestart(j) {
 		interval = w.WaitingPoll
 	}
 
 	w.mu.Lock()
-	lastPoll, polled := w.last[j.ID]
-	if polled && time.Since(lastPoll) < interval {
-		w.mu.Unlock()
-		return
+	defer w.mu.Unlock()
+	if last, polled := w.last[j.ID]; polled && time.Since(last) < interval {
+		return false
 	}
 	w.last[j.ID] = time.Now()
-	wasOnline, known := w.seen[j.ID]
-	w.mu.Unlock()
+	return true
+}
 
-	qctx, cancel := context.WithTimeout(ctx, 3*time.Second)
-	// Status questions go to the query address, which for Rust is a different
-	// port from the one players connect to.
-	info, err := w.Query(qctx, j.PollAddr())
-	cancel()
-	online := err == nil
+// waitingForRestart is true in the states where the server coming back is the
+// thing we are waiting on, and so worth polling hard.
+func waitingForRestart(j store.Job) bool {
+	return j.State == "waiting_for_server_up" || j.State == "pending" || j.State == "retrying"
+}
 
+// applyStatus tells one job's agent what we saw, and records the flips.
+func (w *Watcher) applyStatus(j store.Job, info a2s.Info, online bool) {
 	w.mu.Lock()
+	wasOnline, known := w.seen[j.ID]
 	w.seen[j.ID] = online
 	w.mu.Unlock()
 
@@ -138,7 +186,7 @@ func (w *Watcher) pollJob(ctx context.Context, j store.Job) {
 	}
 
 	// The timeline only records the flips, and only while they matter.
-	if known && online != wasOnline && waiting {
+	if known && online != wasOnline && waitingForRestart(j) {
 		if online {
 			w.note(j, "The server is back up. Connecting now.")
 			w.Log.Info("server came back", "job", j.ID, "addr", j.PollAddr(),

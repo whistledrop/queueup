@@ -155,7 +155,7 @@ func (r *Runner) Run(ctx context.Context) job.State {
 
 		case <-exitTimer:
 			exitTimer = nil
-			r.feed(job.GameExited{Code: pendingExit.Code}, launches, cancel)
+			r.feed(job.GameExited{Code: pendingExit.Code, Reason: pendingExit.Reason}, launches, cancel)
 		}
 	}
 	return r.Machine.State()

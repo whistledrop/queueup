@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 )
 
 // Force wipe is the first Thursday of the month, and it is the day this whole
@@ -29,9 +31,29 @@ type UpdateState struct {
 	// Installed is true when the game is ready to launch.
 	Installed bool
 	// Updating is true when Steam is downloading or applying an update.
-	Updating        bool
+	Updating bool
+	// Paused is true when Steam has an update to do but has stopped doing it.
+	// A paused download will never finish on its own, so this needs the player,
+	// not patience.
+	Paused          bool
 	BytesDownloaded int64
 	BytesToDownload int64
+	// StalledFor is how long the byte count has sat still. Steam does not
+	// always mark a wedged download as paused (a full disk, or a Steam that
+	// lost its connection, often just stop), so the only honest signal is that
+	// nothing is moving.
+	StalledFor time.Duration
+}
+
+// StallReport is how long a download must sit still before we stop believing it
+// is going to finish. Long enough to ride out a slow patch server or a pause
+// while Steam verifies, short enough to be useful on wipe day.
+const StallReport = 8 * time.Minute
+
+// NeedsPlayer is true when waiting will not fix this and the player has to go
+// and look at the PC.
+func (u UpdateState) NeedsPlayer() bool {
+	return u.Updating && (u.Paused || u.StalledFor >= StallReport)
 }
 
 // Percent is how far through the download Steam is, 0 when unknown.
@@ -50,16 +72,39 @@ func (u UpdateState) Percent() int {
 }
 
 // Describe is the sentence shown on the player's phone.
+//
+// A download that is moving and one that has stopped need different sentences.
+// The first asks for patience. The second has to say plainly that nothing is
+// happening, because otherwise the phone reassures the player right up until
+// they miss the wipe.
 func (u UpdateState) Describe() string {
 	switch {
 	case !u.Updating:
 		return ""
+
+	case u.Paused:
+		return fmt.Sprintf("Steam has paused the Rust download%s. It will not finish on its own: open Steam on your PC and resume it.",
+			u.progressSuffix())
+
+	case u.StalledFor >= StallReport:
+		return fmt.Sprintf("Steam has stopped downloading Rust%s. Nothing has moved for %d minutes. Check Steam on your PC: it may be offline, out of disk space, or paused.",
+			u.progressSuffix(), int(u.StalledFor.Minutes()))
+
 	case u.BytesToDownload > 0:
 		return fmt.Sprintf("Steam is updating Rust, %d%% of %s downloaded. This happens on force wipe. Your PC will connect as soon as it finishes.",
 			u.Percent(), humanBytes(u.BytesToDownload))
+
 	default:
 		return "Steam is updating Rust. This happens on force wipe. Your PC will connect as soon as it finishes."
 	}
+}
+
+// progressSuffix adds "(1.0 GB of 4.0 GB done)" when we know the numbers.
+func (u UpdateState) progressSuffix() string {
+	if u.BytesToDownload <= 0 {
+		return ""
+	}
+	return fmt.Sprintf(" (%s of %s done)", humanBytes(u.BytesDownloaded), humanBytes(u.BytesToDownload))
 }
 
 func humanBytes(b int64) string {
@@ -113,6 +158,7 @@ func parseAppManifest(content string) UpdateState {
 	}
 	st.Updating = flags&(stateUpdateRequired|stateUpdateRunning|stateUpdatePaused|stateUpdateStarted) != 0 ||
 		!st.Installed
+	st.Paused = st.Updating && flags&stateUpdatePaused != 0
 	// A finished download that has not been marked installed yet still counts as
 	// updating, which is what we want: keep waiting.
 	if st.Installed && st.BytesToDownload > 0 && st.BytesDownloaded < st.BytesToDownload {
@@ -127,4 +173,50 @@ func readAppManifest(path string) (UpdateState, error) {
 		return UpdateState{}, err
 	}
 	return parseAppManifest(string(raw)), nil
+}
+
+// stallWatch notices when a download stops moving.
+//
+// Steam's manifest says what Steam intends, not whether it is getting anywhere.
+// A Steam that has gone offline, or run out of disk, often keeps claiming an
+// update is in progress while the byte count sits still. Watching the bytes is
+// the only way to tell the difference between slow and stuck.
+type stallWatch struct {
+	now func() time.Time
+
+	mu        sync.Mutex
+	active    bool
+	lastBytes int64
+	since     time.Time
+}
+
+func newStallWatch(now func() time.Time) *stallWatch {
+	if now == nil {
+		now = time.Now
+	}
+	return &stallWatch{now: now}
+}
+
+// stalledFor records the latest reading and returns how long the download has
+// been sitting still. It is zero while an update is progressing, and zero when
+// no update is happening at all.
+func (s *stallWatch) stalledFor(u UpdateState) time.Duration {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if !u.Known || !u.Updating {
+		s.active = false
+		return 0
+	}
+	now := s.now()
+
+	// First sighting of this update, or the download moved: start the clock
+	// again from here.
+	if !s.active || u.BytesDownloaded != s.lastBytes {
+		s.active = true
+		s.lastBytes = u.BytesDownloaded
+		s.since = now
+		return 0
+	}
+	return now.Sub(s.since)
 }
