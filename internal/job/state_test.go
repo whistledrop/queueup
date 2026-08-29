@@ -363,3 +363,93 @@ func TestSteamProblemsStopWellShortOfTheAttemptLimit(t *testing.T) {
 		t.Errorf("used %d attempts on a Steam problem; it should conclude quickly", m.Attempt())
 	}
 }
+
+// The player closes Rust themselves, mid-queue, perhaps to play something else.
+// Relaunching the game in their face is not acceptable: their close IS the
+// cancel, and the job ends cleanly.
+func TestPlayerClosingRustEndsTheJobInsteadOfFightingThem(t *testing.T) {
+	m, _ := newTestMachine(Config{MaxAttempts: 8})
+	feed(m, Start{}, LaunchOK{}, LogEvent{Kind: "queued", Position: 240})
+
+	// The graceful shutdown line arrives, then the process is gone.
+	feed(m, LogEvent{Kind: "user_quit"})
+	res := m.Handle(GameExited{Code: 0})
+
+	if m.State() != StateDone {
+		t.Fatalf("state = %s, want done", m.State())
+	}
+	for _, a := range res.Actions {
+		if a == ActionLaunchGame {
+			t.Fatal("it relaunched the game the player just closed")
+		}
+	}
+	if len(res.Transitions) == 0 || res.Transitions[0].Reason == nil ||
+		res.Transitions[0].Reason.Code != "player_closed" {
+		t.Fatalf("the phone was not told the player closed it: %+v", res.Transitions)
+	}
+}
+
+// The same farewell lines appear when WE close the game for a retry, and they
+// must not be mistaken for the player quitting, or every retry would cancel
+// itself.
+func TestOurOwnCloseIsNotMistakenForThePlayerQuitting(t *testing.T) {
+	m, c := newTestMachine(Config{MaxAttempts: 3, RetryBase: time.Second, RetryMax: time.Second})
+	feed(m, Start{}, LaunchOK{}, LogEvent{Kind: "queued", Position: 100})
+
+	// The server drops us: retryOrFail closes the game, and the closing game
+	// writes its shutdown lines.
+	feed(m, LogEvent{Kind: "disconnected", Detail: "Disconnected: timed out"})
+	if m.State() != StateRetrying {
+		t.Fatalf("setup: state = %s, want retrying", m.State())
+	}
+	feed(m, LogEvent{Kind: "user_quit"}) // the farewell from the close WE ordered
+
+	c.advance(2 * time.Second)
+	res := m.Handle(Tick{})
+	launched := false
+	for _, a := range res.Actions {
+		if a == ActionLaunchGame {
+			launched = true
+		}
+	}
+	if !launched {
+		t.Fatalf("the retry never relaunched: our own close was misread as the player quitting (state %s)", m.State())
+	}
+}
+
+// A crash writes no farewell. It must still be retried exactly as before.
+func TestACrashStillRelaunches(t *testing.T) {
+	m, c := newTestMachine(Config{MaxAttempts: 3, RetryBase: time.Second, RetryMax: time.Second})
+	feed(m, Start{}, LaunchOK{}, LogEvent{Kind: "queued", Position: 100})
+	feed(m, GameExited{Code: 1}) // no user_quit line first
+	if m.State() != StateRetrying {
+		t.Fatalf("state = %s, want retrying after a crash", m.State())
+	}
+	c.advance(2 * time.Second)
+	feed(m, Tick{})
+	if m.Attempt() != 2 {
+		t.Fatalf("attempts = %d, want 2: the crash was not retried", m.Attempt())
+	}
+}
+
+// A second launch starts clean: the previous copy's farewell must not bleed
+// into the next attempt and cancel it.
+func TestUserQuitFlagDoesNotOutliveTheLaunchItBelongsTo(t *testing.T) {
+	m, c := newTestMachine(Config{MaxAttempts: 4, RetryBase: time.Second, RetryMax: time.Second})
+	feed(m, Start{}, LaunchOK{}, LogEvent{Kind: "queued", Position: 50})
+
+	// Round one: a genuine player quit would end it, but here the disconnect
+	// arrives first so we are already retrying and ignore the farewell.
+	feed(m, LogEvent{Kind: "disconnected"})
+	feed(m, LogEvent{Kind: "user_quit"})
+	c.advance(2 * time.Second)
+	feed(m, Tick{}, LaunchOK{}, LogEvent{Kind: "queued", Position: 45})
+
+	// Round two: the new copy crashes. If the old farewell leaked through, this
+	// would be read as the player quitting.
+	res := m.Handle(GameExited{Code: 1})
+	if m.State() == StateDone {
+		t.Fatal("a crash in attempt two was misread as the player quitting, via a stale flag")
+	}
+	_ = res
+}

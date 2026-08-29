@@ -107,7 +107,9 @@ export function outcome(job: { state: string; reason_code: string }): {
 } {
   if (job.state === 'failed') return { label: 'Did not work', tone: 'bad' }
   if (job.state === 'done') {
-    return job.reason_code === 'cancelled'
+    // player_closed is the player closing Rust at the PC instead of tapping
+    // cancel in the app. Same intent, same label.
+    return job.reason_code === 'cancelled' || job.reason_code === 'player_closed'
       ? { label: 'Cancelled', tone: '' }
       : { label: 'Joined', tone: 'good' }
   }

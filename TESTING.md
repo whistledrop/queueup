@@ -161,6 +161,17 @@ If you could not put it in the same folder, right-click the tray icon, untick
 "Start with Windows", then tick it again. That points the remembered path at
 wherever the new copy actually is.
 
+### Closing Rust yourself
+
+If you (or anyone at the PC) close Rust while a join is running, QueueUp treats
+that as a cancel: it stops the join and tells your phone, rather than fighting
+you by relaunching the game. A crash is different: crashes are relaunched
+automatically. QueueUp tells them apart by whether the game said goodbye in its
+log on the way out.
+
+And once you are IN a server, QueueUp's job is over: it never closes Rust after
+a successful join, and quitting the QueueUp agent never closes your game either.
+
 ### Force wipe also means a game update
 
 On force wipe, Rust ships a client update with the wipe, so Steam has to
@@ -197,6 +208,7 @@ to work out what happened.
 | "Steam isn't logged in on your PC" | Open Steam on the PC once and sign in. QueueUp cannot do this for you. |
 | "Your PC is offline" and stays that way | The PC is off, asleep, or lost internet. Autostart or auto-login may not be set. |
 | "Rust closed unexpectedly", then retrying | The game crashed; QueueUp relaunches it and rejoins by itself. Only worry if it gives up. |
+| "Rust was closed on your PC, so QueueUp stopped this join" | Somebody closed Rust at the PC. QueueUp takes that as a cancel and stands down; it will not relaunch a game a person just closed. Tap Join again if it wasn't meant. |
 | "Tried several times and couldn't get in" | It ran out of retries. Check the timeline for the underlying reason and just tap Join again. |
 | Stuck on "Waiting for the server" long after the server is visibly up | The server may have changed address in a way we could not follow. Cancel, search for the server again, Join. |
 | "Steam is updating Rust" | Normal on force wipe. It waits and connects as soon as the download finishes. Nothing to do. |

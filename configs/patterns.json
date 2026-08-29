@@ -118,6 +118,14 @@
       "regex": "(?i)disconnect(ed|ing)?[:\\s]+(?P<reason>.+)$",
       "detail": "Disconnected: {reason}",
       "example": "Disconnected: server shutting down"
+    },
+    {
+      "id": "user_quit",
+      "event": "user_quit",
+      "verified": false,
+      "regex": "(?i)\\b(shutting down|onapplicationquit|application will quit|quitting application)\\b",
+      "detail": "Rust was closed on the PC.",
+      "example": "Shutting down"
     }
   ]
 }

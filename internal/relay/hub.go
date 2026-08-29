@@ -200,6 +200,15 @@ func (h *Hub) Publish(e store.Event) {
 	}
 }
 
+// Disconnect drops one PC's connection, if it has one. The agent's own
+// reconnect logic brings it back; this is for tests and for revocation, where
+// the point is precisely that the old connection must not linger.
+func (h *Hub) Disconnect(deviceID string) {
+	if a, ok := h.Agent(deviceID); ok {
+		a.cancel()
+	}
+}
+
 // DisconnectAll drops every agent connection. Tests use it to simulate the
 // relay process dying (which severs all sockets); an admin can use it to force
 // a clean reconnect wave after a config change.

@@ -177,12 +177,12 @@ func (w *WindowsLauncher) watchProcess(ch chan Exit, stop chan struct{}) {
 		// wait, and keep the phone informed.
 		update := w.freshUpdate()
 		w.setUpdate(update)
-		if update.Known && update.Updating && !update.NeedsPlayer() {
+		switch judgeLaunchWait(update, time.Now().After(deadline)) {
+		case verdictExtendGrace:
 			deadline = time.Now().Add(startupGrace)
-			continue
-		}
-
-		if time.Now().After(deadline) {
+		case verdictKeepWaiting:
+			// within patience; check again shortly
+		case verdictGiveUp, verdictGiveUpBlaming:
 			// A wedged download is worth explaining. Waiting longer will not fix
 			// a paused Steam or a full disk, and the player needs to know that.
 			ex := Exit{Code: -1}

@@ -548,3 +548,43 @@ func TestMain(m *testing.M) {
 }
 
 var _ = fmt.Sprintf
+
+// The user cancels while their PC is unreachable: a network blip, a relay
+// restart. The relay closes the job out, but the agent never heard, and it is
+// still sitting in the queue with Rust running. When it comes back and reports
+// in, the relay must tell it to stop, or the "cancelled" join runs forever.
+func TestCancelDuringAnOutageReachesTheAgentWhenItReturns(t *testing.T) {
+	h := newHarness(t)
+	deviceID, deviceToken := h.pair()
+	app, stop := h.agent(deviceToken, "long_queue_slow")
+	defer stop()
+
+	h.waitUntil("the PC to connect", 5*time.Second, func() bool {
+		return h.srv.Hub().Online(deviceID)
+	})
+	jobID := h.createJob(deviceID, "51.83.128.10:28015")
+	h.waitUntil("the job to reach the queue", 10*time.Second, func() bool {
+		return h.jobState(jobID) == "queued"
+	})
+
+	// The connection drops, but the agent process is still alive and queueing.
+	h.srv.Hub().Disconnect(deviceID)
+	h.waitUntil("the relay to see the PC as offline", 5*time.Second, func() bool {
+		return !h.srv.Hub().Online(deviceID)
+	})
+
+	// The user cancels while the PC is unreachable.
+	code, out := h.call(http.MethodPost, "/api/jobs/"+jobID+"/cancel", nil)
+	if code != http.StatusOK {
+		t.Fatalf("cancel returned %d: %v", code, out)
+	}
+	if h.jobState(jobID) != "done" {
+		t.Fatalf("job state = %s, want done after an offline cancel", h.jobState(jobID))
+	}
+
+	// The agent reconnects on its own and carries on reporting queue positions.
+	// The relay must answer with a cancel rather than ignoring it.
+	h.waitUntil("the agent to be told to stop", 15*time.Second, func() bool {
+		return app.CurrentJobID() == ""
+	})
+}

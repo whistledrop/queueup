@@ -3,6 +3,7 @@ package runner_test
 import (
 	"context"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -232,5 +233,60 @@ func TestCancelStopsTheJob(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 	if launcher.Running() {
 		t.Error("the fake game is still running after a cancel")
+	}
+}
+
+// The entire product is "your PC holds the slot". So when a join SUCCEEDS, the
+// game must be left running. Closing it after done would kick the player out of
+// the server the moment we finished congratulating them.
+func TestAWonSlotIsNotThrownAwayWhenTheJobFinishes(t *testing.T) {
+	sc, err := scenario.Load("../../testdata/scenarios/instant_join.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	parser, err := logparse.Load("../../configs/patterns.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	launcher := &game.SimLauncher{Scenario: sc, Log: filepath.Join(t.TempDir(), "Player.log"), Speed: speed}
+	m := job.New(job.Config{InServerConfirm: 300 * time.Millisecond})
+	r := &runner.Runner{
+		Machine: m, Launcher: launcher, Parser: parser, Server: serverstat.AlwaysUp{},
+		Addr: game.Addr{IP: "51.83.128.10", Port: 28015},
+		Tick: 50 * time.Millisecond, ServerPoll: 50 * time.Millisecond, LogPoll: 20 * time.Millisecond,
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	if final := r.Run(ctx); final != job.StateDone {
+		t.Fatalf("final = %s, want done", final)
+	}
+	// Give any close that should not happen a moment to happen.
+	time.Sleep(300 * time.Millisecond)
+	if !launcher.Running() {
+		t.Fatal("the game was closed after a successful join; the slot we just won is gone")
+	}
+	_ = launcher.Close() // tidy up the fake game now the assertion is made
+}
+
+// The full path for the player closing Rust themselves: the fake game writes
+// its farewell and exits without being asked, and the job must end cleanly with
+// one attempt made and the game left closed.
+func TestPlayerQuitMidQueueEndsCleanlyWithoutARelaunch(t *testing.T) {
+	final, m, trs := runScenario(t, "user_quit_mid_queue", job.Config{
+		MaxAttempts: 5, RetryBase: 200 * time.Millisecond, RetryMax: 200 * time.Millisecond,
+	})
+	if final != job.StateDone {
+		t.Fatalf("final = %s, want done. transitions: %v", final, statesOf(trs))
+	}
+	if m.Attempt() != 1 {
+		t.Fatalf("made %d attempts; the game the player closed was relaunched", m.Attempt())
+	}
+	last := trs[len(trs)-1]
+	if last.Reason == nil || last.Reason.Code != "player_closed" {
+		t.Fatalf("the ending does not say the player closed it: %+v", last)
+	}
+	if !strings.Contains(last.Detail, "closed on your PC") {
+		t.Errorf("detail %q does not explain what happened in plain words", last.Detail)
 	}
 }

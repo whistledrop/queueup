@@ -1,0 +1,11 @@
+{
+  "name": "user_quit_mid_queue",
+  "description": "The player closes Rust themselves while sitting in the queue, perhaps to play something else. QueueUp must take the hint and stop, not fight them by relaunching it.",
+  "steps": [
+    {"after_ms": 500,  "line": "Connecting to {{connect}}", "expect": "connecting"},
+    {"after_ms": 1500, "line": "You are in queue position 300", "expect": "queued", "expect_position": 300},
+    {"after_ms": 1500, "line": "You are in queue position 240", "expect": "queued", "expect_position": 240},
+    {"after_ms": 1000, "line": "Shutting down", "expect": "user_quit"},
+    {"after_ms": 300,  "exit": 0}
+  ]
+}

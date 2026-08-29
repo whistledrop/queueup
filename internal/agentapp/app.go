@@ -226,11 +226,18 @@ func (a *App) OnAssign(j protocol.Job) {
 		defer cancel()
 
 		final := r.Run(ctx)
-		_ = launcher.Close()
 
-		// A job stopped by a cancel command has already been reported as done by
-		// the state machine. A job stopped because the agent is shutting down has
-		// not, and the relay will hand it back when we return.
+		// What happens to the game now depends on HOW the job ended, and the
+		// machine has already said: a cancel or a failure emitted a close-game
+		// action, which the runner carried out. Nothing more to do here.
+		//
+		// Two endings deliberately leave Rust running:
+		//   - done, because the player just WON a slot and the game holding it
+		//     is the entire product. Closing here would throw the slot away one
+		//     line after congratulating them.
+		//   - the agent shutting down mid-job, because quitting or updating the
+		//     agent must never kill the player's game session out from under
+		//     them. The relay still has the job and resumes it on reconnect.
 		a.Log.Info("job finished", "job", j.ID, "state", final)
 
 		a.mu.Lock()

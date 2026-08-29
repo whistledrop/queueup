@@ -775,6 +775,19 @@ func (s *Server) handleAgentMessage(ac *AgentConn, device store.Device, env prot
 				"device", device.ID, "job", st.JobID)
 			return
 		}
+		if !j.Active() && st.State != "done" && st.State != "failed" {
+			// The agent thinks this job is still running, but it ended here,
+			// almost certainly a cancel that fired while the agent was
+			// unreachable. Ignoring the report would leave Rust queueing on the
+			// PC forever for a join the user already cancelled. Tell it to stop.
+			s.log.Info("agent is still working a finished job, telling it to stop",
+				"device", device.ID, "job", st.JobID)
+			_ = ac.Send(protocol.TypeCancel, protocol.Cancel{
+				JobID:  j.ID,
+				Reason: "This join was cancelled while your PC couldn't be reached.",
+			})
+			return
+		}
 		updated, changed, err := s.st.ApplyStatus(st)
 		if err != nil {
 			s.log.Error("applying status", "err", err)

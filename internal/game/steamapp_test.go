@@ -103,3 +103,49 @@ func TestHumanBytes(t *testing.T) {
 		}
 	}
 }
+
+// StateFlags values seen in real Steam installs, beyond the two basics. The
+// bitmask reads: 4 installed, 2 update required, 256 update running, 512 update
+// paused, 1024 update started.
+func TestManifestStateFlagVariants(t *testing.T) {
+	manifest := func(flags string) string {
+		return `"AppState" { "appid" "252490" "name" "Rust" "StateFlags" "` + flags + `"
+			"BytesToDownload" "1000" "BytesDownloaded" "500" }`
+	}
+	cases := []struct {
+		flags     string
+		updating  bool
+		paused    bool
+		installed bool
+	}{
+		{"4", true, false, true},    // installed, but bytes say a download is unfinished
+		{"6", true, false, true},    // installed + update required: patch pending
+		{"1030", true, false, true}, // installed + required + started: mid-update
+		{"1286", true, false, true}, // installed + required + running + started
+		{"518", true, true, true},   // installed + required + paused: needs the player
+		{"2", true, false, false},   // required, not yet installed: first install
+	}
+	for _, c := range cases {
+		st := parseAppManifest(manifest(c.flags))
+		if !st.Known {
+			t.Errorf("flags %s: manifest not recognised", c.flags)
+			continue
+		}
+		if st.Updating != c.updating || st.Paused != c.paused || st.Installed != c.installed {
+			t.Errorf("flags %s: updating=%v paused=%v installed=%v, want %v/%v/%v",
+				c.flags, st.Updating, st.Paused, st.Installed, c.updating, c.paused, c.installed)
+		}
+	}
+}
+
+// Garbage in the manifest must never panic and never claim to know anything.
+func TestManifestGarbageIsHandled(t *testing.T) {
+	for _, bad := range []string{"", "not vdf at all", `"StateFlags" "not-a-number"`} {
+		st := parseAppManifest(bad)
+		if bad == "" || bad == "not vdf at all" {
+			if st.Known {
+				t.Errorf("%q: claimed to understand garbage", bad)
+			}
+		}
+	}
+}

@@ -186,11 +186,19 @@ type Machine struct {
 	serverUp      bool
 	serverKnown   bool
 	steamProblems int
-	connectAt     time.Time // when we are allowed to launch (jitter / backoff)
-	haveTimer     bool
-	inServerAt    time.Time
-	launchTimes   []time.Time // for the per-minute connect cap
-	lastDetail    string
+
+	// sawUserQuit records that the game announced a graceful shutdown that WE
+	// did not ask for: the player closed Rust themselves. closeRequested is what
+	// tells those apart. When the machine orders the game closed (a retry, a
+	// failure, a cancel), the same farewell lines appear in the log, and without
+	// this flag every retry would read as the player quitting.
+	sawUserQuit    bool
+	closeRequested bool
+	connectAt      time.Time // when we are allowed to launch (jitter / backoff)
+	haveTimer      bool
+	inServerAt     time.Time
+	launchTimes    []time.Time // for the per-minute connect cap
+	lastDetail     string
 }
 
 // Option customises a Machine, mostly for tests.
@@ -288,6 +296,7 @@ func (m *Machine) Handle(in Input) Result {
 			reason.Message = c.Reason
 		}
 		if m.state == StateConnecting || m.state == StateQueued || m.state == StateInServer || m.state == StateLaunching {
+			m.closeRequested = true
 			res.Actions = append(res.Actions, ActionCloseGame)
 		}
 		// The reason is carried even though this is not a failure, so that the
@@ -299,11 +308,17 @@ func (m *Machine) Handle(in Input) Result {
 
 	// Server up/down is tracked in every state; it only causes a transition
 	// while we are waiting for a wipe restart.
-	switch in.(type) {
+	switch v := in.(type) {
 	case ServerUp:
 		m.serverUp, m.serverKnown = true, true
 	case ServerDown:
 		m.serverUp, m.serverKnown = false, true
+	case LogEvent:
+		// The player closing the game is worth remembering whatever state we
+		// are in, but only when the shutdown was not one we ordered.
+		if v.Kind == "user_quit" && !m.closeRequested {
+			m.sawUserQuit = true
+		}
 	}
 
 	switch m.state {
@@ -381,6 +396,12 @@ func (m *Machine) handleConnectingOrQueued(in Input, res *Result) {
 	case LogEvent:
 		m.handleLogEvent(v, res)
 	case GameExited:
+		if m.sawUserQuit {
+			// The player closed Rust themselves. That is their answer, and
+			// relaunching the game in their face is not taking it. Stop cleanly.
+			m.playerClosed(res)
+			return
+		}
 		// The client died while we were connecting or queuing. Relaunch.
 		m.retryOrFail(exitReason(v), res)
 	}
@@ -403,6 +424,10 @@ func (m *Machine) handleInServer(in Input, res *Result) {
 			m.retryOrFail(Reason{"dropped", "You were dropped from the server."}, res)
 		}
 	case GameExited:
+		if m.sawUserQuit {
+			m.playerClosed(res)
+			return
+		}
 		m.retryOrFail(exitReason(v), res)
 	case Tick:
 		// Only call it a win once we have held the slot for a bit.
@@ -483,6 +508,9 @@ func (m *Machine) handleLogEvent(v LogEvent, res *Result) {
 
 // beginLaunch records an attempt and asks the runner to launch the game.
 func (m *Machine) beginLaunch(res *Result) {
+	// A fresh launch is a fresh game: whatever the previous copy said on its
+	// way out no longer applies.
+	m.sawUserQuit, m.closeRequested = false, false
 	m.attempt++
 	m.launchTimes = append(m.launchTimes, m.now())
 	m.position = 0
@@ -499,15 +527,26 @@ func (m *Machine) retryOrFail(r Reason, res *Result) {
 	}
 	back := m.backoff()
 	m.connectAt = m.now().Add(back)
+	m.closeRequested = true
 	res.Transitions = append(res.Transitions,
 		m.moveTo(StateRetrying, fmt.Sprintf("%s Trying again in %s.", r.Message, back.Round(time.Second)), nil))
 	res.Actions = append(res.Actions, ActionCloseGame)
 }
 
 func (m *Machine) fail(r Reason, res *Result) {
+	m.closeRequested = true
 	m.failure = &r
 	res.Transitions = append(res.Transitions, m.moveTo(StateFailed, r.Message, &r))
 	res.Actions = append(res.Actions, ActionCloseGame)
+}
+
+// playerClosed ends the job because the player shut the game themselves,
+// perhaps to play something else. It reads as a cancellation on the phone, not
+// a failure: nothing went wrong, the person changed their mind at the keyboard
+// instead of in the app.
+func (m *Machine) playerClosed(res *Result) {
+	r := Reason{Code: "player_closed", Message: "Rust was closed on your PC, so QueueUp stopped this join."}
+	res.Transitions = append(res.Transitions, m.moveTo(StateDone, r.Message, &r))
 }
 
 // backoff doubles from RetryBase, capped at RetryMax.

@@ -49,7 +49,8 @@ type Client struct {
 	// a PC is never sitting idle for minutes on wipe day.
 	MaxBackoff time.Duration
 
-	out chan []byte
+	out     chan []byte
+	capture func(t protocol.Type, payload any)
 }
 
 // SocketURL turns the relay's base address into the agent WebSocket address.
@@ -95,11 +96,23 @@ func Backoff(attempt int, max time.Duration) time.Duration {
 	return d + time.Duration(n.Int64())
 }
 
+// CaptureForTests routes every Send into fn instead of the socket, so the
+// agent's behaviour can be asserted on without a relay. Test-only by
+// convention; it has no effect once Run is under way with a real relay because
+// nothing in production sets it.
+func (c *Client) CaptureForTests(fn func(t protocol.Type, payload any)) {
+	c.capture = fn
+}
+
 // Send queues a message for the relay. If we are not connected, the message is
 // dropped rather than queued forever: the relay hands the job straight back on
 // reconnection, and the agent reports its current state again, so nothing that
 // matters is lost.
 func (c *Client) Send(t protocol.Type, payload any) {
+	if c.capture != nil {
+		c.capture(t, payload)
+		return
+	}
 	raw, err := protocol.Encode(t, payload)
 	if err != nil {
 		c.Log.Error("encoding message", "type", t, "err", err)

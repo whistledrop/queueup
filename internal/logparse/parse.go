@@ -25,12 +25,16 @@ const (
 	EventRejected     EventKind = "rejected"
 	EventServerFull   EventKind = "server_full"
 	EventSteamProblem EventKind = "steam_problem"
+	// EventUserQuit is the game announcing a graceful shutdown. A crash does not
+	// write these lines, which is exactly what lets the agent tell "the player
+	// closed Rust on purpose" apart from "Rust died and needs relaunching".
+	EventUserQuit EventKind = "user_quit"
 )
 
 var validKinds = map[EventKind]bool{
 	EventConnecting: true, EventQueued: true, EventJoined: true,
 	EventDisconnected: true, EventRejected: true, EventServerFull: true,
-	EventSteamProblem: true,
+	EventSteamProblem: true, EventUserQuit: true,
 }
 
 // Event is one parsed log line.
