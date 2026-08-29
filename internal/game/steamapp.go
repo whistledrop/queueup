@@ -38,6 +38,10 @@ type UpdateState struct {
 	Paused          bool
 	BytesDownloaded int64
 	BytesToDownload int64
+	// InstallDir is the folder name the game lives in under
+	// steamapps\common, from the manifest's installdir field. It is how the
+	// log file is found, since Rust writes its log next to its own exe.
+	InstallDir string
 	// StalledFor is how long the byte count has sat still. Steam does not
 	// always mark a wedged download as paused (a full disk, or a Steam that
 	// lost its connection, often just stop), so the only honest signal is that
@@ -152,6 +156,7 @@ func parseAppManifest(content string) UpdateState {
 
 	st := UpdateState{
 		Known:           true,
+		InstallDir:      fields["installdir"],
 		Installed:       flags&stateFullyInstalled != 0,
 		BytesDownloaded: num("bytesdownloaded"),
 		BytesToDownload: num("bytestodownload"),

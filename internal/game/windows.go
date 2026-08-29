@@ -51,13 +51,15 @@ type WindowsLauncher struct {
 	updateChecked time.Time
 }
 
-// DefaultLogPath is where the Rust client writes its log on this machine.
+// DefaultLogPath is where the Rust client writes its log on this machine:
+// the game's own install folder first (that is where -logfile points), the
+// legacy AppData location as a fallback.
 func DefaultLogPath() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return ""
+		home = ""
 	}
-	return FindRustLog(home)
+	return FindRustLog(home, RustInstallDirs())
 }
 
 func (w *WindowsLauncher) LogPath() string {

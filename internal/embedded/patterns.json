@@ -32,6 +32,14 @@
       "example": "Auth ticket request failed"
     },
     {
+      "id": "connecting_real",
+      "event": "connecting",
+      "verified": true,
+      "regex": "\\bConnecting: (?P<address>[0-9A-Za-z.:_-]+)",
+      "detail": "Connecting to {address}",
+      "example": "2026-08-29T16:01:40.361Z|0x7acc|Connecting: 168.100.161.129:28189 (Raknet)"
+    },
+    {
       "id": "connecting",
       "event": "connecting",
       "verified": false,
@@ -88,6 +96,14 @@
       "example": "Kicked: incorrect password"
     },
     {
+      "id": "joined_spawning_world",
+      "event": "joined",
+      "verified": true,
+      "regex": "\\bSpawning World$",
+      "detail": "You're in the server.",
+      "example": "2026-08-29T16:02:26.742Z|0x7acc|[23.8s] Spawning World"
+    },
+    {
       "id": "joined_spawned",
       "event": "joined",
       "verified": false,
@@ -120,10 +136,26 @@
       "example": "Disconnected: server shutting down"
     },
     {
-      "id": "user_quit",
+      "id": "user_quit_application",
+      "event": "user_quit",
+      "verified": true,
+      "regex": "Client:OnApplicationQuit\\(\\)",
+      "detail": "Rust was closed on the PC.",
+      "example": "Client:OnApplicationQuit()"
+    },
+    {
+      "id": "user_quit_steam_shutdown",
+      "event": "user_quit",
+      "verified": true,
+      "regex": "(?i)\\|Steam Client Shutdown$",
+      "detail": "Rust was closed on the PC.",
+      "example": "2026-08-29T16:03:45.182Z|0x7acc|Steam Client Shutdown"
+    },
+    {
+      "id": "user_quit_generic",
       "event": "user_quit",
       "verified": false,
-      "regex": "(?i)\\b(shutting down|onapplicationquit|application will quit|quitting application)\\b",
+      "regex": "(?i)(^|[| ])Shutting down$",
       "detail": "Rust was closed on the PC.",
       "example": "Shutting down"
     }

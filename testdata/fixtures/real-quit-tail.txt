@@ -1,0 +1,29 @@
+2026-08-29T16:02:30.163Z|0x7acc|[2.0s] Cleaning Up
+UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+UnityEngine.DebugLogHandler:LogFormat(LogType, Object, String, Object[])
+UnityEngine.Logger:Log(LogType, Object)
+UnityEngine.Debug:Log(Object)
+%7eeb49cc31046e9e2302fbf01dbd283ce004f493:%00ea4d9d150d0f9b391395d958d895c976a20111()
+<InitCoroutine>d__20:MoveNext()
+UnityEngine.SetupCoroutine:InvokeMoveNext(IEnumerator, IntPtr)
+
+2026-08-29T16:02:30.171Z|0x5da0|Unloading 5 Unused Serialized files (Serialized files now loaded: 136)
+2026-08-29T16:02:31.764Z|0x7acc|Unloading 361613 unused Assets to reduce memory usage. Loaded Objects now: 3402813.
+2026-08-29T16:02:32.028Z|0x7acc|Destroyed 1157 map networkables
+UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+<DoClientConnected>d__55:MoveNext()
+UnityEngine.SetupCoroutine:InvokeMoveNext(IEnumerator, IntPtr)
+
+2026-08-29T16:02:36.341Z|0x7acc|[4.3s] prefab_warmup
+2026-08-29T16:02:36.403Z|0x7acc|Threaded texture creation has been enabled!
+TextureStreaming:%72cc05f2e0f46682ad63ae711c382bc8658efb2e(Boolean)
+2026-08-29T16:03:44.824Z|0x7acc|Threaded texture creation has been disabled!
+Client:%a7b787aef7a3cedf683de0dde575ea3275321612(String)
+%3654913d51eae7ac016515f089d801ddf1601221:%b5ef26b5846d74517a7d03b8b04536655b79f627(String, Boolean)
+Client:%b5ef26b5846d74517a7d03b8b04536655b79f627()
+Client:OnApplicationQuit()
+
+2026-08-29T16:03:45.182Z|0x7acc|Steam Client Shutdown
+UnityEngine.DebugLogHandler:Internal_Log(LogType, LogOption, String, Object)
+%439b0092285d82d959bc7f8df6528ecfb5f54cb8:%04dfdad0efce5b1356c1007e5208492fb31a0b70()
+Client:%0587dfc8652ec3ad36e25b0f18d8dc476e7ae41f()

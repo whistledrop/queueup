@@ -1,0 +1,12 @@
+2026-08-29T16:01:29.794Z|0x7acc|[Bootstrap] Initializing Steam
+2026-08-29T16:01:30.224Z|0x7acc|SteamID: 76561198817557588 (Log)
+2026-08-29T16:01:30.518Z|0x7acc|Command Line: "C:\Program Files (x86)\Steam\steamapps\common\Rust\RustClient.exe" "-logfile" "output_log.txt" "-timestamps" "-disable-gpu-skinning"
+2026-08-29T16:01:31.442Z|0x7acc|Failed to parse favorite server endpoint: trio.tiderust.com:28055
+2026-08-29T16:01:39.015Z|0x7acc|[EAC] Logging in with Steam ticket...
+2026-08-29T16:01:39.030Z|0x7acc|[ServerListManager] Received stale server list, ignoring
+2026-08-29T16:01:40.361Z|0x7acc|Connecting: 168.100.161.129:28189 (Raknet)
+2026-08-29T16:02:02.783Z|0x7acc|[0.3s] Loading World
+2026-08-29T16:02:26.742Z|0x7acc|[23.8s] Spawning World
+2026-08-29T16:02:32.028Z|0x7acc|Destroyed 1157 map networkables
+2026-08-29T16:02:36.341Z|0x7acc|[4.3s] prefab_warmup
+2026-08-29T16:03:45.182Z|0x7acc|Steam Client Shutdown

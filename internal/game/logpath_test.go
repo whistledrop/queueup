@@ -4,70 +4,78 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
-// The company folder is "Facepunch Studios LTD", the studio's legal name, not
-// "Facepunch". That was assumed wrong for the whole build and only a real PC
-// caught it, which is why this is now discovered rather than hard coded.
-func TestFindRustLogUsesTheFolderThatActuallyExists(t *testing.T) {
-	home := t.TempDir()
-	real := filepath.Join(home, "AppData", "LocalLow", "Facepunch Studios LTD", "Rust")
-	if err := os.MkdirAll(real, 0o755); err != nil {
+func writeFile(t *testing.T, path string, mod time.Time) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}
-
-	got := FindRustLog(home)
-	want := filepath.Join(real, "Player.log")
-	if got != want {
-		t.Fatalf("FindRustLog = %q, want %q", got, want)
-	}
-}
-
-// If a future Rust ships under a different Facepunch folder, that must be found
-// too, without another emergency fix on a wipe day.
-func TestFindRustLogAcceptsAnyFacepunchFolder(t *testing.T) {
-	for _, company := range []string{"Facepunch", "Facepunch Studios", "facepunch studios ltd"} {
-		home := t.TempDir()
-		dir := filepath.Join(home, "AppData", "LocalLow", company, "Rust")
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if got, want := FindRustLog(home), filepath.Join(dir, "Player.log"); got != want {
-			t.Errorf("with company %q: FindRustLog = %q, want %q", company, got, want)
-		}
-	}
-}
-
-// A folder called Facepunch-something with no Rust inside must not win over
-// the one that has it.
-func TestFindRustLogIgnoresAFacepunchFolderWithoutRust(t *testing.T) {
-	home := t.TempDir()
-	low := filepath.Join(home, "AppData", "LocalLow")
-	if err := os.MkdirAll(filepath.Join(low, "Facepunch Other Game", "Sandbox"), 0o755); err != nil {
+	if err := os.WriteFile(path, []byte("log"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	real := filepath.Join(low, "Facepunch Studios LTD", "Rust")
-	if err := os.MkdirAll(real, 0o755); err != nil {
+	if err := os.Chtimes(path, mod, mod); err != nil {
 		t.Fatal(err)
 	}
-	if got, want := FindRustLog(home), filepath.Join(real, "Player.log"); got != want {
-		t.Fatalf("FindRustLog = %q, want %q", got, want)
-	}
 }
 
-// Before Rust has ever run there is nothing to find. That is normal, and the
-// answer must still be a sensible path for the tailer to watch, never empty.
-func TestFindRustLogBeforeRustHasEverRun(t *testing.T) {
+// The case that burned a real afternoon: the AppData folder exists (the game
+// keeps its menu settings there) but the log itself lives in the install
+// folder, because Rust launches with -logfile output_log.txt.
+func TestInstallFolderLogWinsOverAnEmptyAppDataFolder(t *testing.T) {
 	home := t.TempDir()
-	got := FindRustLog(home)
-	want := filepath.Join(home, "AppData", "LocalLow", "Facepunch Studios LTD", "Rust", "Player.log")
-	if got != want {
-		t.Fatalf("FindRustLog on a fresh PC = %q, want %q", got, want)
+	install := t.TempDir()
+
+	// AppData has the folder structure but NO log, exactly like the real PC.
+	if err := os.MkdirAll(filepath.Join(home, "AppData", "LocalLow", "Facepunch Studios LTD", "Rust"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(install, "output_log.txt"), time.Now())
+
+	got := FindRustLog(home, []string{install})
+	if got != filepath.Join(install, "output_log.txt") {
+		t.Fatalf("FindRustLog = %q, want the install folder's output_log.txt", got)
 	}
 }
 
-func TestFindRustLogWithNoHome(t *testing.T) {
-	if got := FindRustLog(""); got != "" {
-		t.Fatalf("FindRustLog(\"\") = %q, want empty", got)
+func TestLegacyPlayerLogStillFoundWhenItIsTheOnlyLog(t *testing.T) {
+	home := t.TempDir()
+	legacy := filepath.Join(home, "AppData", "LocalLow", "Facepunch Studios LTD", "Rust", "Player.log")
+	writeFile(t, legacy, time.Now())
+
+	if got := FindRustLog(home, nil); got != legacy {
+		t.Fatalf("FindRustLog = %q, want the legacy Player.log", got)
+	}
+}
+
+// Both exist (an old install upgraded in place): the one the game is actually
+// writing, the fresher one, wins.
+func TestTheFresherLogWinsWhenBothExist(t *testing.T) {
+	home := t.TempDir()
+	install := t.TempDir()
+	stale := filepath.Join(home, "AppData", "LocalLow", "Facepunch Studios LTD", "Rust", "Player.log")
+	fresh := filepath.Join(install, "output_log.txt")
+	writeFile(t, stale, time.Now().Add(-30*24*time.Hour))
+	writeFile(t, fresh, time.Now())
+
+	if got := FindRustLog(home, []string{install}); got != fresh {
+		t.Fatalf("FindRustLog = %q, want the fresh install log", got)
+	}
+
+	// And the other way round, in case someone's install is genuinely legacy.
+	writeFile(t, stale, time.Now().Add(time.Hour))
+	if got := FindRustLog(home, []string{install}); got != stale {
+		t.Fatalf("FindRustLog = %q, want the fresher legacy log", got)
+	}
+}
+
+// A machine where Rust has never run: watch where the game WILL write, which is
+// the install folder when Steam told us where that is.
+func TestAFreshInstallWatchesTheInstallFolder(t *testing.T) {
+	home := t.TempDir()
+	install := t.TempDir()
+	if got := FindRustLog(home, []string{install}); got != filepath.Join(install, "output_log.txt") {
+		t.Fatalf("FindRustLog = %q, want the future output_log.txt", got)
 	}
 }

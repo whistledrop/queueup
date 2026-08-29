@@ -25,6 +25,27 @@ func RustUpdateState() UpdateState {
 	return UpdateState{}
 }
 
+// RustInstallDirs lists every folder Rust could be installed in on this
+// machine, found from Steam's own records. Usually exactly one entry. This is
+// where the game's log lives, because Rust launches itself with
+// -logfile output_log.txt relative to its install folder.
+func RustInstallDirs() []string {
+	var out []string
+	for _, dir := range steamLibraries() {
+		manifest := filepath.Join(dir, "steamapps", "appmanifest_"+RustAppID+".acf")
+		st, err := readAppManifest(manifest)
+		if err != nil || !st.Known {
+			continue
+		}
+		name := st.InstallDir
+		if name == "" {
+			name = "Rust"
+		}
+		out = append(out, filepath.Join(dir, "steamapps", "common", name))
+	}
+	return out
+}
+
 // steamPath finds Steam itself, from the registry, falling back to the usual
 // install locations.
 func steamPath() string {
