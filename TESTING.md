@@ -128,6 +128,39 @@ The night before:
    same instant regardless of where it is.
 4. Leave the PC on, signed in, Steam running, Rust closed.
 
+### Updating QueueUp on the PC
+
+Do this on the gaming PC itself, in the browser there. You never need to copy a
+file from your Mac.
+
+**Your pairing is not in the program.** It lives in a separate settings file, so
+replacing the program keeps the PC linked to your account. You will not have to
+pair it again.
+
+1. **Find where the current one lives.** Press Ctrl+Shift+Esc for Task Manager,
+   find QueueUpAgent, right-click it and choose "Open file location". A folder
+   opens. Leave that folder open.
+2. **Quit the old one.** Look by the clock, bottom right. If you do not see the
+   QueueUp icon, click the small "^" arrow: Windows hides new icons there.
+   Right-click the icon and choose Quit. Windows will not let you replace the
+   file while it is running.
+3. **Download the new one.** Open https://queueuprust.netlify.app/download
+   Windows or your browser will warn you about running a downloaded program.
+   That is normal for any program that is not signed, which costs money we have
+   not spent yet. Choose "Keep", then on the blue "Windows protected your PC"
+   box choose "More info" and then "Run anyway".
+4. **Put it in the same folder as the old one**, the one from step 1, and choose
+   "Replace the file in the destination".
+
+   This matters. Windows starts QueueUp from a remembered path, so if the new
+   copy sits somewhere else, the old one keeps starting instead.
+5. **Double-click it.** The icon comes back and, within a few seconds, the dot
+   on the website turns green.
+
+If you could not put it in the same folder, right-click the tray icon, untick
+"Start with Windows", then tick it again. That points the remembered path at
+wherever the new copy actually is.
+
 ### Force wipe also means a game update
 
 On force wipe, Rust ships a client update with the wipe, so Steam has to
