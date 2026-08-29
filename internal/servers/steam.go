@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -134,7 +135,11 @@ func (s *Steam) query(ctx context.Context, filter string, limit int) ([]Server, 
 	}
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't reach Steam's server list: %w", err)
+		// Never the raw error: Go puts the whole request URL in it, and the URL
+		// carries the Steam API key. That would write the key into the relay's
+		// logs, where it outlives the request and is read by anyone who can see
+		// the logs.
+		return nil, fmt.Errorf("couldn't reach Steam's server list: %s", scrubKey(err.Error()))
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusForbidden {
@@ -153,4 +158,12 @@ func (s *Steam) query(ctx context.Context, filter string, limit int) ([]Server, 
 		list = append(list, sv.toServer())
 	}
 	return list, nil
+}
+
+// keyInURL matches the API key wherever it appears in a URL or an error string.
+var keyInURL = regexp.MustCompile(`([?&]key=)[^&"\s]+`)
+
+// scrubKey removes the Steam API key from text on its way to a log.
+func scrubKey(s string) string {
+	return keyInURL.ReplaceAllString(s, "${1}REDACTED")
 }
