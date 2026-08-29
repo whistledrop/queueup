@@ -88,7 +88,7 @@ export default function LiveStatus({ jobId }: { jobId: string }) {
         {position > 0 && (
           <>
             <p className="position">{position}</p>
-            <p className="muted" style={{ margin: 0 }}>in the queue</p>
+            <p className="muted" style={{ margin: 0 }}>your place in the queue, about</p>
           </>
         )}
 

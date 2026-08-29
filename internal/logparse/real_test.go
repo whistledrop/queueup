@@ -19,6 +19,7 @@ func TestRealSessionLinesParseCorrectly(t *testing.T) {
 		address string
 	}{
 		"Connecting: 168.100.161.129:28189 (Raknet)": {kind: EventConnecting, address: "168.100.161.129:28189"},
+		"[0.3s] Loading World":                       {kind: EventLoading},
 		"[23.8s] Spawning World":                     {kind: EventJoined},
 		"Steam Client Shutdown":                      {kind: EventUserQuit},
 	}
@@ -55,6 +56,7 @@ func TestRealSessionNoiseMatchesNothing(t *testing.T) {
 	meaningful := func(line string) bool {
 		for _, frag := range []string{
 			"Connecting: ", "Spawning World", "Steam Client Shutdown", "Client:OnApplicationQuit()",
+			"Loading World", "Loading custom map",
 		} {
 			if strings.Contains(line, frag) {
 				return true

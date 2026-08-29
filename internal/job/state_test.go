@@ -525,3 +525,56 @@ func TestServerQueueOnlyCountsWhileConnecting(t *testing.T) {
 		t.Fatalf("state = %s; a queue behind us moved the machine", m2.State())
 	}
 }
+
+// The number shown is an estimate of the player's place: the lowest queue
+// length seen since they joined it. People joining behind them grow the line
+// but must never push their number back up.
+func TestQueueEstimateOnlyMovesTowardTheFront(t *testing.T) {
+	m, _ := newTestMachine(Config{})
+	feed(m, Start{}, LaunchOK{}, ServerUp{Queue: 8})
+	if m.Position() != 8 {
+		t.Fatalf("position = %d, want 8", m.Position())
+	}
+	// Five more people arrive behind: total 13. The player has not moved back.
+	if res := m.Handle(ServerUp{Queue: 13}); len(res.Transitions) != 0 || m.Position() != 8 {
+		t.Fatalf("a growing line pushed the player's number up: position %d, %d transitions",
+			m.Position(), len(res.Transitions))
+	}
+	// The front admits three: total 5, and that IS progress.
+	feed(m, ServerUp{Queue: 5})
+	if m.Position() != 5 {
+		t.Fatalf("position = %d, want 5", m.Position())
+	}
+}
+
+// The real end of a queue, as the real log shows it: 'Loading World' arrives,
+// the queue display retires, and the counts of the people still waiting behind
+// must not drag the display back into 'queued'.
+func TestLoadingEndsTheQueueDisplayForGood(t *testing.T) {
+	m, _ := newTestMachine(Config{})
+	feed(m, Start{}, LaunchOK{}, ServerUp{Queue: 8})
+	if m.State() != StateQueued {
+		t.Fatalf("setup: state = %s", m.State())
+	}
+
+	trs := m.Handle(LogEvent{Kind: "loading", Detail: "Through the queue. Loading into the server."}).Transitions
+	if m.State() != StateConnecting {
+		t.Fatalf("state = %s, want connecting once loading starts", m.State())
+	}
+	if len(trs) == 0 || !strings.Contains(trs[0].Detail, "Through the queue") {
+		t.Fatalf("the phone was not told the queue is over: %+v", trs)
+	}
+
+	// Other people are still queued. That is their problem, not this display's.
+	feed(m, ServerUp{Queue: 42})
+	if m.State() != StateQueued && m.State() == StateConnecting {
+		// still connecting: correct
+	} else {
+		t.Fatalf("state = %s; someone else's queue dragged the display back", m.State())
+	}
+
+	feed(m, LogEvent{Kind: "joined", Detail: "You're in the server."})
+	if m.State() != StateInServer {
+		t.Fatalf("state = %s, want in_server", m.State())
+	}
+}

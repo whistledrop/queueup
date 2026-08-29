@@ -163,10 +163,13 @@ wherever the new copy actually is.
 
 ### What the queue number means
 
-The number on the queue screen is how many people are in the line, straight
-from the server itself, refreshed every couple of seconds. It is not your
-personal position: Rust does not tell anyone that outside the game. Watch it
-count down; when it reaches the front, you're in.
+The number on the queue screen is an estimate of your place in the line,
+worked out from the server's own queue length, refreshed every couple of
+seconds. Rust tells nobody their exact position outside the game, so QueueUp
+tracks the lowest the line has been since you joined it: your place can never
+be worse than that, and people joining behind you never push your number up.
+When the queue is passed, the screen switches to "loading into the server",
+then "You're in".
 
 ### Closing Rust yourself
 

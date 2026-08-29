@@ -187,6 +187,11 @@ type Machine struct {
 	serverKnown   bool
 	steamProblems int
 
+	// loadingSeen records that the game has moved past the queue into loading
+	// the world. From then on the server's queue count describes other people,
+	// and must not drag the display back into "queued".
+	loadingSeen bool
+
 	// logQueuePosition records that the game's own log reported a queue
 	// position this launch. When it does, that number is the player's actual
 	// place in line and outranks the server's coarser "how many are queued"
@@ -498,6 +503,17 @@ func (m *Machine) handleLogEvent(v LogEvent, res *Result) {
 		m.inServerAt = m.now()
 		m.position = 0
 		res.Transitions = append(res.Transitions, m.moveTo(StateInServer, v.Detail, nil))
+	case "loading":
+		// Past the queue, into the world. This is what retires the queue
+		// display: from here the server's count is other people's queue.
+		if m.loadingSeen {
+			return
+		}
+		m.loadingSeen = true
+		if m.state == StateQueued || m.state == StateConnecting {
+			m.position = 0
+			res.Transitions = append(res.Transitions, m.moveTo(StateConnecting, v.Detail, nil))
+		}
 	case "server_full":
 		m.retryOrFail(ReasonServerFull, res)
 	case "rejected":
@@ -520,7 +536,7 @@ func (m *Machine) beginLaunch(res *Result) {
 	// A fresh launch is a fresh game: whatever the previous copy said on its
 	// way out no longer applies.
 	m.sawUserQuit, m.closeRequested = false, false
-	m.logQueuePosition = false
+	m.logQueuePosition, m.loadingSeen = false, false
 	m.attempt++
 	m.launchTimes = append(m.launchTimes, m.now())
 	m.position = 0
@@ -557,7 +573,7 @@ func (m *Machine) fail(r Reason, res *Result) {
 // the wording is careful to say so. A position from the game's own log, if one
 // ever appears, outranks it.
 func (m *Machine) handleServerQueue(v ServerUp, res *Result) {
-	if m.logQueuePosition {
+	if m.logQueuePosition || m.loadingSeen {
 		return
 	}
 	q := v.Queue
@@ -567,8 +583,12 @@ func (m *Machine) handleServerQueue(v ServerUp, res *Result) {
 			return // no line; the connect is just taking its time
 		}
 	case StateQueued:
-		if q == m.position {
-			return // no change worth reporting
+		// The estimate only ever moves toward the front. Your place cannot be
+		// worse than the whole line, and people joining BEHIND you grow the
+		// line without moving you, so a bigger count than before means nothing
+		// about you and must not push your number back up.
+		if q >= m.position {
+			return
 		}
 	default:
 		return
@@ -577,15 +597,17 @@ func (m *Machine) handleServerQueue(v ServerUp, res *Result) {
 	res.Transitions = append(res.Transitions, m.moveTo(StateQueued, queueDetail(q), nil))
 }
 
-// queueDetail says how the line looks, in words for the phone.
+// queueDetail says where the player is, in words for the phone. The number is
+// an estimate from the server's queue length, and the wording says so: Rust
+// tells nobody their exact place outside the game.
 func queueDetail(q int) string {
 	switch {
 	case q <= 0:
 		return "At the front of the queue."
 	case q == 1:
-		return "In the queue, 1 person in line."
+		return "Almost in: next in the queue."
 	default:
-		return fmt.Sprintf("In the queue, %d people in line.", q)
+		return fmt.Sprintf("In the queue, about position %d.", q)
 	}
 }
 

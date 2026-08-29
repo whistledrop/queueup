@@ -97,6 +97,22 @@
       "example": "Kicked: incorrect password"
     },
     {
+      "id": "loading_world",
+      "event": "loading",
+      "verified": true,
+      "regex": "\\bLoading World$",
+      "detail": "Through the queue. Loading into the server.",
+      "example": "2026-08-29T16:02:02.783Z|0x7acc|[0.3s] Loading World"
+    },
+    {
+      "id": "loading_map_download",
+      "event": "loading",
+      "verified": true,
+      "regex": "\\bLoading custom map from ",
+      "detail": "Through the queue. Downloading the map.",
+      "example": "2026-08-29T16:02:02.453Z|0x7acc|Loading custom map from https://example.com/map.map"
+    },
+    {
       "id": "joined_spawning_world",
       "event": "joined",
       "verified": true,
