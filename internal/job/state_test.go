@@ -453,3 +453,75 @@ func TestUserQuitFlagDoesNotOutliveTheLaunchItBelongsTo(t *testing.T) {
 	}
 	_ = res
 }
+
+// Rust does not log queue positions (verified against a real full-server
+// session, 2026-08-29: five minutes queued, nothing in the log between
+// Connecting and Spawning World). So while the client sits connecting, the
+// queue on the phone comes from the SERVER's own answer: how many are in line.
+func TestServerReportedQueueDrivesTheQueueDisplay(t *testing.T) {
+	m, _ := newTestMachine(Config{})
+	feed(m, Start{}, LaunchOK{})
+	if m.State() != StateConnecting {
+		t.Fatalf("setup: state = %s", m.State())
+	}
+
+	// The server says 8 people are in line while we are connecting: we are one
+	// of them.
+	states := feed(m, ServerUp{Players: 200, MaxPlayers: 200, Queue: 8})
+	if m.State() != StateQueued || m.Position() != 8 {
+		t.Fatalf("state = %s position = %d, want queued/8 (%v)", m.State(), m.Position(), states)
+	}
+
+	// The line shrinks; the phone follows.
+	feed(m, ServerUp{Queue: 5})
+	if m.Position() != 5 {
+		t.Fatalf("position = %d, want 5", m.Position())
+	}
+
+	// The same number again must not produce another update.
+	if res := m.Handle(ServerUp{Queue: 5}); len(res.Transitions) != 0 {
+		t.Fatalf("a repeated queue count produced %d updates", len(res.Transitions))
+	}
+
+	// Front of the line.
+	trs := m.Handle(ServerUp{Queue: 0}).Transitions
+	if len(trs) == 0 || !strings.Contains(trs[0].Detail, "front") {
+		t.Fatalf("reaching the front was not reported: %+v", trs)
+	}
+
+	// And then the real join, from the log.
+	feed(m, LogEvent{Kind: "joined", Detail: "You're in the server."})
+	if m.State() != StateInServer {
+		t.Fatalf("state = %s, want in_server", m.State())
+	}
+}
+
+// If the game's log DOES report a position (an older build, a changed patch),
+// that number is the player's own place and beats the server's count. The
+// coarser server number must not overwrite it.
+func TestALogReportedPositionOutranksTheServerCount(t *testing.T) {
+	m, _ := newTestMachine(Config{})
+	feed(m, Start{}, LaunchOK{}, LogEvent{Kind: "queued", Position: 3, Detail: "In queue, position 3"})
+	feed(m, ServerUp{Queue: 40})
+	if m.Position() != 3 {
+		t.Fatalf("position = %d; the server's queue length overwrote the player's own position", m.Position())
+	}
+}
+
+// A queue reported while we are only WAITING for the server, or after we are
+// in, is other people's queue, not ours.
+func TestServerQueueOnlyCountsWhileConnecting(t *testing.T) {
+	m, _ := newTestMachine(Config{WaitForServerUp: true})
+	feed(m, Start{})
+	feed(m, ServerUp{Queue: 50})
+	if m.State() != StateWaitingForServerUp {
+		t.Fatalf("state = %s; a queue we are not in moved the machine", m.State())
+	}
+
+	m2, _ := newTestMachine(Config{})
+	feed(m2, Start{}, LaunchOK{}, LogEvent{Kind: "joined"})
+	feed(m2, ServerUp{Queue: 12})
+	if m2.State() != StateInServer {
+		t.Fatalf("state = %s; a queue behind us moved the machine", m2.State())
+	}
+}

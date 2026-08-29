@@ -29,7 +29,9 @@ func (s *Server) notifyStatusChange(prev store.Job, st protocol.JobStatus) {
 	case st.State == "queued" && prev.State != "queued":
 		body := fmt.Sprintf("Your PC is in the queue for %s.", name)
 		if st.Position > 0 {
-			body = fmt.Sprintf("Your PC is in the queue for %s, position %d.", name, st.Position)
+			// The number is the length of the line, from the server itself:
+			// Rust does not log personal positions.
+			body = fmt.Sprintf("Your PC is in the queue for %s, %d in line.", name, st.Position)
 		}
 		s.notifier.Send(prev.AccountID, notify.Message{
 			Title: "In the queue", Body: body, Tag: tag, URL: url,
@@ -39,8 +41,8 @@ func (s *Server) notifyStatusChange(prev store.Job, st protocol.JobStatus) {
 		for _, m := range positionMilestones {
 			if (prev.Position == 0 || prev.Position > m) && st.Position <= m {
 				s.notifier.Send(prev.AccountID, notify.Message{
-					Title: fmt.Sprintf("Position %d", st.Position),
-					Body:  fmt.Sprintf("Nearly there: position %d for %s.", st.Position, name),
+					Title: fmt.Sprintf("%d in the queue", st.Position),
+					Body:  fmt.Sprintf("Nearly there: %d in line for %s.", st.Position, name),
 					Tag:   tag, URL: url,
 				})
 				break

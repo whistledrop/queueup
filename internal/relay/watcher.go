@@ -148,7 +148,11 @@ func (w *Watcher) sweep(ctx context.Context) {
 // are about to make one.
 func (w *Watcher) due(j store.Job) bool {
 	interval := w.OtherPoll
-	if waitingForRestart(j) {
+	// Fast polling while the answer is what somebody is actively watching:
+	// waiting for a wipe restart, and sitting in a queue. Rust does not log
+	// queue positions, so the server's own count IS the queue display, and a
+	// countdown that updates every 15 seconds reads as broken.
+	if waitingForRestart(j) || j.State == "connecting" || j.State == "queued" {
 		interval = w.WaitingPoll
 	}
 

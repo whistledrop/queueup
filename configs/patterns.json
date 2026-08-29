@@ -12,7 +12,8 @@
     "",
     "Named capture groups the parser understands:",
     "  (?P<position>\\d+)  -> queue position number",
-    "  any other named group can be referenced in 'detail' as {groupname}"
+    "  any other named group can be referenced in 'detail' as {groupname}",
+    "VERIFIED 2026-08-29 against a real full-server session: Rust does NOT log queue positions at all. The queued_* patterns below are kept in case another game version differs, but the queue display is driven by the relay polling the server's own queue count, not by these."
   ],
   "patterns": [
     {

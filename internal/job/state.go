@@ -187,6 +187,12 @@ type Machine struct {
 	serverKnown   bool
 	steamProblems int
 
+	// logQueuePosition records that the game's own log reported a queue
+	// position this launch. When it does, that number is the player's actual
+	// place in line and outranks the server's coarser "how many are queued"
+	// count, so server updates stand down for the rest of the launch.
+	logQueuePosition bool
+
 	// sawUserQuit records that the game announced a graceful shutdown that WE
 	// did not ask for: the player closed Rust themselves. closeRequested is what
 	// tells those apart. When the machine orders the game closed (a retry, a
@@ -393,6 +399,8 @@ func (m *Machine) handleLaunching(in Input, res *Result) {
 
 func (m *Machine) handleConnectingOrQueued(in Input, res *Result) {
 	switch v := in.(type) {
+	case ServerUp:
+		m.handleServerQueue(v, res)
 	case LogEvent:
 		m.handleLogEvent(v, res)
 	case GameExited:
@@ -477,6 +485,7 @@ func (m *Machine) handleLogEvent(v LogEvent, res *Result) {
 			res.Transitions = append(res.Transitions, m.moveTo(StateConnecting, v.Detail, nil))
 		}
 	case "queued":
+		m.logQueuePosition = true
 		if m.state == StateQueued && v.Position == m.position {
 			return // no change worth reporting
 		}
@@ -511,6 +520,7 @@ func (m *Machine) beginLaunch(res *Result) {
 	// A fresh launch is a fresh game: whatever the previous copy said on its
 	// way out no longer applies.
 	m.sawUserQuit, m.closeRequested = false, false
+	m.logQueuePosition = false
 	m.attempt++
 	m.launchTimes = append(m.launchTimes, m.now())
 	m.position = 0
@@ -538,6 +548,45 @@ func (m *Machine) fail(r Reason, res *Result) {
 	m.failure = &r
 	res.Transitions = append(res.Transitions, m.moveTo(StateFailed, r.Message, &r))
 	res.Actions = append(res.Actions, ActionCloseGame)
+}
+
+// handleServerQueue turns the server's own "how many are in line" answer into
+// the queue display, because Rust does not log queue positions at all
+// (verified against a real full-server session, 2026-08-29). This number is
+// the LENGTH of the line the player is standing in, not their exact place, and
+// the wording is careful to say so. A position from the game's own log, if one
+// ever appears, outranks it.
+func (m *Machine) handleServerQueue(v ServerUp, res *Result) {
+	if m.logQueuePosition {
+		return
+	}
+	q := v.Queue
+	switch m.state {
+	case StateConnecting:
+		if q <= 0 {
+			return // no line; the connect is just taking its time
+		}
+	case StateQueued:
+		if q == m.position {
+			return // no change worth reporting
+		}
+	default:
+		return
+	}
+	m.position = q
+	res.Transitions = append(res.Transitions, m.moveTo(StateQueued, queueDetail(q), nil))
+}
+
+// queueDetail says how the line looks, in words for the phone.
+func queueDetail(q int) string {
+	switch {
+	case q <= 0:
+		return "At the front of the queue."
+	case q == 1:
+		return "In the queue, 1 person in line."
+	default:
+		return fmt.Sprintf("In the queue, %d people in line.", q)
+	}
 }
 
 // playerClosed ends the job because the player shut the game themselves,

@@ -161,6 +161,13 @@ If you could not put it in the same folder, right-click the tray icon, untick
 "Start with Windows", then tick it again. That points the remembered path at
 wherever the new copy actually is.
 
+### What the queue number means
+
+The number on the queue screen is how many people are in the line, straight
+from the server itself, refreshed every couple of seconds. It is not your
+personal position: Rust does not tell anyone that outside the game. Watch it
+count down; when it reaches the front, you're in.
+
 ### Closing Rust yourself
 
 If you (or anyone at the PC) close Rust while a join is running, QueueUp treats

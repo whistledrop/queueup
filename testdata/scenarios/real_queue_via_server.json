@@ -1,0 +1,46 @@
+{
+  "name": "real_queue_via_server",
+  "description": "The truth learned on 2026-08-29: Rust logs NOTHING while queueing. The log jumps from Connecting straight to Spawning World, and the queue on the phone comes from polling the server, whose line shrinks 8, 5, 2, 0 while the client sits silent.",
+  "server": [
+    {
+      "after_ms": 0,
+      "online": true,
+      "players": 200,
+      "max": 200,
+      "queue": 8
+    },
+    {
+      "after_ms": 6000,
+      "online": true,
+      "players": 200,
+      "max": 200,
+      "queue": 5
+    },
+    {
+      "after_ms": 6000,
+      "online": true,
+      "players": 200,
+      "max": 200,
+      "queue": 2
+    },
+    {
+      "after_ms": 6000,
+      "online": true,
+      "players": 200,
+      "max": 200,
+      "queue": 0
+    }
+  ],
+  "steps": [
+    {
+      "after_ms": 500,
+      "line": "2026-08-29T16:37:40.056Z|0x7a04|Connecting: {{connect}} (Raknet)",
+      "expect": "connecting"
+    },
+    {
+      "after_ms": 24000,
+      "line": "2026-08-29T16:42:50.566Z|0x7a04|[43.5s] Spawning World",
+      "expect": "joined"
+    }
+  ]
+}

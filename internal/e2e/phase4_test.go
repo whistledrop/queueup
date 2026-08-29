@@ -264,18 +264,18 @@ func TestQueueNotifications(t *testing.T) {
 
 	h.createJob(deviceID, "51.83.128.10:28015")
 
-	box.waitFor(t, "In the queue", 15*time.Second) // entered at 212
-	box.waitFor(t, "Position 61", 15*time.Second)  // crossed the 100 line
-	box.waitFor(t, "Position 12", 15*time.Second)  // crossed the 50 line
-	box.waitFor(t, "Position 1", 15*time.Second)   // crossed the 10 line
+	box.waitFor(t, "In the queue", 15*time.Second)    // entered at 212
+	box.waitFor(t, "61 in the queue", 15*time.Second) // crossed the 100 line
+	box.waitFor(t, "12 in the queue", 15*time.Second) // crossed the 50 line
+	box.waitFor(t, "1 in the queue", 15*time.Second)  // crossed the 10 line
 	box.waitFor(t, "You're in", 15*time.Second)
 
 	// Every position change on the phone would be spam; only the entry, the
 	// milestone crossings and the arrival may notify. Position 148 in
 	// particular must NOT have buzzed: it crossed no line.
 	allowed := map[string]bool{
-		"In the queue": true, "Position 61": true, "Position 12": true,
-		"Position 1": true, "You're in": true,
+		"In the queue": true, "61 in the queue": true, "12 in the queue": true,
+		"1 in the queue": true, "You're in": true,
 	}
 	count := 0
 	for _, title := range box.titles() {

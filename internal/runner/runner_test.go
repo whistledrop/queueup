@@ -290,3 +290,37 @@ func TestPlayerQuitMidQueueEndsCleanlyWithoutARelaunch(t *testing.T) {
 		t.Errorf("detail %q does not explain what happened in plain words", last.Detail)
 	}
 }
+
+// The real queue shape, learned from a genuine full server: the log stays
+// silent from Connecting until Spawning World, and every queue number on the
+// phone comes from polling the server. The counts must flow through, in order,
+// while the log says nothing.
+func TestQueueNumbersComeFromTheServerWhenTheLogIsSilent(t *testing.T) {
+	final, m, trs := runScenario(t, "real_queue_via_server", job.Config{
+		InServerConfirm:  300 * time.Millisecond,
+		ConnectJitterMax: 50 * time.Millisecond,
+	})
+	if final != job.StateDone {
+		t.Fatalf("final = %s, want done. transitions: %v", final, statesOf(trs))
+	}
+	var counts []int
+	for _, tr := range trs {
+		if tr.To == job.StateQueued {
+			counts = append(counts, tr.Position)
+		}
+	}
+	if len(counts) < 2 {
+		t.Fatalf("queue counts reported = %v; the server's numbers never reached the phone", counts)
+	}
+	for i := 1; i < len(counts); i++ {
+		if counts[i] > counts[i-1] {
+			t.Fatalf("queue counts went up: %v", counts)
+		}
+	}
+	if counts[0] != 8 {
+		t.Errorf("first count = %d, want the server's 8", counts[0])
+	}
+	if m.Attempt() != 1 {
+		t.Errorf("attempts = %d; queueing must not look like failure", m.Attempt())
+	}
+}
