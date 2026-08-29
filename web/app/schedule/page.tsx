@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
+import Nav, { Footer } from '../nav'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { api, getBilling, type Billing, type Device } from '@/lib/api'
 import type { Favourite } from '@/lib/types'
@@ -82,12 +83,7 @@ function ScheduleForm() {
 
   return (
     <div className="shell">
-      <header className="top">
-        <Link href="/" className="brand">Queue<span>Up</span></Link>
-        <Link href="/" className="btn small" style={{ minHeight: 36, padding: '6px 12px' }}>
-          Back
-        </Link>
-      </header>
+      <Nav />
 
       {error && <div className="error">{error}</div>}
       {!device && (
@@ -170,6 +166,7 @@ function ScheduleForm() {
           {busy ? 'Saving' : 'Schedule the join'}
         </button>
       </form>
+      <Footer />
     </div>
   )
 }

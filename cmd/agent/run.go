@@ -25,6 +25,10 @@ import (
 // statusSink, when set (by the tray), receives one-line status text.
 var statusSink func(string)
 
+// busyCheck, when set (by cmdRun), reports whether a join is running right now.
+// The self-updater asks it before swapping the program out from under a job.
+var busyCheck func() bool
+
 // cmdRun is the mode the agent lives in on a player's PC: connected to the
 // relay, waiting for something to do. In phase 2 it runs in a terminal; the tray
 // icon wraps exactly this in a later phase.
@@ -114,6 +118,7 @@ func cmdRun(args []string) error {
 		},
 	}
 	client.Handler = app
+	busyCheck = func() bool { return app.CurrentJobID() != "" }
 
 	fmt.Printf("QueueUp agent %s\n", Version)
 	fmt.Printf("relay: %s\n", cfg.RelayURL)

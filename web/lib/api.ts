@@ -68,6 +68,7 @@ export type ServerInfo = {
   max_players: number
   queue: number
   region: string
+  map: string
   favourite: boolean
 }
 

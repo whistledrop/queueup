@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
+import Nav, { Footer } from '../../nav'
 import { api, isActive, outcome, stateLabel, type Job, type JobEvent } from '@/lib/api'
 
 export default function LiveStatus({ jobId }: { jobId: string }) {
@@ -67,12 +67,7 @@ export default function LiveStatus({ jobId }: { jobId: string }) {
 
   return (
     <div className="shell">
-      <header className="top">
-        <Link href="/" className="brand">Queue<span>Up</span></Link>
-        <Link href="/" className="btn small" style={{ minHeight: 36, padding: '6px 12px' }}>
-          Back
-        </Link>
-      </header>
+      <Nav />
 
       {error && <div className="error">{error}</div>}
 
@@ -128,6 +123,7 @@ export default function LiveStatus({ jobId }: { jobId: string }) {
           {events.length === 0 && <li className="muted">Waiting for the first update</li>}
         </ul>
       </div>
+      <Footer />
     </div>
   )
 }

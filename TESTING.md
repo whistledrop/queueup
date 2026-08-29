@@ -130,6 +130,13 @@ The night before:
 
 ### Updating QueueUp on the PC
 
+**Since v0.2.0 this is automatic.** The agent checks for new versions every few
+hours and swaps itself over, never while a join is running. The steps below are
+only needed to move an OLD version forward onto v0.2.0, or if an update somehow
+fails and the website says your version is behind.
+
+#### Updating by hand (the old way)
+
 Do this on the gaming PC itself, in the browser there. You never need to copy a
 file from your Mac.
 

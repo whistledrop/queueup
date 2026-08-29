@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
+import Nav, { Footer } from './nav'
 import { useRouter } from 'next/navigation'
 import { api, getBilling, isActive, outcome, stateLabel, type Billing, type Device, type Job } from '@/lib/api'
 import type { Favourite, Schedule } from '@/lib/types'
@@ -137,20 +138,9 @@ export default function Dashboard({ email }: { email: string }) {
     }
   }
 
-  async function signOut() {
-    await fetch('/api/auth/logout', { method: 'POST' })
-    router.push('/login')
-    router.refresh()
-  }
-
   return (
     <>
-      <header className="top">
-        <Link href="/" className="brand">Queue<span>Up</span></Link>
-        <button className="small" onClick={signOut} style={{ minHeight: 36, padding: '6px 12px' }}>
-          Sign out
-        </button>
-      </header>
+      <Nav />
 
       {error && <div className="error">{error}</div>}
 
@@ -247,8 +237,8 @@ export default function Dashboard({ email }: { email: string }) {
         )}
         {pc && (
           <p className="muted small" style={{ marginBottom: needsSub ? 8 : 0 }}>
-            Tip: right-click the QueueUp icon in your PC&apos;s system tray and
-            tick &quot;Start with Windows&quot;, so it is always ready.
+            QueueUp starts with Windows and keeps itself up to date on its own.
+            If the dot stays red, check the PC is on and connected.
           </p>
         )}
         {needsSub && (
@@ -355,6 +345,7 @@ export default function Dashboard({ email }: { email: string }) {
       )}
 
       <p className="muted small" style={{ textAlign: 'center' }}>{email}</p>
+      <Footer />
     </>
   )
 }

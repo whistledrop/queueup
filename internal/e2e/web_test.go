@@ -311,3 +311,32 @@ func TestRepeatedWrongPasswordsAreEventuallyRefused(t *testing.T) {
 		t.Fatal("twelve wrong passwords in a row and it was still happily checking more")
 	}
 }
+
+// The browser shows the busiest servers first: full servers with queues are
+// what people came looking for, and a random 25 reads as noise.
+func TestSearchReturnsBusiestFirst(t *testing.T) {
+	h := newHarness(t)
+	status, out := h.call(http.MethodGet, "/api/servers/search?q=", nil)
+	if status != http.StatusOK {
+		t.Fatalf("search returned %d: %v", status, out)
+	}
+	list, _ := out["servers"].([]any)
+	if len(list) < 3 {
+		t.Fatalf("only %d servers", len(list))
+	}
+	prevBusy := 1 << 30
+	for i, item := range list {
+		sv := item.(map[string]any)
+		online, _ := sv["online"].(bool)
+		players := int(sv["players"].(float64))
+		queue := int(sv["queue"].(float64))
+		busy := players + queue*10000
+		if !online {
+			busy = -1
+		}
+		if busy > prevBusy {
+			t.Fatalf("entry %d (%v) is busier than the one before it; the list is not sorted", i, sv["name"])
+		}
+		prevBusy = busy
+	}
+}

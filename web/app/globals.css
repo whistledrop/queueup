@@ -372,3 +372,114 @@ label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 6px
   margin-top: 8px;
   color: var(--text);
 }
+
+/* Shared navigation */
+.tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px;
+}
+.tab {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 999px;
+  min-height: 0;
+}
+.tab.active {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+button.quiet {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  min-height: 36px;
+  padding: 6px 4px;
+}
+
+.foot {
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* Server browser */
+.chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 12px;
+  -webkit-overflow-scrolling: touch;
+}
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--muted);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 14px;
+  min-height: 0;
+}
+.chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.fillbar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--card-2);
+  overflow: hidden;
+  margin-top: 8px;
+}
+.fillbar > div {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--good);
+}
+.fillbar > div.full { background: var(--warn); }
+
+.star {
+  background: none;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--muted);
+  min-height: 40px;
+  padding: 6px 8px;
+}
+.star.on { color: var(--warn); }
+
+/* On a phone the three header pieces need two rows: brand and sign-out on the
+   first, the tab bar full-width beneath. */
+header.top {
+  flex-wrap: wrap;
+  row-gap: 10px;
+}
+.tabs {
+  order: 3;
+  width: 100%;
+  justify-content: center;
+}
+.tabs .tab { flex: 1; text-align: center; }
+@media (min-width: 560px) {
+  .tabs { order: 0; width: auto; }
+  .tabs .tab { flex: none; }
+}

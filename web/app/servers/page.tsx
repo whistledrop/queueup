@@ -1,13 +1,25 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { api, getBilling, isActive, type Billing, type Device, type Job, type ServerInfo } from '@/lib/api'
+import Nav, { Footer } from '../nav'
+import { api, isActive, type Device, type Job, type ServerInfo } from '@/lib/api'
+
+// Quick ways in, for people who don't arrive with a server name to type.
+// Each chip is just a search, so the relay needs nothing new to support them.
+const chips = [
+  { label: 'Busiest', q: '' },
+  { label: 'EU', q: 'EU' },
+  { label: 'US', q: 'US' },
+  { label: 'Vanilla', q: 'vanilla' },
+  { label: 'Solo/Duo/Trio', q: 'trio' },
+  { label: '2x', q: '2x' },
+]
 
 export default function ServersPage() {
   const router = useRouter()
   const [query, setQuery] = useState('')
+  const [typed, setTyped] = useState('')
   const [servers, setServers] = useState<ServerInfo[]>([])
   const [source, setSource] = useState('')
   const [device, setDevice] = useState<Device | null>(null)
@@ -15,13 +27,12 @@ export default function ServersPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [joining, setJoining] = useState('')
-  const [billing, setBilling] = useState<Billing | null>(null)
 
   const search = useCallback(async (q: string) => {
     setLoading(true)
     try {
       const res = await api<{ source: string; servers: ServerInfo[] }>(
-        `/api/servers/search?q=${encodeURIComponent(q)}&limit=25`,
+        `/api/servers/search?q=${encodeURIComponent(q)}&limit=100`,
       )
       setServers(res.servers ?? [])
       setSource(res.source)
@@ -40,7 +51,6 @@ export default function ServersPage() {
     api<{ jobs: Job[] }>('/api/jobs?limit=5')
       .then((j) => setBusyJob((j.jobs ?? []).some((x) => isActive(x.state))))
       .catch(() => {})
-    getBilling().then(setBilling).catch(() => {})
   }, [])
 
   // Search as you type, but wait for a pause so every keystroke is not a request.
@@ -48,6 +58,11 @@ export default function ServersPage() {
     const t = setTimeout(() => search(query), 300)
     return () => clearTimeout(t)
   }, [query, search])
+
+  function pickChip(q: string) {
+    setTyped('')
+    setQuery(q)
+  }
 
   async function toggleFavourite(s: ServerInfo) {
     try {
@@ -71,10 +86,6 @@ export default function ServersPage() {
 
   async function join(s: ServerInfo) {
     if (!device) return
-    if (billing?.enabled && !billing.subscribed) {
-      router.push('/subscribe')
-      return
-    }
     setJoining(s.id)
     setError('')
     try {
@@ -90,13 +101,8 @@ export default function ServersPage() {
   }
 
   return (
-    <div className="shell">
-      <header className="top">
-        <Link href="/" className="brand">Queue<span>Up</span></Link>
-        <Link href="/" className="btn small" style={{ minHeight: 36, padding: '6px 12px' }}>
-          Back
-        </Link>
-      </header>
+    <>
+      <Nav />
 
       {error && <div className="error">{error}</div>}
 
@@ -111,66 +117,82 @@ export default function ServersPage() {
         <div className="notice">Link your PC first, then you can join from here.</div>
       )}
       {busyJob && (
-        <div className="notice">Your PC is already working on a join. Cancel it before starting another.</div>
+        <div className="notice">
+          Your PC is already working on a join. Cancel it before starting another.
+        </div>
       )}
 
       <div className="card">
         <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          value={typed}
+          onChange={(e) => { setTyped(e.target.value); setQuery(e.target.value) }}
           placeholder="Search servers by name"
           aria-label="Search servers by name"
           autoCorrect="off"
           spellCheck={false}
         />
+        <div className="chips" style={{ marginTop: 12, marginBottom: 0 }}>
+          {chips.map((c) => (
+            <button
+              key={c.label}
+              className={`chip ${query === c.q && typed === '' ? 'active' : ''}`}
+              onClick={() => pickChip(c.q)}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="card">
-        <h2>
-          {loading ? 'Searching' : `${servers.length} server${servers.length === 1 ? '' : 's'}`}
-        </h2>
+        <h2>{loading ? 'Searching' : `${servers.length} server${servers.length === 1 ? '' : 's'}, busiest first`}</h2>
         {!loading && servers.length === 0 && (
           <div className="muted">Nothing matched that. Try a shorter search.</div>
         )}
-        {servers.map((s) => (
-          <div className="server" key={s.id}>
-            <div className="row">
-              <div style={{ minWidth: 0 }}>
-                <div className="name">{s.name}</div>
-                <div className="muted small">
-                  {s.online ? `${s.players} / ${s.max_players} players` : 'Offline'}
-                  {s.queue > 0 && `, ${s.queue} in queue`}
-                  {s.region && `, ${s.region}`}
+        {servers.map((s) => {
+          const pct = s.max_players > 0 ? Math.min(100, (s.players / s.max_players) * 100) : 0
+          return (
+            <div className="server" key={s.id}>
+              <div className="row">
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div className="name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {s.name}
+                  </div>
+                  <div className="muted small">
+                    {s.online ? `${s.players} / ${s.max_players} players` : 'Offline'}
+                    {s.map && s.online && ` · ${s.map}`}
+                  </div>
+                  {s.online && (
+                    <div className="fillbar">
+                      <div className={pct >= 100 ? 'full' : ''} style={{ width: `${pct}%` }} />
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginLeft: 10 }}>
+                  {s.queue > 0 && <span className="pill warn">{s.queue} queued</span>}
+                  <button
+                    className={`star ${s.favourite ? 'on' : ''}`}
+                    onClick={() => toggleFavourite(s)}
+                    aria-label={s.favourite ? 'Remove from saved' : 'Save this server'}
+                  >
+                    {s.favourite ? '★' : '☆'}
+                  </button>
+                  <button
+                    className="primary"
+                    disabled={!device || busyJob || joining === s.id}
+                    onClick={() => join(s)}
+                    style={{ minHeight: 40, padding: '6px 14px' }}
+                  >
+                    {joining === s.id ? '...' : 'Join'}
+                  </button>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <button
-                  onClick={() => toggleFavourite(s)}
-                  aria-label={s.favourite ? 'Remove from saved' : 'Save this server'}
-                  style={{ minHeight: 40, padding: '6px 12px' }}
-                >
-                  {s.favourite ? 'Saved' : 'Save'}
-                </button>
-                <Link
-                  href={`/schedule?server_id=${encodeURIComponent(s.id)}&name=${encodeURIComponent(s.name)}`}
-                  className="btn"
-                  style={{ minHeight: 40, padding: '6px 12px' }}
-                >
-                  Later
-                </Link>
-                <button
-                  className="primary"
-                  disabled={!device || busyJob || joining === s.id}
-                  onClick={() => join(s)}
-                  style={{ minHeight: 40, padding: '6px 14px' }}
-                >
-                  {joining === s.id ? '...' : 'Join'}
-                </button>
-              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
-    </div>
+
+      <Footer />
+    </>
   )
 }

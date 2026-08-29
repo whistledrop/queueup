@@ -3,6 +3,7 @@ package relay
 import (
 	"encoding/json"
 	"net/http"
+	"sort"
 	"strconv"
 
 	"queueup/internal/servers"
@@ -23,12 +24,28 @@ func (s *Server) handleSearchServers(w http.ResponseWriter, r *http.Request, acc
 		return
 	}
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit <= 0 || limit > 150 {
+		limit = 100
+	}
 	found, err := s.cfg.Servers.Search(r.Context(), r.URL.Query().Get("q"), limit)
 	if err != nil {
 		s.log.Error("searching servers", "source", s.cfg.Servers.Name(), "err", err)
 		writeError(w, http.StatusBadGateway, err.Error())
 		return
 	}
+
+	// Busiest first. An unsorted dump of whatever the source returned reads as
+	// random noise; the servers people are actually looking for are the full
+	// ones with queues, so those lead.
+	sort.SliceStable(found, func(i, j int) bool {
+		if found[i].Online != found[j].Online {
+			return found[i].Online
+		}
+		if found[i].Queue != found[j].Queue {
+			return found[i].Queue > found[j].Queue
+		}
+		return found[i].Players > found[j].Players
+	})
 
 	// Mark the ones this account has already starred, so the list can show it.
 	starred := map[string]bool{}
