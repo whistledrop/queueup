@@ -100,9 +100,16 @@ func cmdPair(args []string) error {
 		return nil
 	}
 
+	// Make surviving a restart the default. This is the product's whole promise,
+	// and it should not depend on the customer finding a checkbox.
+	ensureAutostart()
+
 	fmt.Println("  Starting up. QueueUp will now sit in your system tray.")
-	fmt.Println("  To have it start automatically when you sign in to Windows,")
-	fmt.Println("  run this once:   QueueUpAgent.exe install-autostart")
+	if autostartInstalled() {
+		fmt.Println("  It will also start again by itself whenever you sign in to Windows,")
+		fmt.Println("  so a restart or an overnight update will not leave you offline.")
+		fmt.Println("  Turn that off from the tray icon if you would rather it did not.")
+	}
 	fmt.Println()
 
 	// Straight into normal operation: pairing and then having to start the

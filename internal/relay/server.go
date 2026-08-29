@@ -638,8 +638,18 @@ func (s *Server) handleAgentSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	device, err := s.st.DeviceByToken(token)
-	if err != nil {
+	if errors.Is(err, store.ErrNotFound) {
 		writeError(w, http.StatusUnauthorized, "This PC isn't paired. Run the pairing step again.")
+		return
+	}
+	if err != nil {
+		// We do not know who this is, which is not the same as knowing it is
+		// nobody. An agent told "not paired" erases its pairing, so saying that
+		// because of a database problem would unpair somebody's PC from the
+		// other side of the world over a passing disk error. Ask it to come back.
+		s.log.Error("checking a device token", "err", err)
+		writeError(w, http.StatusServiceUnavailable,
+			"Couldn't check this PC's login just now. It will try again shortly.")
 		return
 	}
 	if device.Revoked() {

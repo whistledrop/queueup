@@ -22,6 +22,14 @@ type Config struct {
 	DeviceToken string `json:"device_token,omitempty"`
 	DeviceID    string `json:"device_id,omitempty"`
 	DeviceName  string `json:"device_name,omitempty"`
+
+	// AutostartOff records that the user deliberately turned off starting with
+	// Windows. Without it, pairing would helpfully switch it back on every time
+	// and quietly overrule them.
+	//
+	// Absent means "never said", which is treated as yes: a PC that does not
+	// come back after a restart cannot do the one job this product has.
+	AutostartOff bool `json:"autostart_off,omitempty"`
 }
 
 // Paired reports whether this PC has been linked to an account.

@@ -28,6 +28,11 @@ const trayAvailable = true
 // cmdTray runs the agent under a system tray icon. It is the mode the shortcut
 // installed by `agent install-autostart` uses.
 func cmdTray(args []string) error {
+	// Repair the startup entry on every start, unless the user turned it off.
+	// It costs nothing, and it fixes the two ways it silently rots: the exe
+	// being moved after it was installed, and a Windows tidy-up removing it.
+	ensureAutostart()
+
 	// The tray wraps cmdRun: same flags, same behaviour, plus an icon. State is
 	// passed between them through trayState below.
 	statusSink = trayState.set

@@ -130,17 +130,28 @@ func (c *Client) Run(ctx context.Context) error {
 	}
 
 	attempt := 0
+	rejections := 0
 	for {
 		if ctx.Err() != nil {
 			return nil
 		}
 		attempt++
 		err := c.session(ctx, socket)
+
+		if errors.Is(err, errRejected) {
+			rejections++
+			if rejections >= unlinkConfirmations {
+				return fmt.Errorf("%w (refused %d times running)", ErrUnlinked, rejections)
+			}
+			c.Log.Warn("the relay refused this PC's token; asking again before believing it",
+				"refusals", rejections, "of", unlinkConfirmations, "err", err)
+		} else if err == nil {
+			rejections = 0
+		}
+
 		switch {
 		case ctx.Err() != nil:
 			return nil
-		case errors.Is(err, ErrUnlinked):
-			return err
 		case err != nil:
 			wait := Backoff(attempt, c.MaxBackoff)
 			c.Log.Warn("lost the connection to the relay, retrying",
@@ -162,6 +173,21 @@ func (c *Client) Run(ctx context.Context) error {
 // forget the token so the next start goes back to pairing.
 var ErrUnlinked = errors.New("this PC has been unlinked from the account")
 
+// errRejected is one refusal, which is not yet a conclusion. See
+// unlinkConfirmations.
+var errRejected = errors.New("the relay refused this PC's token")
+
+// unlinkConfirmations is how many refusals in a row it takes before we believe
+// the pairing is really gone.
+//
+// Concluding this is destructive and cannot be undone from here: the token is
+// erased and somebody has to be at the PC to read a new pairing code. Plenty of
+// things produce a passing 401 or 403 that have nothing to do with the pairing:
+// a relay mid-deploy, a relay that cannot read its database, a captive portal
+// or company proxy answering on its behalf. Those all clear on their own within
+// seconds, so we ask again before doing something irreversible.
+const unlinkConfirmations = 3
+
 // session is one connection, from dial to disconnect.
 func (c *Client) session(ctx context.Context, socket string) error {
 	dialCtx, cancelDial := context.WithTimeout(ctx, 20*time.Second)
@@ -171,7 +197,7 @@ func (c *Client) session(ctx context.Context, socket string) error {
 	cancelDial()
 	if err != nil {
 		if resp != nil && (resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusUnauthorized) {
-			return fmt.Errorf("%w (the relay said: %s)", ErrUnlinked, resp.Status)
+			return fmt.Errorf("%w (the relay said: %s)", errRejected, resp.Status)
 		}
 		return err
 	}
