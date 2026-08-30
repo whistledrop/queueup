@@ -118,27 +118,3 @@ func TestCancelScheduleIsForItsOwnerAndOnlyBeforeItFires(t *testing.T) {
 		t.Fatalf("state = %s, want cancelled", got.State)
 	}
 }
-
-func TestPushSubscriptionsRoundTrip(t *testing.T) {
-	s := newStore(t)
-	acct, _ := newAccount(t, s)
-
-	sub := store.PushSubscription{Endpoint: "https://push.example/abc", P256dh: "key", Auth: "auth"}
-	if err := s.SavePushSubscription(acct.ID, sub); err != nil {
-		t.Fatal(err)
-	}
-	// Re-registering the same browser updates, not duplicates.
-	if err := s.SavePushSubscription(acct.ID, sub); err != nil {
-		t.Fatal(err)
-	}
-	subs, err := s.PushSubscriptions(acct.ID)
-	if err != nil || len(subs) != 1 {
-		t.Fatalf("subscriptions = %d, %v; want 1", len(subs), err)
-	}
-	if err := s.RemovePushSubscription(sub.Endpoint); err != nil {
-		t.Fatal(err)
-	}
-	if subs, _ := s.PushSubscriptions(acct.ID); len(subs) != 0 {
-		t.Fatal("subscription survived removal")
-	}
-}

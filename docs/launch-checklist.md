@@ -13,8 +13,7 @@ fly auth signup        # or: fly auth login
 ```
 
 Then follow `docs/deploy.md` top to bottom. It is copy-paste: create the app
-and volume, set the secrets (including the notification keys from
-`go run ./cmd/relay gen-vapid` and your free Steam key from
+and volume, set the secrets (your free Steam key from
 https://steamcommunity.com/dev/apikey), then `fly deploy`.
 
 Check: `https://<your-app>.fly.dev/healthz` says ok.

@@ -34,14 +34,10 @@ one connection open, so the relay must never be put to sleep.
 Secrets (never in files, never in the repo):
 
 ```bash
-go run ./cmd/relay gen-vapid    # run locally, once, keep the output
 fly secrets set \
   QUEUEUP_ADMIN_TOKEN=pick-something-long \
   QUEUEUP_SERVER_SOURCE=steam \
   QUEUEUP_STEAM_API_KEY=your-free-key \
-  QUEUEUP_VAPID_PUBLIC=... \
-  QUEUEUP_VAPID_PRIVATE=... \
-  QUEUEUP_PUSH_SUBJECT=mailto:you@yourdomain.com
 ```
 
 Then, and after every change:

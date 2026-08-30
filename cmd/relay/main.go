@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"queueup/internal/a2s"
-	"queueup/internal/notify"
 	"queueup/internal/relay"
 	"queueup/internal/servers"
 	"queueup/internal/store"
@@ -43,7 +42,6 @@ QueueUp relay
                                      (token only: to sign in on the website,
                                      register there instead)
   relay delete-account <email>       remove an account that has no PCs or joins
-  relay gen-vapid                    generate the notification keys (run once)
   relay query <ip:port>              ask a Rust server how it is doing, right
                                      now, the same way the wipe watcher does
   relay set-subscription <email> <active|none>
@@ -64,12 +62,6 @@ Settings come from environment variables, never from files in the repo:
                                          https://steamcommunity.com/dev/apikey
                           battlemetrics  Needs a PAID subscription token in
                                          QUEUEUP_BATTLEMETRICS_TOKEN
-
-  Notifications (all optional; without them, everything still lands in the app):
-  QUEUEUP_VAPID_PUBLIC   web push keys, from: relay gen-vapid
-  QUEUEUP_VAPID_PRIVATE
-  QUEUEUP_PUSH_SUBJECT   contact address for push services, e.g. mailto:you@example.com
-  QUEUEUP_SMTP_HOST      email fallback; also _PORT, _USER, _PASS, _FROM
 
   QUEUEUP_BILLING=on     turn the subscription gate on. Off by default, which
                          means every account runs free. Flip it when Stripe is
@@ -93,16 +85,6 @@ func run(args []string) error {
 	switch args[0] {
 	case "serve":
 		return serve(st)
-	case "gen-vapid":
-		priv, pub, err := notify.GenerateVAPIDKeys()
-		if err != nil {
-			return err
-		}
-		fmt.Println("Add these to the relay's environment:")
-		fmt.Printf("\n  QUEUEUP_VAPID_PUBLIC=%s\n  QUEUEUP_VAPID_PRIVATE=%s\n\n", pub, priv)
-		fmt.Println("Generate them once and keep them: changing the keys silently breaks")
-		fmt.Println("every browser that already subscribed.")
-		return nil
 	case "create-account":
 		if len(args) < 2 {
 			return errors.New("usage: relay create-account <email>")
@@ -186,22 +168,6 @@ func serve(st *store.Store) error {
 			"Set QUEUEUP_SERVER_SOURCE to steam or battlemetrics for real servers")
 	}
 
-	notifier := &notify.Notifier{
-		Store:           st,
-		Log:             log,
-		VAPIDPublicKey:  os.Getenv("QUEUEUP_VAPID_PUBLIC"),
-		VAPIDPrivateKey: os.Getenv("QUEUEUP_VAPID_PRIVATE"),
-		Subject:         envOr("QUEUEUP_PUSH_SUBJECT", "mailto:queueup@example.com"),
-		SMTPHost:        os.Getenv("QUEUEUP_SMTP_HOST"),
-		SMTPPort:        envOr("QUEUEUP_SMTP_PORT", "587"),
-		SMTPUser:        os.Getenv("QUEUEUP_SMTP_USER"),
-		SMTPPass:        os.Getenv("QUEUEUP_SMTP_PASS"),
-		SMTPFrom:        os.Getenv("QUEUEUP_SMTP_FROM"),
-	}
-	if !notifier.PushConfigured() {
-		log.Warn("web push is off: run `relay gen-vapid` and set QUEUEUP_VAPID_PUBLIC/PRIVATE")
-	}
-
 	billing := os.Getenv("QUEUEUP_BILLING") == "on"
 	if !billing {
 		log.Warn("billing is off: every account runs free. Set QUEUEUP_BILLING=on once Stripe is connected")
@@ -209,7 +175,7 @@ func serve(st *store.Store) error {
 
 	srv := relay.New(relay.Config{
 		Store: st, Log: log, AdminToken: adminToken, Servers: provider,
-		Notifier: notifier, BillingEnabled: billing,
+		BillingEnabled: billing,
 	})
 	httpSrv := &http.Server{
 		Addr:    addr,

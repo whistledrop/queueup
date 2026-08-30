@@ -14,7 +14,6 @@ import (
 
 	"github.com/coder/websocket"
 
-	"queueup/internal/notify"
 	"queueup/internal/protocol"
 	"queueup/internal/servers"
 	"queueup/internal/store"
@@ -39,20 +38,15 @@ type Config struct {
 	// BillingEnabled turns the subscription gate on. Off (the default), every
 	// account runs free, which is the state until Stripe is connected.
 	BillingEnabled bool
-
-	// Notifier delivers messages to phones. Optional: when nil, notifications
-	// are only logged, and everything still lands in the job timeline.
-	Notifier *notify.Notifier
 }
 
 // Server is the relay.
 type Server struct {
-	cfg      Config
-	st       *store.Store
-	log      *slog.Logger
-	hub      *Hub
-	mux      *http.ServeMux
-	notifier *notify.Notifier
+	cfg Config
+	st  *store.Store
+	log *slog.Logger
+	hub *Hub
+	mux *http.ServeMux
 
 	// signIns throttles failed sign-ins, per account and per source.
 	signIns *throttle
@@ -71,16 +65,12 @@ func New(cfg Config) *Server {
 	if cfg.HeartbeatSeconds == 0 {
 		cfg.HeartbeatSeconds = 20
 	}
-	if cfg.Notifier == nil {
-		cfg.Notifier = &notify.Notifier{Store: cfg.Store, Log: cfg.Log}
-	}
 	s := &Server{
 		cfg:       cfg,
 		st:        cfg.Store,
 		log:       cfg.Log,
 		hub:       NewHub(cfg.Log),
 		mux:       http.NewServeMux(),
-		notifier:  cfg.Notifier,
 		signIns:   newThrottle(signInLimit, signInWindow, time.Now),
 		debugLogs: map[string][]string{},
 	}
@@ -112,8 +102,6 @@ func (s *Server) routes() {
 	s.scheduleRoutes()
 	// The subscription gate.
 	s.billingRoutes()
-	// Phone notifications.
-	s.pushRoutes()
 
 	// Account-facing.
 	s.mux.HandleFunc("POST /api/pair", s.withAccount(s.handleClaimCode))
@@ -724,9 +712,6 @@ func (s *Server) readLoop(ctx context.Context, ac *AgentConn, device store.Devic
 		// now, and the message on the phone should say so.
 		resumed := j.State != "pending"
 		s.dispatch(j, resumed, false)
-		if resumed {
-			s.notifyAgentBack(device, j)
-		}
 	}
 
 	defer func() {
@@ -739,7 +724,6 @@ func (s *Server) readLoop(ctx context.Context, ac *AgentConn, device store.Devic
 		}
 		if j, err := s.st.ActiveJobForDevice(device.ID); err == nil {
 			s.note(j.ID, j.State, "Your PC went offline. We'll pick this back up when it returns.")
-			s.notifyAgentOffline(device, j)
 		}
 	}()
 
@@ -796,7 +780,6 @@ func (s *Server) handleAgentMessage(ac *AgentConn, device store.Device, env prot
 		if !changed {
 			return
 		}
-		s.notifyStatusChange(j, st)
 		events, err := s.st.Events(st.JobID, 0)
 		if err == nil && len(events) > 0 {
 			s.hub.Publish(events[len(events)-1])

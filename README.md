@@ -26,7 +26,7 @@ the moment it comes back.
 | 1 | Agent brain + fake Rust simulator, running locally | **done** |
 | 2 | Relay server, agent holds an outbound connection, survives reboots | **done** |
 | 3 | Web app: login, pairing, server search, join now, live status | **done** |
-| 4 | Scheduling, wipe-restart detection, notifications | **done** |
+| 4 | Scheduling and wipe-restart detection | **done** |
 | 5 | Hardening pass and the Windows tray build | **done, pending the real-PC test** |
 
 ## Try it right now
@@ -256,7 +256,7 @@ best at. Sharing the language with the agent means one set of message definition
 and no translation layer between them.
 
 **Web app: Next.js 16.** Mobile first, deploys to Netlify or Vercel in one step,
-handles web push, and it is a stack you already run elsewhere, so there is
+and it is a stack you already run elsewhere, so there is
 nothing new to learn or pay for. There is no CSS framework: the whole
 look is one stylesheet, which is less to keep up to date than a dependency.
 

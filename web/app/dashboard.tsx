@@ -6,7 +6,6 @@ import Nav, { Footer } from './nav'
 import { useRouter } from 'next/navigation'
 import { api, getBilling, isActive, outcome, stateLabel, type Billing, type Device, type Job } from '@/lib/api'
 import type { Favourite, Schedule } from '@/lib/types'
-import { disablePush, enablePush, pushState, sendTestPush, type PushState } from '@/lib/push'
 
 function siteHost(): string {
   if (typeof window === 'undefined') return 'queueup'
@@ -20,9 +19,6 @@ export default function Dashboard({ email }: { email: string }) {
   const [favourites, setFavourites] = useState<Favourite[]>([])
   const [schedules, setSchedules] = useState<Schedule[]>([])
   const [billing, setBilling] = useState<Billing | null>(null)
-  const [push, setPush] = useState<PushState>('unsupported')
-  const [pushBusy, setPushBusy] = useState(false)
-  const [pushNote, setPushNote] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [code, setCode] = useState('')
@@ -53,7 +49,6 @@ export default function Dashboard({ email }: { email: string }) {
     load()
     // Keep the PC's online light honest without the user pulling to refresh.
     const t = setInterval(load, 5000)
-    pushState().then(setPush).catch(() => {})
     getBilling().then(setBilling).catch(() => {})
     return () => clearInterval(t)
   }, [load])
@@ -61,35 +56,9 @@ export default function Dashboard({ email }: { email: string }) {
   // The gate, stated up front so the paywall is never a surprise later.
   const needsSub = billing !== null && billing.enabled && !billing.subscribed
 
-  async function togglePush() {
-    setPushBusy(true)
-    setPushNote('')
-    try {
-      if (push === 'on') {
-        await disablePush()
-      } else {
-        await enablePush()
-      }
-      setPush(await pushState())
-    } catch (e) {
-      setPushNote((e as Error).message)
-    } finally {
-      setPushBusy(false)
-    }
-  }
 
-  async function testPush() {
-    setPushBusy(true)
-    setPushNote('')
-    try {
-      await sendTestPush()
-      setPushNote('Sent. It should pop up on this device in a moment.')
-    } catch (e) {
-      setPushNote((e as Error).message)
-    } finally {
-      setPushBusy(false)
-    }
-  }
+
+
 
   async function cancelSchedule(id: string) {
     try {
@@ -294,37 +263,6 @@ export default function Dashboard({ email }: { email: string }) {
             </div>
           </div>
         ))}
-      </div>
-
-      <div className="card">
-        <h2>Notifications</h2>
-        {push === 'unsupported' && (
-          <p className="muted small" style={{ margin: 0 }}>
-            This browser can't show push notifications. On iPhone, add QueueUp to
-            your home screen first (Share, then Add to Home Screen).
-          </p>
-        )}
-        {push === 'relay-off' && (
-          <p className="muted small" style={{ margin: 0 }}>
-            Notifications aren't set up on the relay yet. See the README.
-          </p>
-        )}
-        {push === 'denied' && (
-          <p className="muted small" style={{ margin: 0 }}>
-            Notifications are blocked for this site in your browser settings.
-          </p>
-        )}
-        {(push === 'off' || push === 'on') && (
-          <div className="spread">
-            <button onClick={togglePush} disabled={pushBusy} className={push === 'on' ? '' : 'primary'}>
-              {push === 'on' ? 'Turn off' : 'Turn on notifications'}
-            </button>
-            {push === 'on' && (
-              <button onClick={testPush} disabled={pushBusy}>Send a test</button>
-            )}
-          </div>
-        )}
-        {pushNote && <p className="muted small" style={{ marginBottom: 0 }}>{pushNote}</p>}
       </div>
 
       {jobs.length > 0 && (

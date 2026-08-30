@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"queueup/internal/notify"
 	"queueup/internal/relay"
 	"queueup/internal/servers"
 	"queueup/internal/store"
@@ -32,7 +31,6 @@ func TestAgentSurvivesARelayOutageMidQueue(t *testing.T) {
 	}
 
 	quiet := slog.New(slog.NewTextHandler(io.Discard, nil))
-	box := &inbox{}
 
 	// A fixed port, so the restarted relay comes back at the SAME address the
 	// agent keeps trying. That is exactly what a redeployed relay looks like.
@@ -45,7 +43,6 @@ func TestAgentSurvivesARelayOutageMidQueue(t *testing.T) {
 	newRelay := func() *relay.Server {
 		return relay.New(relay.Config{
 			Store: st, Log: quiet, Servers: servers.NewStub(),
-			Notifier: &notify.Notifier{Store: st, Log: quiet, SendHook: box.add},
 		})
 	}
 

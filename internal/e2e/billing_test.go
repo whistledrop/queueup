@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"queueup/internal/notify"
 	"queueup/internal/relay"
 	"queueup/internal/servers"
 	"queueup/internal/store"
@@ -32,7 +31,6 @@ func billingHarness(t *testing.T) *harness {
 	quiet := slog.New(slog.NewTextHandler(io.Discard, nil))
 	srv := relay.New(relay.Config{
 		Store: st, Log: quiet, Servers: servers.NewStub(),
-		Notifier:       &notify.Notifier{Store: st, Log: quiet, SendHook: func(string, notify.Message) {}},
 		BillingEnabled: true,
 	})
 	ts := httptest.NewServer(srv)

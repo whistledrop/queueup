@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"queueup/internal/notify"
 	"queueup/internal/store"
 )
 
@@ -42,12 +41,6 @@ func (s *Server) fireSchedule(sc store.Schedule) {
 
 	fail := func(note string) {
 		_ = s.st.ResolveSchedule(sc.ID, "failed", note, "")
-		s.notifier.Send(sc.AccountID, notify.Message{
-			Title: "Scheduled join couldn't start",
-			Body:  note,
-			Tag:   "schedule-" + sc.ID,
-			URL:   "/",
-		})
 	}
 
 	device, err := s.st.DeviceByID(sc.DeviceID)
@@ -115,26 +108,7 @@ func (s *Server) fireSchedule(sc store.Schedule) {
 	}
 	_ = s.st.ResolveSchedule(sc.ID, "fired", "Started on time.", j.ID)
 
-	online := s.hub.Online(sc.DeviceID)
 	s.dispatch(j, false, true)
-
-	if online {
-		s.notifier.Send(sc.AccountID, notify.Message{
-			Title: "Scheduled join started",
-			Body:  fmt.Sprintf("Your PC is joining %s now.", name),
-			Tag:   "job-" + j.ID,
-			URL:   "/jobs/" + j.ID,
-		})
-	} else {
-		// The job is saved and will start the moment the PC returns; the user
-		// needs to know now, while there may still be time to fix the PC.
-		s.notifier.Send(sc.AccountID, notify.Message{
-			Title: "Your PC is offline",
-			Body:  fmt.Sprintf("The scheduled join for %s is ready, but your PC isn't connected. It will start the moment the PC comes back.", name),
-			Tag:   "job-" + j.ID,
-			URL:   "/jobs/" + j.ID,
-		})
-	}
 }
 
 // subscriptionBlocks reports whether we POSITIVELY know this account may not

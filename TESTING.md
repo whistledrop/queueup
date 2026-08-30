@@ -46,10 +46,9 @@ What you need: the relay and website deployed (docs/deploy.md), the
    a server, tap Join. Watch: Launching, Connecting, In the queue with the
    position counting down, You're in.
 
-6. **Turn on notifications** from the dashboard card and tap "Send a test". On
-   an iPhone you must first add the site to your home screen (Share button,
-   then "Add to Home Screen") and open it from there; that is an Apple rule,
-   not ours.
+6. **Keep the live screen open** while a join runs; everything the PC does
+   shows there within a second or two. Adding the site to your phone's home
+   screen (Share, then "Add to Home Screen") makes it feel like an app.
 
 7. **The reboot test.** Start another join. While it is mid-queue, restart the
    PC (a real restart). If Windows auto-login and the agent's autostart are set
@@ -120,7 +119,7 @@ If step 3 works, wipe day is the same thing with a queue in the middle.
 
 The night before:
 
-1. Check the dashboard: PC green, notifications on (send yourself a test).
+1. Check the dashboard: PC green.
 2. Find your target server in QueueUp and save it.
 3. Schedule the join: pick the server, set the time to a few minutes BEFORE the
    announced wipe time, and leave "Wait for the server to come back up" ticked.
