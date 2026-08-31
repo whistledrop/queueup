@@ -191,6 +191,20 @@ game's log, nothing else: no passwords, no account details.
 If the icon is gone entirely, that is itself the report: say so, and check
 whether the PC is on and connected.
 
+### One PC, one join at a time
+
+Your PC can only be in one place, so QueueUp keeps the two ways of joining from
+fighting:
+
+- **While a join is scheduled, you cannot join now.** The Join buttons say so
+  and point at the Schedule page. Otherwise the join you started casually would
+  still be running when the scheduled one came due, and the scheduled one, which
+  is usually the wipe, would be the one lost.
+- **You can still schedule while a join is running.** Most joins are over in
+  minutes, so a schedule for later is fine. If the running one is somehow still
+  going when the scheduled time arrives, the scheduled join takes over and the
+  other is stopped, with both timelines saying so.
+
 ### Closing Rust yourself
 
 If you (or anyone at the PC) close Rust while a join is running, QueueUp treats

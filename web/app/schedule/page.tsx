@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import Nav, { Footer } from '../nav'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { api, getBilling, type Billing, type Device } from '@/lib/api'
+import { api, getBilling, isActive, type Billing, type Device, type Job } from '@/lib/api'
 import type { Favourite } from '@/lib/types'
 
 export default function SchedulePage() {
@@ -28,6 +28,7 @@ function ScheduleForm() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [billing, setBilling] = useState<Billing | null>(null)
+  const [runningJob, setRunningJob] = useState<Job | null>(null)
 
   useEffect(() => {
     getBilling().then(setBilling).catch(() => {})
@@ -36,6 +37,9 @@ function ScheduleForm() {
       .catch(() => {})
     api<{ favourites: Favourite[] }>('/api/favourites')
       .then((f) => setFavourites(f.favourites ?? []))
+      .catch(() => {})
+    api<{ jobs: Job[] }>('/api/jobs?limit=5')
+      .then((j) => setRunningJob((j.jobs ?? []).find((x) => isActive(x.state)) ?? null))
       .catch(() => {})
   }, [])
 
@@ -97,6 +101,19 @@ function ScheduleForm() {
           and QueueUp cannot wake it. On the PC: Settings, System, Power, set
           &quot;When plugged in, put my device to sleep after&quot; to{' '}
           <b>Never</b>.
+        </div>
+      )}
+
+      {runningJob && (
+        <div className="notice">
+          <b>
+            Your PC is joining {runningJob.server_name || runningJob.server_addr}{' '}
+            right now.
+          </b>{' '}
+          You can still schedule this: most joins are over in minutes. If that
+          one is somehow still running when this scheduled join is due, QueueUp
+          stops it and starts the scheduled one, because that is the one you
+          planned.
         </div>
       )}
 

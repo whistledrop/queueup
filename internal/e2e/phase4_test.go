@@ -263,3 +263,56 @@ func TestJoiningNowIsRefusedWhileAJoinIsScheduled(t *testing.T) {
 		t.Fatalf("joining after cancelling the schedule returned %d: %v", status, out)
 	}
 }
+
+// A schedule set days ahead is legitimate even while the PC is mid-join today:
+// the current join will be long over. What must never happen is the one Logan
+// hit from the other side, where the casual join is still running at fire time
+// and the WIPE join is the one that loses. The planned join wins, because
+// somebody deliberately set it and nobody deliberately set the other one to
+// still be running.
+func TestAScheduledJoinTakesOverFromAJoinStillRunning(t *testing.T) {
+	h := phase4Harness(t)
+	deviceID, deviceToken := h.pair()
+	_, stop := h.agent(deviceToken, "long_queue_slow")
+	defer stop()
+	h.waitUntil("the PC to connect", 5*time.Second, func() bool {
+		return h.srv.Hub().Online(deviceID)
+	})
+
+	// A casual join, started before any schedule existed, and still queueing.
+	casual := h.createJob(deviceID, "51.83.128.10:28015")
+	h.waitUntil("the casual join to be queueing", 10*time.Second, func() bool {
+		return h.jobState(casual) == "queued"
+	})
+
+	// A schedule fires while it is still running.
+	status, out := h.call(http.MethodPost, "/api/schedules", map[string]any{
+		"device_id": deviceID, "server_id": "stub-2",
+		"fire_at": time.Now().Add(500 * time.Millisecond).UTC().Format(time.RFC3339),
+	})
+	if status != http.StatusCreated {
+		t.Fatalf("creating the schedule returned %d: %v", status, out)
+	}
+	schedID := out["id"].(string)
+
+	// The schedule must run, not fail.
+	h.waitUntil("the schedule to fire and take over", 15*time.Second, func() bool {
+		sc, err := h.st.ScheduleByID(schedID)
+		return err == nil && sc.State == "fired" && sc.JobID != ""
+	})
+
+	// And the casual join must be closed out, not left half-alive.
+	h.waitUntil("the casual join to be stood down", 10*time.Second, func() bool {
+		return h.jobState(casual) == "done" || h.jobState(casual) == "failed"
+	})
+
+	var toldWhy bool
+	for _, line := range h.timeline(casual) {
+		if contains(strings.ToLower(line), "scheduled") {
+			toldWhy = true
+		}
+	}
+	if !toldWhy {
+		t.Errorf("the casual join was stopped without saying why:\n%v", h.timeline(casual))
+	}
+}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"queueup/internal/protocol"
 	"queueup/internal/store"
 )
 
@@ -70,12 +71,29 @@ func (s *Server) fireSchedule(sc store.Schedule) {
 		}
 	}
 
-	// One PC, one job: a scheduled join yields to whatever is already running,
-	// and says so, rather than tearing down a queue place already earned.
+	// One PC, one job. If something is still running when a planned join comes
+	// due, the planned one wins: somebody deliberately set it, usually for the
+	// wipe, and nobody deliberately arranged for the other join to still be
+	// going. Yielding here is how a wipe gets silently missed.
 	if existing, err := s.st.ActiveJobForDevice(sc.DeviceID); err == nil {
-		fail(fmt.Sprintf("Your PC was already busy with another join (%s).",
-			existing.ServerName))
-		return
+		name := sc.ServerName
+		if name == "" {
+			name = sc.ServerAddr
+		}
+		s.log.Info("a scheduled join is taking over from a running one",
+			"schedule", sc.ID, "stopping", existing.ID)
+		s.note(existing.ID, existing.State,
+			fmt.Sprintf("Stopped: your scheduled join for %s is starting now.", name))
+		if err := s.st.FinishJob(existing.ID, "done", "superseded",
+			fmt.Sprintf("Your scheduled join for %s took over.", name)); err != nil {
+			s.log.Error("standing down the running job", "err", err)
+		}
+		// Tell the PC to stop, so Rust is not left queueing for the old server
+		// while the new job launches.
+		_ = s.hub.SendTo(sc.DeviceID, protocol.TypeCancel, protocol.Cancel{
+			JobID:  existing.ID,
+			Reason: fmt.Sprintf("Your scheduled join for %s is starting now.", name),
+		})
 	}
 
 	addr, name, queryAddr := sc.ServerAddr, sc.ServerName, ""
