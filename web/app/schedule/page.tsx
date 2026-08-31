@@ -109,7 +109,7 @@ function ScheduleForm() {
                 <div style={{ fontWeight: 600 }}>{serverName || serverId}</div>
                 <div className="muted small">From your search</div>
               </div>
-              <Link href="/servers" className="btn small" style={{ minHeight: 36, padding: '6px 12px' }}>
+              <Link href="/servers?for=schedule" className="btn small" style={{ minHeight: 36, padding: '6px 12px' }}>
                 Change
               </Link>
             </div>
@@ -124,10 +124,10 @@ function ScheduleForm() {
                   {f.name}
                 </button>
               ))}
-              <Link href="/servers" className="btn">Search instead</Link>
+              <Link href="/servers?for=schedule" className="btn">Search instead</Link>
             </div>
           ) : (
-            <Link href="/servers" className="btn btn-wide">Find a server</Link>
+            <Link href="/servers?for=schedule" className="btn btn-wide">Find a server</Link>
           )}
         </div>
 

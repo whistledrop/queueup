@@ -1,7 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useCallback, useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Nav, { Footer } from '../nav'
 import { api, isActive, type Device, type Job, type ServerInfo } from '@/lib/api'
 
@@ -16,8 +16,20 @@ const chips = [
   { label: '2x', q: '2x' },
 ]
 
+// useSearchParams needs a boundary for prerendering, same as the schedule page.
 export default function ServersPage() {
+  return (
+    <Suspense>
+      <ServerBrowser />
+    </Suspense>
+  )
+}
+
+function ServerBrowser() {
   const router = useRouter()
+  // Arriving from the schedule flow means picking a server for LATER, not
+  // joining one now. Same list, different verb, and it hands the choice back.
+  const forSchedule = useSearchParams().get('for') === 'schedule'
   const [query, setQuery] = useState('')
   const [typed, setTyped] = useState('')
   const [servers, setServers] = useState<ServerInfo[]>([])
@@ -84,6 +96,12 @@ export default function ServersPage() {
     }
   }
 
+  function choose(s: ServerInfo) {
+    router.push(
+      `/schedule?server_id=${encodeURIComponent(s.id)}&name=${encodeURIComponent(s.name)}`,
+    )
+  }
+
   async function join(s: ServerInfo) {
     if (!device) return
     setJoining(s.id)
@@ -113,10 +131,16 @@ export default function ServersPage() {
         </div>
       )}
 
-      {!device && (
+      {forSchedule && (
+        <div className="notice">
+          Pick the server for your scheduled join. You can set the time on the
+          next screen.
+        </div>
+      )}
+      {!device && !forSchedule && (
         <div className="notice">Link your PC first, then you can join from here.</div>
       )}
-      {busyJob && (
+      {busyJob && !forSchedule && (
         <div className="notice">
           Your PC is already working on a join. Cancel it before starting another.
         </div>
@@ -177,14 +201,24 @@ export default function ServersPage() {
                   >
                     {s.favourite ? '★' : '☆'}
                   </button>
-                  <button
-                    className="primary"
-                    disabled={!device || busyJob || joining === s.id}
-                    onClick={() => join(s)}
-                    style={{ minHeight: 40, padding: '6px 14px' }}
-                  >
-                    {joining === s.id ? '...' : 'Join'}
-                  </button>
+                  {forSchedule ? (
+                    <button
+                      className="primary"
+                      onClick={() => choose(s)}
+                      style={{ minHeight: 40, padding: '6px 14px' }}
+                    >
+                      Choose
+                    </button>
+                  ) : (
+                    <button
+                      className="primary"
+                      disabled={!device || busyJob || joining === s.id}
+                      onClick={() => join(s)}
+                      style={{ minHeight: 40, padding: '6px 14px' }}
+                    >
+                      {joining === s.id ? '...' : 'Join'}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
