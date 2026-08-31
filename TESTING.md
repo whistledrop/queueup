@@ -177,6 +177,17 @@ be worse than that, and people joining behind you never push your number up.
 When the queue is passed, the screen switches to "loading into the server",
 then "You're in".
 
+### If something goes wrong
+
+Right-click the QueueUp icon by the clock (it may be under the little "^"
+arrow) and choose **Save a problem report**. One file lands on the Desktop with
+everything needed to work out what happened; send that file along with roughly
+what time it went wrong. It contains the QueueUp log and the tail of the
+game's log, nothing else: no passwords, no account details.
+
+If the icon is gone entirely, that is itself the report: say so, and check
+whether the PC is on and connected.
+
 ### Closing Rust yourself
 
 If you (or anyone at the PC) close Rust while a join is running, QueueUp treats

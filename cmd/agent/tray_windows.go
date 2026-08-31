@@ -70,6 +70,7 @@ func trayReady() {
 	openWeb := systray.AddMenuItem("Open the QueueUp website", "")
 	autostart := systray.AddMenuItemCheckbox("Start with Windows", "", autostartInstalled())
 	systray.AddSeparator()
+	saveReport := systray.AddMenuItem("Save a problem report", "Puts one file on your Desktop to send when something goes wrong")
 	openLog := systray.AddMenuItem("Open the log file", "For debugging")
 	openCfg := systray.AddMenuItem("Open the settings folder", "")
 	systray.AddSeparator()
@@ -95,6 +96,13 @@ func trayReady() {
 					autostart.Check()
 				} else {
 					autostart.Uncheck()
+				}
+			case <-saveReport.ClickedCh:
+				if path, err := saveProblemReport(); err != nil {
+					trayState.set("Couldn't save the report: " + err.Error())
+				} else {
+					trayState.set("Report saved to your Desktop")
+					openFile(filepath.Dir(path))
 				}
 			case <-openLog.ClickedCh:
 				openFile(logFilePath())
