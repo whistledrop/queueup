@@ -70,6 +70,9 @@ export default function Dashboard({ email }: { email: string }) {
   }
 
   const pc = devices[0]
+  // A scheduled join reserves the PC: joining now would take the machine and
+  // cost them the scheduled one, usually the wipe.
+  const pendingSchedule = schedules.find((sc) => sc.state === 'pending') ?? null
   const active = jobs.find((j) => isActive(j.state))
 
   async function pair(e: React.FormEvent) {
@@ -250,7 +253,7 @@ export default function Dashboard({ email }: { email: string }) {
                   </div>
                   <button
                     className="primary"
-                    disabled={!pc || !!active || joining === f.server_id}
+                    disabled={!pc || !!active || !!pendingSchedule || joining === f.server_id}
                     onClick={() => join(f.server_id, f.name)}
                   >
                     {joining === f.server_id ? '...' : 'Join'}

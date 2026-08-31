@@ -237,3 +237,16 @@ func (s *Store) ActiveJobs() ([]Job, error) {
 	}
 	return out, nil
 }
+
+// PendingScheduleForDevice returns the planned join this PC is holding itself
+// ready for, if any.
+//
+// One PC cannot be in two places: a join started now occupies the machine, and
+// if it is still running when the schedule fires, the scheduled join is lost.
+// Since the scheduled one is usually the wipe, which is the whole reason
+// somebody is here, the app checks this before letting a casual join take the
+// PC.
+func (s *Store) PendingScheduleForDevice(deviceID string) (Schedule, error) {
+	return s.scheduleWhere(
+		`device_id = ? AND state = 'pending' ORDER BY fire_at LIMIT 1`, deviceID)
+}

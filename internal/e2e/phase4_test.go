@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -214,5 +215,51 @@ func TestWipeRestartIsDetectedAndTheAgentConnects(t *testing.T) {
 	}
 	if !sawBackUp {
 		t.Errorf("the timeline never says the server came back:\n%v", h.timeline(jobID))
+	}
+}
+
+// One PC cannot be in two places. A join started now occupies the machine, and
+// if it is still running when the schedule fires, the scheduled join is lost:
+// the wipe, silently missed, because of a casual join hours earlier. So a
+// pending schedule blocks an immediate join, and says how to proceed.
+func TestJoiningNowIsRefusedWhileAJoinIsScheduled(t *testing.T) {
+	h := phase4Harness(t)
+	deviceID, deviceToken := h.pair()
+	_, stop := h.agent(deviceToken, "instant_join")
+	defer stop()
+	h.waitUntil("the PC to connect", 5*time.Second, func() bool {
+		return h.srv.Hub().Online(deviceID)
+	})
+
+	status, out := h.call(http.MethodPost, "/api/schedules", map[string]any{
+		"device_id": deviceID, "server_id": "stub-1",
+		"fire_at": time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339),
+	})
+	if status != http.StatusCreated {
+		t.Fatalf("creating the schedule returned %d: %v", status, out)
+	}
+	schedID := out["id"].(string)
+
+	status, out = h.call(http.MethodPost, "/api/jobs", map[string]any{
+		"device_id": deviceID, "server_id": "stub-2",
+	})
+	if status != http.StatusConflict {
+		t.Fatalf("joining now returned %d, want 409 while a join is scheduled", status)
+	}
+	msg, _ := out["error"].(string)
+	for _, want := range []string{"scheduled", "cancel"} {
+		if !contains(strings.ToLower(msg), want) {
+			t.Errorf("refusal %q does not mention %q, so the player cannot act on it", msg, want)
+		}
+	}
+
+	// Cancelling the schedule frees the PC immediately.
+	if status, _ := h.call(http.MethodPost, "/api/schedules/"+schedID+"/cancel", nil); status != http.StatusOK {
+		t.Fatalf("cancelling the schedule failed")
+	}
+	if status, out := h.call(http.MethodPost, "/api/jobs", map[string]any{
+		"device_id": deviceID, "server_id": "stub-2",
+	}); status != http.StatusCreated {
+		t.Fatalf("joining after cancelling the schedule returned %d: %v", status, out)
 	}
 }

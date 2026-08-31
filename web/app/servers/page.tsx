@@ -1,9 +1,11 @@
 'use client'
 
 import { Suspense, useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Nav, { Footer } from '../nav'
 import { api, isActive, type Device, type Job, type ServerInfo } from '@/lib/api'
+import type { Schedule } from '@/lib/types'
 
 // Quick ways in, for people who don't arrive with a server name to type.
 // Each chip is just a search, so the relay needs nothing new to support them.
@@ -36,6 +38,7 @@ function ServerBrowser() {
   const [source, setSource] = useState('')
   const [device, setDevice] = useState<Device | null>(null)
   const [busyJob, setBusyJob] = useState(false)
+  const [scheduled, setScheduled] = useState<Schedule | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [joining, setJoining] = useState('')
@@ -62,6 +65,9 @@ function ServerBrowser() {
       .catch(() => {})
     api<{ jobs: Job[] }>('/api/jobs?limit=5')
       .then((j) => setBusyJob((j.jobs ?? []).some((x) => isActive(x.state))))
+      .catch(() => {})
+    api<{ schedules: Schedule[] }>('/api/schedules')
+      .then((r) => setScheduled((r.schedules ?? []).find((x) => x.state === 'pending') ?? null))
       .catch(() => {})
   }, [])
 
@@ -145,6 +151,17 @@ function ServerBrowser() {
           Your PC is already working on a join. Cancel it before starting another.
         </div>
       )}
+      {scheduled && !forSchedule && (
+        <div className="notice">
+          <b>
+            You have a join scheduled for {scheduled.server_name || scheduled.server_addr}
+            {' '}on {new Date(scheduled.fire_at).toLocaleString()}.
+          </b>{' '}
+          Your PC can only do one at a time, so joining now would cost you that
+          one. Cancel it on the{' '}
+          <Link href="/schedule">Schedule</Link> page if you would rather play now.
+        </div>
+      )}
 
       <div className="card">
         <input
@@ -212,7 +229,7 @@ function ServerBrowser() {
                   ) : (
                     <button
                       className="primary"
-                      disabled={!device || busyJob || joining === s.id}
+                      disabled={!device || busyJob || !!scheduled || joining === s.id}
                       onClick={() => join(s)}
                       style={{ minHeight: 40, padding: '6px 14px' }}
                     >

@@ -364,6 +364,24 @@ func (s *Server) handleCreateJob(w http.ResponseWriter, r *http.Request, acct st
 		return
 	}
 
+	// One PC cannot be in two places. A join started now holds the machine, and
+	// if it is still running when a scheduled join fires, the scheduled one is
+	// lost. That is usually the wipe, which is the whole reason somebody set it,
+	// so the casual join gives way rather than silently costing them the night.
+	if sc, err := s.st.PendingScheduleForDevice(d.ID); err == nil {
+		when := sc.FireAt.UTC().Format("15:04 on 2 January")
+		name := sc.ServerName
+		if name == "" {
+			name = sc.ServerAddr
+		}
+		writeError(w, http.StatusConflict, fmt.Sprintf(
+			"You have a join scheduled for %s at %s (times shown in UTC). "+
+				"Your PC can only do one at a time, so joining now would cost you that one. "+
+				"Cancel the scheduled join first if you would rather play now.",
+			name, when))
+		return
+	}
+
 	// One PC, one job. Starting a second would have two jobs fighting over the
 	// same copy of Rust.
 	if existing, err := s.st.ActiveJobForDevice(d.ID); err == nil {
