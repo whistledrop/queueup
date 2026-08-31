@@ -40,6 +40,7 @@ export type Device = {
   os: string
   simulator: boolean
   sleep_after: number // minutes until Windows sleeps: 0 never, -1 unknown
+  needs_manual_update: boolean // stuck on a version that cannot update itself
   last_seen_at: string
 }
 

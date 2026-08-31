@@ -98,3 +98,22 @@ func TestAnUnknownTokenIsStillRefused(t *testing.T) {
 		t.Fatalf("status = %d, want 401 when no token is offered at all", code)
 	}
 }
+
+// A PC on a version older than the self-updater is frozen: it will never pick
+// up a fix on its own, so the app must ask for one manual update. Newer
+// versions look after themselves and must not be nagged.
+func TestNeedsManualUpdate(t *testing.T) {
+	cases := map[string]bool{
+		"v0.1.10":           true,  // predates the self-updater
+		"v0.1.2-1-ga123af8": false, // a development build; not ours to judge
+		"v0.2.0":            false, // the first version that updates itself
+		"v0.2.2":            false,
+		"v1.0.0":            false,
+		"":                  false, // unknown; nagging on a guess is worse
+	}
+	for version, want := range cases {
+		if got := needsManualUpdate(version); got != want {
+			t.Errorf("needsManualUpdate(%q) = %v, want %v", version, got, want)
+		}
+	}
+}

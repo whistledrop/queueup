@@ -17,6 +17,7 @@ import (
 	"queueup/internal/protocol"
 	"queueup/internal/servers"
 	"queueup/internal/store"
+	"queueup/internal/update"
 )
 
 // Config is how the relay is set up. Everything here comes from environment
@@ -226,19 +227,32 @@ func (s *Server) handleClaimCode(w http.ResponseWriter, r *http.Request, acct st
 
 // ------------------------------------------------------------------ devices
 
+// firstSelfUpdatingVersion is the release that learned to update itself.
+// Anything older is frozen: it will never pick up a fix, and no amount of
+// waiting changes that, so the app has to ask for one manual update.
+const firstSelfUpdatingVersion = "v0.2.0"
+
+// needsManualUpdate reports whether this PC is stuck on a version that cannot
+// update itself. An unreadable or development version says no: guessing would
+// nag people who are fine.
+func needsManualUpdate(version string) bool {
+	return update.ShouldUpdate(version, firstSelfUpdatingVersion)
+}
+
 func (s *Server) deviceJSON(d store.Device) map[string]any {
 	return map[string]any{
-		"id":            d.ID,
-		"name":          d.Name,
-		"online":        s.hub.Online(d.ID),
-		"agent_version": d.AgentVersion,
-		"os":            d.OS,
-		"hostname":      d.Hostname,
-		"simulator":     d.Simulator,
-		"sleep_after":   d.SleepAfter,
-		"last_seen_at":  d.LastSeenAt,
-		"paired_at":     d.ClaimedAt,
-		"revoked":       d.Revoked(),
+		"id":                  d.ID,
+		"name":                d.Name,
+		"online":              s.hub.Online(d.ID),
+		"agent_version":       d.AgentVersion,
+		"os":                  d.OS,
+		"hostname":            d.Hostname,
+		"simulator":           d.Simulator,
+		"sleep_after":         d.SleepAfter,
+		"needs_manual_update": needsManualUpdate(d.AgentVersion),
+		"last_seen_at":        d.LastSeenAt,
+		"paired_at":           d.ClaimedAt,
+		"revoked":             d.Revoked(),
 	}
 }
 

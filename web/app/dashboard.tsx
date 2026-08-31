@@ -204,6 +204,15 @@ export default function Dashboard({ email }: { email: string }) {
             </div>
           </>
         )}
+        {pc && pc.needs_manual_update && (
+          <div className="inlineWarn">
+            <b>This PC is running an old version of QueueUp.</b> It is too old to
+            update itself, so it needs replacing once by hand: on the PC, open
+            this site, press Download, quit the QueueUp icon by the clock, put
+            the new file over the old one and run it. Your pairing is kept.
+            Every version after this one updates itself.
+          </div>
+        )}
         {pc && pc.sleep_after > 0 && (
           <div className="inlineWarn">
             <b>This PC is set to sleep after {pc.sleep_after} minutes.</b> A
