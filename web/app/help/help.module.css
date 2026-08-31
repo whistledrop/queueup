@@ -1,0 +1,46 @@
+.h1 {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 0 0 6px;
+}
+
+/* Each question is a native disclosure: no JavaScript, works before the page
+   has finished loading, and the browser handles keyboard and screen readers. */
+.q {
+  border-top: 1px solid var(--line);
+  padding: 2px 0;
+}
+.q:first-of-type { border-top: none; }
+
+.q > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 12px 24px 12px 0;
+  font-weight: 600;
+  position: relative;
+}
+.q > summary::-webkit-details-marker { display: none; }
+.q > summary::after {
+  content: '+';
+  position: absolute;
+  right: 4px;
+  top: 10px;
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.q[open] > summary::after { content: '\2212'; }
+.q > summary:focus-visible { outline: 2px solid var(--accent); border-radius: 6px; }
+
+.a {
+  padding: 0 0 14px;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.6;
+}
+.a p { margin: 0 0 10px; }
+.a p:last-child { margin-bottom: 0; }
+.a b { color: var(--text); font-weight: 600; }
+.a ol, .a ul { margin: 0 0 10px; padding-left: 20px; }
+.a li { margin-bottom: 6px; }

@@ -51,6 +51,8 @@ export default function Nav() {
 export function Footer() {
   return (
     <footer className="foot">
+      <Link href="/help">Help and troubleshooting</Link>
+      <br />
       QueueUp is an unofficial third-party tool, not affiliated with Facepunch
       Studios. It never modifies or automates the game itself.
     </footer>

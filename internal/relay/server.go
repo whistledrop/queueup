@@ -577,6 +577,10 @@ func (s *Server) handleAdminStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	devices, _ := s.st.AllDevices()
 	jobs, _ := s.st.RecentJobs("", 25)
+	accounts, err := s.st.AllAccounts()
+	if err != nil {
+		s.log.Error("listing accounts for the admin view", "err", err)
+	}
 
 	ds := make([]map[string]any, 0, len(devices))
 	for _, d := range devices {
@@ -593,6 +597,7 @@ func (s *Server) handleAdminStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"connected_agents": len(s.hub.Connections()),
+		"accounts":         accounts,
 		"devices":          ds,
 		"recent_jobs":      js,
 		"time":             time.Now().UTC(),

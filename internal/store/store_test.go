@@ -1,6 +1,8 @@
 package store_test
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -237,5 +239,68 @@ func TestActiveJobForDeviceIsWhatSurvivesAReboot(t *testing.T) {
 	_, _, _ = s.ApplyStatus(protocol.JobStatus{JobID: j.ID, State: "done", At: time.Now().UTC()})
 	if _, err := s.ActiveJobForDevice(d.ID); err == nil {
 		t.Fatal("a finished job is still being offered for resume")
+	}
+}
+
+// The customer list an admin screen shows: who signed up, whether their PC ever
+// linked, and whether they have actually joined anything.
+func TestAllAccountsSummarises(t *testing.T) {
+	s := newStore(t)
+	acct, d := pairedDevice(t, s)
+	if _, err := s.CreateJob(store.NewJob{
+		AccountID: acct.ID, DeviceID: d.ID, ServerAddr: "1.2.3.4:28015",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := s.CreateAccount("nobody@example.com"); err != nil {
+		t.Fatal(err)
+	}
+
+	list, err := s.AllAccounts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 2 {
+		t.Fatalf("listed %d accounts, want 2", len(list))
+	}
+
+	byEmail := map[string]store.AccountSummary{}
+	for _, a := range list {
+		byEmail[a.Email] = a
+	}
+	active := byEmail["player@example.com"]
+	if active.Devices != 1 || active.Jobs != 1 {
+		t.Errorf("the active account shows %d devices and %d jobs, want 1 and 1", active.Devices, active.Jobs)
+	}
+	if active.LastJobAt.IsZero() {
+		t.Error("the active account has no last-job time")
+	}
+	idle := byEmail["nobody@example.com"]
+	if idle.Devices != 0 || idle.Jobs != 0 {
+		t.Errorf("the idle account shows %d devices and %d jobs, want none", idle.Devices, idle.Jobs)
+	}
+	if idle.Subscription != "none" {
+		t.Errorf("subscription = %q, want none", idle.Subscription)
+	}
+}
+
+// The list feeds a screen, so it must never carry credentials.
+func TestAllAccountsCarriesNoSecrets(t *testing.T) {
+	s := newStore(t)
+	if _, err := s.Register("secret@example.com", "correct horse battery"); err != nil {
+		t.Fatal(err)
+	}
+	list, err := s.AllAccounts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := json.Marshal(list)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, forbidden := range []string{"correct horse battery", "$2a$", "token"} {
+		if strings.Contains(string(raw), forbidden) {
+			t.Errorf("the account list contains %q", forbidden)
+		}
 	}
 }

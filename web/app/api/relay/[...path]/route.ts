@@ -17,7 +17,14 @@ async function forward(request: NextRequest, path: string[]) {
   url.search = request.nextUrl.search
 
   const headers = new Headers()
-  if (token) headers.set('Authorization', `Bearer ${token}`)
+  // The admin screen carries its own token rather than a sign-in: it is the
+  // operator's window onto the whole relay, not an account feature.
+  const adminToken = request.headers.get('x-admin-token')
+  if (adminToken) {
+    headers.set('Authorization', `Bearer ${adminToken}`)
+  } else if (token) {
+    headers.set('Authorization', `Bearer ${token}`)
+  }
   for (const h of ['content-type', 'accept']) {
     const v = request.headers.get(h)
     if (v) headers.set(h, v)

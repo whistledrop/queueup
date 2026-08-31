@@ -118,3 +118,51 @@ func (s *Store) DeleteAccount(accountID string) error {
 	}
 	return nil
 }
+
+// AccountSummary is one row of the customer list: who they are and what they
+// have. Enough to answer "who has signed up, did their PC ever connect, and
+// have they actually joined anything", which is the whole of early customer
+// support.
+type AccountSummary struct {
+	ID           string    `json:"id"`
+	Email        string    `json:"email"`
+	CreatedAt    time.Time `json:"created_at"`
+	Devices      int       `json:"devices"`
+	Jobs         int       `json:"jobs"`
+	LastJobAt    time.Time `json:"last_job_at,omitempty"`
+	LastSeenAt   time.Time `json:"last_seen_at,omitempty"` // newest heartbeat from any of their PCs
+	Subscription string    `json:"subscription"`
+}
+
+// AllAccounts lists everyone who has signed up, newest first.
+//
+// Deliberately never returns password hashes, session tokens or API tokens:
+// this feeds an admin screen, and a screen has no business holding credentials.
+func (s *Store) AllAccounts() ([]AccountSummary, error) {
+	rows, err := s.db.Query(`
+		SELECT a.id, a.email, a.created_at,
+		       COALESCE(a.subscription_status, 'none'),
+		       (SELECT COUNT(*) FROM devices d WHERE d.account_id = a.id AND d.claimed_at != 0),
+		       (SELECT COUNT(*) FROM jobs j WHERE j.account_id = a.id),
+		       COALESCE((SELECT MAX(j.created_at) FROM jobs j WHERE j.account_id = a.id), 0),
+		       COALESCE((SELECT MAX(d.last_seen_at) FROM devices d WHERE d.account_id = a.id), 0)
+		  FROM accounts a
+		 ORDER BY a.created_at DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := []AccountSummary{}
+	for rows.Next() {
+		var a AccountSummary
+		var created, lastJob, lastSeen int64
+		if err := rows.Scan(&a.ID, &a.Email, &created, &a.Subscription,
+			&a.Devices, &a.Jobs, &lastJob, &lastSeen); err != nil {
+			return nil, err
+		}
+		a.CreatedAt, a.LastJobAt, a.LastSeenAt = fromMs(created), fromMs(lastJob), fromMs(lastSeen)
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}

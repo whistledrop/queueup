@@ -12,9 +12,12 @@ export default function Landing() {
         <span className="brand">
           Queue<span>Up</span>
         </span>
-        <Link href="/login" className={s.signin}>
-          Sign in
-        </Link>
+        <span style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+          <Link href="/help" className={s.signin}>Help</Link>
+          <Link href="/login" className={s.signin}>
+            Sign in
+          </Link>
+        </span>
       </nav>
 
       <header className={s.hero}>
