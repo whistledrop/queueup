@@ -204,6 +204,15 @@ export default function Dashboard({ email }: { email: string }) {
             </div>
           </>
         )}
+        {pc && pc.sleep_after > 0 && (
+          <div className="inlineWarn">
+            <b>This PC is set to sleep after {pc.sleep_after} minutes.</b> A
+            sleeping PC cannot join anything, and QueueUp cannot wake it, so a
+            scheduled join will be missed. On the PC: Settings, System, Power,
+            set &quot;When plugged in, put my device to sleep after&quot; to{' '}
+            <b>Never</b>. Letting the screen turn off is fine.
+          </div>
+        )}
         {pc && (
           <p className="muted small" style={{ marginBottom: needsSub ? 8 : 0 }}>
             QueueUp starts with Windows and keeps itself up to date on its own.
@@ -216,16 +225,6 @@ export default function Dashboard({ email }: { email: string }) {
           </p>
         )}
       </div>
-
-      {pc && pc.sleep_after > 0 && (
-        <div className="notice">
-          <b>Your PC is set to sleep after {pc.sleep_after} minutes.</b> A
-          sleeping PC cannot join anything, and QueueUp cannot wake it, so a
-          scheduled join will be missed. On the PC: Settings, System, Power,
-          set &quot;When plugged in, put my device to sleep after&quot; to{' '}
-          <b>Never</b>. The screen turning off is fine.
-        </div>
-      )}
 
       <div className="card">
         <h2>Join a server</h2>

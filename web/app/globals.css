@@ -486,3 +486,17 @@ header.top {
 
 .foot a { color: var(--muted); }
 .foot a:hover { color: var(--text); }
+
+/* A warning that belongs to the card it sits in, rather than a separate banner
+   competing with it. */
+.inlineWarn {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--warn);
+  background: rgba(214, 161, 58, 0.1);
+  color: #f0d69b;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.inlineWarn b { color: var(--warn); }
