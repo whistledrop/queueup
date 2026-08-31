@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"queueup/internal/agentcfg"
+	"queueup/internal/game"
 	"queueup/internal/relayclient"
 )
 
@@ -103,6 +104,17 @@ func cmdPair(args []string) error {
 	// Make surviving a restart the default. This is the product's whole promise,
 	// and it should not depend on the customer finding a checkbox.
 	ensureAutostart()
+
+	// The one setting that silently ruins everything, said at the one moment
+	// the person is sitting at the PC that needs it changed.
+	if mins := game.SleepTimeoutMinutes(); mins > 0 {
+		fmt.Println()
+		fmt.Printf("  ONE THING TO CHANGE: this PC is set to sleep after %d minutes.\n", mins)
+		fmt.Println("  A sleeping PC cannot join anything, and QueueUp cannot wake it.")
+		fmt.Println("  Settings > System > Power > \"When plugged in, put my device to")
+		fmt.Println("  sleep after\" > Never. Turning the screen off is fine.")
+		fmt.Println()
+	}
 
 	fmt.Println("  Starting up. QueueUp will now sit in your system tray.")
 	if autostartInstalled() {

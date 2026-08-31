@@ -69,8 +69,11 @@ These are Windows and Steam settings QueueUp deliberately does not touch:
   this, a forced update leaves the PC on the lock screen, running nothing.
 - **Steam starts with Windows and remembers your sign-in.** Steam Settings,
   Interface, "Run Steam when my computer starts", and stay signed in.
-- **Sleep is off.** Settings, System, Power, set "Put my device to sleep" to
-  Never. QueueUp does not wake sleeping PCs, by design.
+- **Sleep is off.** Settings, System, Power, set "When plugged in, put my device
+  to sleep after" to Never. QueueUp does not wake sleeping PCs, by design, and a
+  PC that dozes off twenty minutes before wipe simply misses it. Letting the
+  screen turn off is fine. QueueUp reads this setting itself and warns on your
+  dashboard if it would cause trouble, so you do not have to remember.
 - **The agent starts at login.** Right-click the QueueUp tray icon and tick
   "Start with Windows". (There is also a command for it,
   `QueueUpAgent.exe install-autostart`, if you prefer typing.)

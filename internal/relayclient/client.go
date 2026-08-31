@@ -41,8 +41,11 @@ type Client struct {
 	OS           string
 	Hostname     string
 	Simulator    bool
-	Handler      Handler
-	Log          *slog.Logger
+	// SleepAfterMinutes is reported to the relay so the app can warn about a PC
+	// that puts itself to sleep. 0 never, -1 unknown.
+	SleepAfterMinutes int
+	Handler           Handler
+	Log               *slog.Logger
 
 	// MaxBackoff caps how long we wait between reconnection attempts. Thirty
 	// seconds: long enough not to hammer a relay that is down, short enough that
@@ -220,11 +223,12 @@ func (c *Client) session(ctx context.Context, socket string) error {
 	defer cancel()
 
 	c.Send(protocol.TypeHello, protocol.Hello{
-		ProtocolVersion: protocol.Version,
-		AgentVersion:    c.AgentVersion,
-		OS:              c.OS,
-		Hostname:        c.Hostname,
-		Simulator:       c.Simulator,
+		ProtocolVersion:   protocol.Version,
+		AgentVersion:      c.AgentVersion,
+		OS:                c.OS,
+		Hostname:          c.Hostname,
+		Simulator:         c.Simulator,
+		SleepAfterMinutes: c.SleepAfterMinutes,
 	})
 
 	errs := make(chan error, 2)

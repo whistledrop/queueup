@@ -72,6 +72,10 @@ type Hello struct {
 	// Simulator is true when the agent is running against the fake Rust client.
 	// The relay records it so a test job is never mistaken for a real one.
 	Simulator bool `json:"simulator"`
+	// SleepAfterMinutes is how long until Windows puts this PC to sleep on
+	// mains power: 0 never, -1 unknown. A PC that sleeps is the quietest way
+	// for a scheduled join to fail, so the app warns about it.
+	SleepAfterMinutes int `json:"sleep_after_minutes"`
 }
 
 // Welcome is the relay accepting the agent.

@@ -235,6 +235,7 @@ func (s *Server) deviceJSON(d store.Device) map[string]any {
 		"os":            d.OS,
 		"hostname":      d.Hostname,
 		"simulator":     d.Simulator,
+		"sleep_after":   d.SleepAfter,
 		"last_seen_at":  d.LastSeenAt,
 		"paired_at":     d.ClaimedAt,
 		"revoked":       d.Revoked(),
@@ -698,7 +699,7 @@ func (s *Server) readLoop(ctx context.Context, ac *AgentConn, device store.Devic
 		return
 	}
 	ac.Simulator = hello.Simulator
-	if err := s.st.TouchDevice(device.ID, hello.AgentVersion, hello.OS, hello.Hostname, hello.Simulator); err != nil {
+	if err := s.st.TouchDevice(device.ID, hello.AgentVersion, hello.OS, hello.Hostname, hello.Simulator, hello.SleepAfterMinutes); err != nil {
 		s.log.Error("touching device", "err", err)
 	}
 

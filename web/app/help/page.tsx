@@ -56,10 +56,19 @@ export default function HelpPage() {
               It shows a six character code. Type that code into this website on
               your phone. That links the two.
             </li>
+            <li>
+            <b>Stop the PC going to sleep.</b> On the PC: Settings, System,
+            Power, set <b>&quot;When plugged in, put my device to sleep
+            after&quot;</b> to <b>Never</b>. This one matters more than it
+            sounds: a sleeping PC cannot join anything and QueueUp cannot wake
+            it, so a join scheduled for hours later is simply missed. Letting the
+            screen turn off is fine.
+          </li>
           </ol>
           <p>
             That is it. QueueUp starts with Windows from then on and keeps itself
-            up to date.
+            up to date. It checks the sleep setting too, and says so on your
+            dashboard if it would cause trouble.
           </p>
         </Q>
 

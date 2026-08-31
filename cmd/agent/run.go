@@ -103,7 +103,10 @@ func cmdRun(args []string) error {
 		OS:           runtime.GOOS,
 		Hostname:     host,
 		Simulator:    *useSim,
-		Log:          log,
+		// Read once at startup: it is a setting, not a live value, and a PC
+		// that changes it will report the new one at its next reconnect.
+		SleepAfterMinutes: game.SleepTimeoutMinutes(),
+		Log:               log,
 	}
 	app := &agentapp.App{
 		Client:       client,

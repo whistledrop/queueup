@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS devices (
   os             TEXT NOT NULL DEFAULT '',
   hostname       TEXT NOT NULL DEFAULT '',
   simulator      INTEGER NOT NULL DEFAULT 0,
+  sleep_after    INTEGER NOT NULL DEFAULT -1,
   created_at     INTEGER NOT NULL,
   expires_at     INTEGER NOT NULL DEFAULT 0,
   claimed_at     INTEGER NOT NULL DEFAULT 0,
@@ -243,6 +244,7 @@ func (s *Store) migrate() error {
 		{"accounts", "subscription_id", "TEXT NOT NULL DEFAULT ''"},
 		{"accounts", "subscribed_at", "INTEGER NOT NULL DEFAULT 0"},
 		{"jobs", "server_id", "TEXT NOT NULL DEFAULT ''"},
+		{"devices", "sleep_after", "INTEGER NOT NULL DEFAULT -1"},
 		{"jobs", "query_addr", "TEXT NOT NULL DEFAULT ''"},
 	} {
 		has, err := s.hasColumn(m.table, m.column)

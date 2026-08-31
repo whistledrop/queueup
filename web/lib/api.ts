@@ -39,6 +39,7 @@ export type Device = {
   agent_version: string
   os: string
   simulator: boolean
+  sleep_after: number // minutes until Windows sleeps: 0 never, -1 unknown
   last_seen_at: string
 }
 

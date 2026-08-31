@@ -90,6 +90,16 @@ function ScheduleForm() {
         <div className="notice">Link your PC first, then you can schedule joins.</div>
       )}
 
+      {device && device.sleep_after > 0 && (
+        <div className="notice">
+          <b>Your PC sleeps after {device.sleep_after} minutes.</b> A scheduled
+          join hours from now will be missed, because a sleeping PC cannot join
+          and QueueUp cannot wake it. On the PC: Settings, System, Power, set
+          &quot;When plugged in, put my device to sleep after&quot; to{' '}
+          <b>Never</b>.
+        </div>
+      )}
+
       <form onSubmit={submit}>
         <div className="card">
           <h2>Which server</h2>

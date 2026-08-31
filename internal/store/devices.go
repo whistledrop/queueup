@@ -22,10 +22,13 @@ type Device struct {
 	OS           string
 	Hostname     string
 	Simulator    bool
-	CreatedAt    time.Time
-	ClaimedAt    time.Time
-	LastSeenAt   time.Time
-	RevokedAt    time.Time
+	// SleepAfter is minutes until this PC sleeps on mains power: 0 never,
+	// -1 unknown.
+	SleepAfter int
+	CreatedAt  time.Time
+	ClaimedAt  time.Time
+	LastSeenAt time.Time
+	RevokedAt  time.Time
 }
 
 // Paired reports whether this device has been linked to an account.
@@ -165,9 +168,10 @@ func (s *Store) deviceWhere(where string, arg any) (Device, error) {
 	var created, claimed, seen, revoked int64
 	err := s.db.QueryRow(`
 		SELECT id, account_id, name, agent_version, os, hostname, simulator,
-		       created_at, claimed_at, last_seen_at, revoked_at
+		       sleep_after, created_at, claimed_at, last_seen_at, revoked_at
 		  FROM devices WHERE `+where, arg).
-		Scan(&d.ID, &account, &name, &ver, &os, &host, &sim, &created, &claimed, &seen, &revoked)
+		Scan(&d.ID, &account, &name, &ver, &os, &host, &sim, &d.SleepAfter,
+			&created, &claimed, &seen, &revoked)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Device{}, ErrNotFound
 	}
@@ -183,15 +187,16 @@ func (s *Store) deviceWhere(where string, arg any) (Device, error) {
 }
 
 // TouchDevice records what the agent told us about itself, and that it is alive.
-func (s *Store) TouchDevice(deviceID, agentVersion, osName, hostname string, simulator bool) error {
+func (s *Store) TouchDevice(deviceID, agentVersion, osName, hostname string, simulator bool, sleepAfter int) error {
 	sim := 0
 	if simulator {
 		sim = 1
 	}
 	_, err := s.db.Exec(`
-		UPDATE devices SET agent_version = ?, os = ?, hostname = ?, simulator = ?, last_seen_at = ?
+		UPDATE devices SET agent_version = ?, os = ?, hostname = ?, simulator = ?,
+		                   sleep_after = ?, last_seen_at = ?
 		 WHERE id = ?`,
-		agentVersion, osName, hostname, sim, ms(s.now().UTC()), deviceID)
+		agentVersion, osName, hostname, sim, sleepAfter, ms(s.now().UTC()), deviceID)
 	return err
 }
 
