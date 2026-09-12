@@ -10,12 +10,13 @@ import (
 	"golang.org/x/sys/windows/registry"
 )
 
-// RustUpdateState asks Steam what it is doing with Rust on this machine.
+// rustUpdateStateFromSteam asks Steam what it is doing with Rust on this
+// machine. Callers want RustUpdateState, which layers the test override on top.
 //
 // Steam records this in steamapps\appmanifest_252490.acf, next to wherever the
 // game is installed. Games can live on any drive, so the library folders are
 // looked up rather than assumed.
-func RustUpdateState() UpdateState {
+func rustUpdateStateFromSteam() UpdateState {
 	for _, dir := range steamLibraries() {
 		manifest := filepath.Join(dir, "steamapps", "appmanifest_"+RustAppID+".acf")
 		if st, err := readAppManifest(manifest); err == nil && st.Known {

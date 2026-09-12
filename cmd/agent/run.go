@@ -90,6 +90,15 @@ func cmdRun(args []string) error {
 	}
 	log := slog.New(slog.NewTextHandler(logOut, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
+	// Say so loudly when the pretend Steam state is on. A test hook you cannot
+	// confirm is running is worse than no hook at all: a typo in the value would
+	// look exactly like the feature being broken, and a forgotten one would look
+	// like Steam being broken.
+	if u, faked := game.FakeUpdate(); faked {
+		log.Warn("PRETENDING Steam is busy with Rust: this PC is in update-test mode",
+			"variable", game.FakeUpdateEnv, "phone_will_say", u.Describe())
+	}
+
 	newGame, err := launcherFactory(*useSim, *scenarioPath, *logPath, *speed)
 	if err != nil {
 		return err

@@ -231,6 +231,12 @@ func (w *WindowsLauncher) UpdateProgress() UpdateState {
 // been sitting still.
 func (w *WindowsLauncher) freshUpdate() UpdateState {
 	u := RustUpdateState()
+	if _, faked := FakeUpdate(); faked {
+		// The pretend state already says what it means, StalledFor included.
+		// Running it through the stall watch would zero that out, because a
+		// pretend byte count never moves and the watch would call it fresh.
+		return u
+	}
 	w.mu.Lock()
 	if w.stall == nil {
 		w.stall = newStallWatch(time.Now)

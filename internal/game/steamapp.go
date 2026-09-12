@@ -124,6 +124,55 @@ func humanBytes(b int64) string {
 	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
 }
 
+// FakeUpdateEnv makes the agent pretend Steam is busy with Rust, so the force
+// wipe messaging can be seen without waiting for a real Rust patch.
+//
+// This exists because the update path is the hardest thing here to test and the
+// most expensive to get wrong: it only happens for real on force wipe day, which
+// is the one day the product must not fail. Waiting for a monthly patch to find
+// out whether the wording is right is not a test strategy.
+//
+// It is off unless the variable is set, and the value is only ever read from the
+// environment of the agent process, so nothing a server or the relay says can
+// turn it on.
+const FakeUpdateEnv = "QUEUEUP_FAKE_STEAM_UPDATE"
+
+// The numbers below are a plausible Rust patch: a few gigabytes, part done.
+// They exist to make the sentences on the phone read like the real thing.
+const (
+	fakeTotalBytes = 4 * 1024 * 1024 * 1024
+	fakeDoneBytes  = 1024 * 1024 * 1024
+)
+
+// FakeUpdate returns the pretend Steam state, and whether one is set at all.
+//
+// Accepted values:
+//
+//	moving   a download that is progressing  (unlimited patience, keep waiting)
+//	paused   Steam has stopped it            (needs the player, will not fix itself)
+//	stalled  nothing has moved for a while   (needs the player)
+//
+// Anything else, including empty, means "not faking": the agent reads the real
+// Steam manifest exactly as it always does.
+func FakeUpdate() (UpdateState, bool) {
+	base := UpdateState{
+		Known: true, Updating: true,
+		BytesDownloaded: fakeDoneBytes, BytesToDownload: fakeTotalBytes,
+	}
+	switch strings.ToLower(strings.TrimSpace(os.Getenv(FakeUpdateEnv))) {
+	case "moving", "downloading":
+		return base, true
+	case "paused":
+		base.Paused = true
+		return base, true
+	case "stalled", "stuck":
+		base.StalledFor = StallReport + time.Minute
+		return base, true
+	default:
+		return UpdateState{}, false
+	}
+}
+
 // Steam's manifest is a VDF file: quoted key then quoted value, one per line.
 var vdfPair = regexp.MustCompile(`"([^"]+)"\s+"([^"]*)"`)
 
@@ -170,6 +219,17 @@ func parseAppManifest(content string) UpdateState {
 		st.Updating = true
 	}
 	return st
+}
+
+// RustUpdateState asks Steam what it is doing with Rust, unless the pretend
+// state is switched on, in which case that answers instead. Every caller goes
+// through here, so the whole force-wipe path behaves consistently: the sentence
+// on the phone and the decision to keep waiting come from the same answer.
+func RustUpdateState() UpdateState {
+	if u, ok := FakeUpdate(); ok {
+		return u
+	}
+	return rustUpdateStateFromSteam()
 }
 
 func readAppManifest(path string) (UpdateState, error) {

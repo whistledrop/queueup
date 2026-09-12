@@ -190,6 +190,43 @@ If you leave and the app still shows the join running a minute later, save a
 problem report and send it. The wording Rust uses when you disconnect differs
 between builds, and the report has the lines needed to fix it.
 
+### Testing the force wipe update path
+
+On force wipe Rust ships a client update and Steam must download several
+gigabytes before the game will start at all. It is the hardest path to test,
+because you cannot make Steam require an update on demand, and it happens for
+real only on the one day this product must not fail.
+
+So the agent can pretend. Stop the agent, set the variable, start it again:
+
+```
+set QUEUEUP_FAKE_STEAM_UPDATE=paused
+QueueUpAgent.exe run
+```
+
+Three values, each a different sentence on the phone:
+
+| Value     | What it pretends                | What should happen                                   |
+| --------- | ------------------------------- | ---------------------------------------------------- |
+| `moving`  | a download that is progressing  | the join waits patiently, **forever**, and never fails |
+| `paused`  | Steam has stopped the download  | the phone says to open Steam and resume it            |
+| `stalled` | nothing has moved for 9 minutes | the phone says to check Steam: offline, full, paused  |
+
+Then start a join from the phone and watch the timeline. The message appears
+within a few seconds; with `paused` or `stalled` the job also gives up about
+three minutes later and says why, which is the behaviour that matters.
+
+Add `--sim --scenario long_queue_slow` to do all this without touching the real
+game, Steam or a real server.
+
+The agent writes a loud `PRETENDING Steam is busy` line to its log at startup
+whenever this is on. If you do not see that line, the value was not recognised
+and the agent is behaving completely normally. **Unset it when you are done:**
+
+```
+set QUEUEUP_FAKE_STEAM_UPDATE=
+```
+
 ### If something goes wrong
 
 Right-click the QueueUp icon by the clock (it may be under the little "^"

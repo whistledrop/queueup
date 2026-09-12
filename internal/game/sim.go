@@ -32,6 +32,15 @@ func (s *SimLauncher) Preflight() error { return s.FailPreflight }
 func (s *SimLauncher) LogPath() string  { return s.Log }
 func (s *SimLauncher) Running() bool    { return s.running.Load() }
 
+// UpdateProgress answers with the pretend Steam state, so the force-wipe
+// messaging can be watched end to end on a real phone with --sim and no real
+// game, no real Steam and no real patch involved. With no pretend state set it
+// reports nothing, which is the truth: the fake game is never waiting on Steam.
+func (s *SimLauncher) UpdateProgress() UpdateState {
+	u, _ := FakeUpdate()
+	return u
+}
+
 func (s *SimLauncher) Exited() <-chan Exit {
 	s.mu.Lock()
 	defer s.mu.Unlock()
