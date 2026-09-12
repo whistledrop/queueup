@@ -63,6 +63,7 @@ Settings come from environment variables, never from files in the repo:
                           battlemetrics  Needs a PAID subscription token in
                                          QUEUEUP_BATTLEMETRICS_TOKEN
 
+  QUEUEUP_JOB_EXPIRY     how long a join waits for an absent PC (default 6h)
   QUEUEUP_BILLING=on     turn the subscription gate on. Off by default, which
                          means every account runs free. Flip it when Stripe is
                          connected.
@@ -194,6 +195,19 @@ func serve(st *store.Store) error {
 	// The scheduler fires planned joins; the watcher polls each active job's
 	// server and is what detects a wipe restart.
 	go srv.RunScheduler(ctx, 5*time.Second)
+
+	// Close joins whose PC never came back, so an ancient job cannot spring to
+	// life weeks later or block every new one.
+	expiry := relay.DefaultJobExpiry
+	if v := os.Getenv("QUEUEUP_JOB_EXPIRY"); v != "" {
+		d, err := time.ParseDuration(v)
+		if err != nil {
+			return fmt.Errorf("QUEUEUP_JOB_EXPIRY is not a duration like 6h: %w", err)
+		}
+		expiry = d
+	}
+	log.Info("joins waiting for an absent PC expire after", "window", expiry)
+	go srv.RunJobExpiry(ctx, 5*time.Minute, expiry)
 	watcher := &relay.Watcher{Store: st, Hub: srv.Hub(), Log: log}
 	go watcher.Run(ctx)
 
