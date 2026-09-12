@@ -45,6 +45,9 @@ function ServerBrowser() {
   // Joining by address needs nothing from the server list, so it keeps working
   // when the list source is having a bad day. See joinAddress below.
   const [address, setAddress] = useState('')
+  // A failed search is its own thing, not a general error: the rest of the page
+  // still works, and saying so in red teaches people the app is broken.
+  const [searchFailed, setSearchFailed] = useState(false)
 
   const search = useCallback(async (q: string) => {
     setLoading(true)
@@ -54,9 +57,10 @@ function ServerBrowser() {
       )
       setServers(res.servers ?? [])
       setSource(res.source)
+      setSearchFailed(false)
       setError('')
-    } catch (e) {
-      setError((e as Error).message)
+    } catch {
+      setSearchFailed(true)
     } finally {
       setLoading(false)
     }
@@ -156,6 +160,16 @@ function ServerBrowser() {
 
       {error && <div className="error">{error}</div>}
 
+      {searchFailed && (
+        <div className="notice">
+          <b>Server search is unavailable right now.</b> That is the public
+          server list not answering, not your PC and not your connection. Your
+          PC is fine and joining still works: type the server&apos;s address in
+          the box below. Servers publish it as &quot;connect
+          1.2.3.4:28015&quot; on their site or Discord.
+        </div>
+      )}
+
       {source === 'stub' && (
         <div className="notice">
           Showing the built-in example list. Real server search needs a key on the
@@ -239,8 +253,20 @@ function ServerBrowser() {
       )}
 
       <div className="card">
-        <h2>{loading ? 'Searching' : `${servers.length} server${servers.length === 1 ? '' : 's'}, busiest first`}</h2>
-        {!loading && servers.length === 0 && (
+        <h2>
+          {loading
+            ? 'Searching'
+            : searchFailed
+              ? 'Search unavailable'
+              : `${servers.length} server${servers.length === 1 ? '' : 's'}, busiest first`}
+        </h2>
+        {!loading && searchFailed && (
+          <div className="muted">
+            Nothing to show while the server list is down. Use the address box
+            above, or try again in a few minutes.
+          </div>
+        )}
+        {!loading && !searchFailed && servers.length === 0 && (
           <div className="muted">Nothing matched that. Try a shorter search.</div>
         )}
         {servers.map((s) => {

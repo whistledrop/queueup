@@ -29,8 +29,12 @@ func (s *Server) handleSearchServers(w http.ResponseWriter, r *http.Request, acc
 	}
 	found, err := s.cfg.Servers.Search(r.Context(), r.URL.Query().Get("q"), limit)
 	if err != nil {
+		// The detail belongs in the log, not on somebody's phone. A player
+		// shown 'context deadline exceeded' learns nothing except that the
+		// product is broken, and the part they can still use is right there.
 		s.log.Error("searching servers", "source", s.cfg.Servers.Name(), "err", err)
-		writeError(w, http.StatusBadGateway, err.Error())
+		writeError(w, http.StatusBadGateway,
+			"Server search isn't responding at the moment. This is the public server list, not your PC. You can still join by typing a server's address.")
 		return
 	}
 
