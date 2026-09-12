@@ -163,6 +163,9 @@ func serve(st *store.Store) error {
 	if err != nil {
 		return err
 	}
+	// Remember what the source tells us, so an outage at its end degrades the
+	// product rather than stopping it.
+	provider = servers.NewCached(provider)
 	if provider.Name() == "stub" {
 		log.Warn("server search is using the built-in stub list. " +
 			"Set QUEUEUP_SERVER_SOURCE to steam or battlemetrics for real servers")

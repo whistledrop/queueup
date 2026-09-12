@@ -333,19 +333,38 @@ func (s *Server) handleCreateJob(w http.ResponseWriter, r *http.Request, acct st
 			return
 		}
 		sv, err := s.cfg.Servers.ByID(r.Context(), body.ServerID)
-		if err != nil {
-			writeError(w, http.StatusBadGateway, err.Error())
-			return
-		}
-		if sv.Address == "" {
-			writeError(w, http.StatusBadGateway,
-				"We couldn't work out that server's address. Try again in a moment.")
-			return
-		}
-		body.Server = sv.Address
-		queryAddr = sv.QueryAddress
-		if body.ServerName == "" {
-			body.ServerName = sv.Name
+		switch {
+		case err == nil && sv.Address != "":
+			body.Server = sv.Address
+			queryAddr = sv.QueryAddress
+			if body.ServerName == "" {
+				body.ServerName = sv.Name
+			}
+
+		default:
+			// The lookup failed, or came back with no address. Before refusing,
+			// use what we already know: a saved server carries the address we
+			// were told when it was saved. Refusing a join while holding the
+			// address in our own database would be absurd, and on wipe day it
+			// would be the difference between playing and not.
+			//
+			// Only a genuinely known address is acceptable here. The server id
+			// is NOT one: for the Steam source it is the query port, and
+			// connecting a player to that would fail in a confusing way.
+			fav, ferr := s.st.Favourite(acct.ID, body.ServerID)
+			if ferr != nil || fav.Address == "" {
+				s.log.Warn("no way to resolve a server for a join",
+					"server", body.ServerID, "err", err)
+				writeError(w, http.StatusBadGateway,
+					"We couldn't work out that server's address just now, and it isn't one of your saved servers. Try again in a moment.")
+				return
+			}
+			s.log.Warn("server lookup failed, using the saved address",
+				"server", body.ServerID, "address", fav.Address, "err", err)
+			body.Server = fav.Address
+			if body.ServerName == "" {
+				body.ServerName = fav.Name
+			}
 		}
 	}
 
