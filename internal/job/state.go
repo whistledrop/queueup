@@ -504,9 +504,16 @@ func (m *Machine) handleLogEvent(v LogEvent, res *Result) {
 		}
 		m.fail(ReasonSteamProblem, res)
 	case "connecting":
-		if m.state != StateConnecting {
-			res.Transitions = append(res.Transitions, m.moveTo(StateConnecting, v.Detail, nil))
+		// Seeing the connect line while already in the queue is not news: it is
+		// the same connection attempt. The server's poll often arrives before
+		// Rust gets round to writing this line, and without this guard the phone
+		// went "in the queue", back to "connecting", then "in the queue" again,
+		// which is a flicker rather than information. A genuine new attempt
+		// comes back through launching, so nothing is lost by ignoring it here.
+		if m.state == StateConnecting || m.state == StateQueued {
+			return
 		}
+		res.Transitions = append(res.Transitions, m.moveTo(StateConnecting, v.Detail, nil))
 	case "queued":
 		// Any number this line carried is deliberately dropped, and so is the
 		// pattern's own detail text, which may have had one baked into it. See

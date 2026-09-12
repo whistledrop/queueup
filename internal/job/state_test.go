@@ -451,6 +451,28 @@ func TestUserQuitFlagDoesNotOutliveTheLaunchItBelongsTo(t *testing.T) {
 	_ = res
 }
 
+// The server's own poll can easily arrive before Rust gets round to writing its
+// "Connecting" line, because one comes over the network and the other waits on
+// a game starting up. When that happened the phone said "in the queue", then
+// went back to "connecting", then said "in the queue" again: a flicker carrying
+// no information. The connect line means nothing once we are already queued.
+func TestTheConnectLineDoesNotDragTheJobBackOutOfTheQueue(t *testing.T) {
+	m, _ := newTestMachine(Config{})
+	feed(m, Start{}, LaunchOK{})
+	feed(m, ServerUp{Queue: 8}) // the poll wins the race
+	if m.State() != StateQueued {
+		t.Fatalf("setup: state = %s, want queued", m.State())
+	}
+
+	res := m.Handle(LogEvent{Kind: "connecting", Detail: "Connecting to 1.2.3.4:28015"})
+	if len(res.Transitions) != 0 {
+		t.Fatalf("the connect line pulled the phone back out of the queue: %+v", res.Transitions)
+	}
+	if m.State() != StateQueued {
+		t.Fatalf("state = %s, want queued", m.State())
+	}
+}
+
 // The player disconnects from the server at the keyboard and lands back on the
 // main menu, leaving Rust running. No process exit is coming to tell us, so the
 // log line is the only signal there is. Their leaving IS the cancel.
