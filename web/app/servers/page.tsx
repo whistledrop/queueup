@@ -42,6 +42,9 @@ function ServerBrowser() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [joining, setJoining] = useState('')
+  // Joining by address needs nothing from the server list, so it keeps working
+  // when the list source is having a bad day. See joinAddress below.
+  const [address, setAddress] = useState('')
 
   const search = useCallback(async (q: string) => {
     setLoading(true)
@@ -106,6 +109,29 @@ function ServerBrowser() {
     router.push(
       `/schedule?server_id=${encodeURIComponent(s.id)}&name=${encodeURIComponent(s.name)}`,
     )
+  }
+
+  // Join a server by its address, with no lookup involved. Rust servers publish
+  // this as "connect 1.2.3.4:28015" on their website or Discord, and it is the
+  // only way in when the server list is unreachable.
+  async function joinAddress() {
+    if (!device || !address.trim()) return
+    setJoining('address')
+    setError('')
+    try {
+      const job = await api<Job>('/api/jobs', {
+        method: 'POST',
+        body: JSON.stringify({
+          device_id: device.id,
+          server: address.trim(),
+          server_name: address.trim(),
+        }),
+      })
+      router.push(`/jobs/${job.id}`)
+    } catch (e) {
+      setError((e as Error).message)
+      setJoining('')
+    }
   }
 
   async function join(s: ServerInfo) {
@@ -184,6 +210,33 @@ function ServerBrowser() {
           ))}
         </div>
       </div>
+
+      {!forSchedule && (
+        <div className="card">
+          <h2>Know the address?</h2>
+          <p className="muted small" style={{ marginTop: 0 }}>
+            Servers publish this as &quot;connect 1.2.3.4:28015&quot; on their
+            website or Discord. This works even when server search is down.
+          </p>
+          <div className="stack">
+            <input
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="1.2.3.4:28015"
+              aria-label="Server address"
+              autoCorrect="off"
+              spellCheck={false}
+            />
+            <button
+              className="primary btn-wide"
+              disabled={!device || busyJob || !!scheduled || !address.trim() || joining === 'address'}
+              onClick={joinAddress}
+            >
+              {joining === 'address' ? 'Starting' : 'Join this address'}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <h2>{loading ? 'Searching' : `${servers.length} server${servers.length === 1 ? '' : 's'}, busiest first`}</h2>
