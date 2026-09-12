@@ -32,12 +32,20 @@ const (
 	// write these lines, which is exactly what lets the agent tell "the player
 	// closed Rust on purpose" apart from "Rust died and needs relaunching".
 	EventUserQuit EventKind = "user_quit"
+	// EventUserLeft is the player disconnecting from the server, or backing out
+	// of the queue, while leaving Rust open. It is distinct from
+	// EventDisconnected, which is the connection failing TO them: one means
+	// "stop, I have changed my mind", the other means "try again". Getting
+	// these two the wrong way round either relaunches the game in somebody's
+	// face or abandons them after a wipe-day drop.
+	EventUserLeft EventKind = "user_left"
 )
 
 var validKinds = map[EventKind]bool{
 	EventConnecting: true, EventQueued: true, EventJoined: true,
 	EventDisconnected: true, EventRejected: true, EventServerFull: true,
 	EventSteamProblem: true, EventUserQuit: true, EventLoading: true,
+	EventUserLeft: true,
 }
 
 // Event is one parsed log line.

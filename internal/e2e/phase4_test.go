@@ -116,14 +116,25 @@ func TestScheduleFiringIntoAnOfflinePC(t *testing.T) {
 	if err != nil {
 		t.Fatal("the job was lost because the PC was off")
 	}
+	// The offline note is appended a moment after the job appears, so poll for
+	// it. Reading the timeline once raced that write and failed about once in
+	// every few full runs, printing a timeline that plainly contained the line
+	// it was claiming to be missing.
 	var toldOffline bool
-	for _, line := range h.timeline(j.ID) {
-		if contains(line, "offline") {
-			toldOffline = true
+	var timeline []string
+	for deadline := time.Now().Add(5 * time.Second); !toldOffline && time.Now().Before(deadline); {
+		timeline = h.timeline(j.ID)
+		for _, line := range timeline {
+			if contains(line, "offline") {
+				toldOffline = true
+			}
+		}
+		if !toldOffline {
+			time.Sleep(50 * time.Millisecond)
 		}
 	}
 	if !toldOffline {
-		t.Errorf("nothing in the timeline says the PC was off:\n%v", h.timeline(j.ID))
+		t.Errorf("nothing in the timeline says the PC was off:\n%v", timeline)
 	}
 	_, stop := h.agent(deviceToken, "instant_join")
 	defer stop()

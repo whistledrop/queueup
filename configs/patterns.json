@@ -137,6 +137,30 @@
       "example": "Connected to 51.83.128.10:28015"
     },
     {
+      "id": "user_left_disconnecting_from_server",
+      "event": "user_left",
+      "verified": false,
+      "regex": "(?i)\\bdisconnect(ing|ed)?\\s+from\\s+(the\\s+)?server\\b",
+      "detail": "You left the server on your PC.",
+      "example": "Disconnecting from server"
+    },
+    {
+      "id": "user_left_client_disconnect",
+      "event": "user_left",
+      "verified": false,
+      "regex": "Client:Disconnect\\(\\)",
+      "detail": "You left the server on your PC.",
+      "example": "Client:Disconnect()"
+    },
+    {
+      "id": "user_left_main_menu",
+      "event": "user_left",
+      "verified": false,
+      "regex": "(?i)\\b(return(ing|ed)?|back)\\s+to\\s+(the\\s+)?main\\s?menu\\b",
+      "detail": "You left the server on your PC.",
+      "example": "Returning to main menu"
+    },
+    {
       "id": "disconnected_timeout",
       "event": "disconnected",
       "verified": false,

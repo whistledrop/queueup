@@ -1,0 +1,9 @@
+{
+  "name": "player_leaves_server",
+  "description": "The player gets in, then disconnects back to the main menu at the keyboard, leaving Rust running. There is no process exit to notice, so the leave line in the log is the only signal. QueueUp must stop the job rather than dragging them back into the server they just walked out of.",
+  "steps": [
+    {"after_ms": 500,  "line": "Connecting to {{connect}}", "expect": "connecting"},
+    {"after_ms": 1500, "line": "Finished loading level Procedural Map", "expect": "joined"},
+    {"after_ms": 1500, "line": "Disconnecting from server", "expect": "user_left"}
+  ]
+}

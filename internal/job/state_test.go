@@ -52,14 +52,14 @@ func TestHappyPathThroughQueue(t *testing.T) {
 		t.Fatalf("state = %s, want connecting", m.State())
 	}
 
-	feed(m, LogEvent{Kind: "queued", Position: 212, Detail: "In queue, position 212"})
-	if m.State() != StateQueued || m.Position() != 212 {
-		t.Fatalf("state = %s position = %d, want queued/212", m.State(), m.Position())
+	trs := m.Handle(LogEvent{Kind: "queued", Position: 212, Detail: "In queue, position 212"}).Transitions
+	if m.State() != StateQueued {
+		t.Fatalf("state = %s, want queued", m.State())
 	}
-
-	feed(m, LogEvent{Kind: "queued", Position: 40})
-	if m.Position() != 40 {
-		t.Fatalf("position = %d, want 40", m.Position())
+	// No number reaches the phone, and neither does the pattern's own numbered
+	// wording: whatever it said was never the player's own place in the line.
+	if len(trs) != 1 || trs[0].Position != 0 || strings.Contains(trs[0].Detail, "212") {
+		t.Fatalf("a queue position leaked through to the phone: %+v", trs)
 	}
 
 	feed(m, LogEvent{Kind: "joined", Detail: "You're in."})
@@ -79,12 +79,15 @@ func TestHappyPathThroughQueue(t *testing.T) {
 	}
 }
 
-func TestRepeatedSamePositionDoesNotSpamUpdates(t *testing.T) {
+// Being in the queue is reported once. Every later queue line says the same
+// thing, whatever number it carries, so none of them is worth an update.
+func TestTheQueueIsReportedOnceAndThenStaysQuiet(t *testing.T) {
 	m, _ := newTestMachine(Config{})
 	feed(m, Start{}, LaunchOK{}, LogEvent{Kind: "queued", Position: 100})
-	res := m.Handle(LogEvent{Kind: "queued", Position: 100})
-	if len(res.Transitions) != 0 {
-		t.Fatalf("the same queue position produced %d updates; the phone would buzz for nothing", len(res.Transitions))
+	for _, p := range []int{100, 60, 12} {
+		if res := m.Handle(LogEvent{Kind: "queued", Position: p}); len(res.Transitions) != 0 {
+			t.Fatalf("queue line %d produced another update; the phone would buzz for nothing", p)
+		}
 	}
 }
 
@@ -134,9 +137,6 @@ func TestCrashMidQueueRelaunches(t *testing.T) {
 	if m.State() != StateRetrying {
 		t.Fatalf("state = %s, want retrying after a crash", m.State())
 	}
-	if m.Position() != 240 {
-		t.Log("note: position is retained until the relaunch, which is what the phone shows")
-	}
 
 	// Too early: still backing off.
 	feed(m, Tick{})
@@ -149,9 +149,6 @@ func TestCrashMidQueueRelaunches(t *testing.T) {
 	}
 	if m.Attempt() != 2 {
 		t.Fatalf("attempts = %d, want 2", m.Attempt())
-	}
-	if m.Position() != 0 {
-		t.Fatalf("queue position should reset on relaunch, got %d", m.Position())
 	}
 }
 
@@ -454,6 +451,72 @@ func TestUserQuitFlagDoesNotOutliveTheLaunchItBelongsTo(t *testing.T) {
 	_ = res
 }
 
+// The player disconnects from the server at the keyboard and lands back on the
+// main menu, leaving Rust running. No process exit is coming to tell us, so the
+// log line is the only signal there is. Their leaving IS the cancel.
+func TestLeavingTheServerEndsTheJob(t *testing.T) {
+	m, _ := newTestMachine(Config{MaxAttempts: 8})
+	feed(m, Start{}, LaunchOK{}, LogEvent{Kind: "joined", Detail: "You're in the server."})
+
+	res := m.Handle(LogEvent{Kind: "user_left"})
+
+	if m.State() != StateDone {
+		t.Fatalf("state = %s, want done", m.State())
+	}
+	if len(res.Transitions) == 0 || res.Transitions[0].Reason == nil ||
+		res.Transitions[0].Reason.Code != "player_left" {
+		t.Fatalf("the phone was not told the player left: %+v", res.Transitions)
+	}
+	// They are sitting in front of Rust choosing where to go next. Shutting the
+	// game on them would be the same fighting this is meant to stop.
+	for _, a := range res.Actions {
+		if a == ActionCloseGame {
+			t.Fatal("it closed Rust on a player who is using it")
+		}
+		if a == ActionLaunchGame {
+			t.Fatal("it relaunched the server the player just left")
+		}
+	}
+}
+
+// Backing out of the queue is the same answer, given earlier.
+func TestLeavingTheQueueEndsTheJob(t *testing.T) {
+	m, _ := newTestMachine(Config{MaxAttempts: 8})
+	feed(m, Start{}, LaunchOK{}, ServerUp{Queue: 8})
+	if m.State() != StateQueued {
+		t.Fatalf("setup: state = %s, want queued", m.State())
+	}
+	feed(m, LogEvent{Kind: "user_left"})
+	if m.State() != StateDone {
+		t.Fatalf("state = %s, want done: the job outlived the player walking away", m.State())
+	}
+}
+
+// When WE close the game for a retry, the closing game may well write a
+// disconnect line of its own. Reading that as the player leaving would cancel
+// every retry.
+func TestOurOwnCloseIsNotMistakenForThePlayerLeaving(t *testing.T) {
+	m, c := newTestMachine(Config{MaxAttempts: 3, RetryBase: time.Second, RetryMax: time.Second})
+	feed(m, Start{}, LaunchOK{}, LogEvent{Kind: "queued"})
+
+	feed(m, LogEvent{Kind: "disconnected", Detail: "Disconnected: timed out"})
+	if m.State() != StateRetrying {
+		t.Fatalf("setup: state = %s, want retrying", m.State())
+	}
+	feed(m, LogEvent{Kind: "user_left"}) // written by the close WE ordered
+
+	c.advance(2 * time.Second)
+	launched := false
+	for _, a := range m.Handle(Tick{}).Actions {
+		if a == ActionLaunchGame {
+			launched = true
+		}
+	}
+	if !launched {
+		t.Fatalf("the retry never relaunched: our own close was misread as the player leaving (state %s)", m.State())
+	}
+}
+
 // Rust does not log queue positions (verified against a real full-server
 // session, 2026-08-29: five minutes queued, nothing in the log between
 // Connecting and Spawning World). So while the client sits connecting, the
@@ -466,45 +529,31 @@ func TestServerReportedQueueDrivesTheQueueDisplay(t *testing.T) {
 	}
 
 	// The server says 8 people are in line while we are connecting: we are one
-	// of them.
-	states := feed(m, ServerUp{Players: 200, MaxPlayers: 200, Queue: 8})
-	if m.State() != StateQueued || m.Position() != 8 {
-		t.Fatalf("state = %s position = %d, want queued/8 (%v)", m.State(), m.Position(), states)
+	// of them. That is enough to say "you are in the queue", and not enough to
+	// say anything about where in it.
+	trs := m.Handle(ServerUp{Players: 200, MaxPlayers: 200, Queue: 8}).Transitions
+	if m.State() != StateQueued {
+		t.Fatalf("state = %s, want queued", m.State())
+	}
+	if len(trs) != 1 || trs[0].Position != 0 {
+		t.Fatalf("the server's queue LENGTH was shown as the player's place: %+v", trs)
+	}
+	if strings.ContainsAny(trs[0].Detail, "0123456789") {
+		t.Fatalf("a number reached the phone: %q", trs[0].Detail)
 	}
 
-	// The line shrinks; the phone follows.
-	feed(m, ServerUp{Queue: 5})
-	if m.Position() != 5 {
-		t.Fatalf("position = %d, want 5", m.Position())
-	}
-
-	// The same number again must not produce another update.
-	if res := m.Handle(ServerUp{Queue: 5}); len(res.Transitions) != 0 {
-		t.Fatalf("a repeated queue count produced %d updates", len(res.Transitions))
-	}
-
-	// Front of the line.
-	trs := m.Handle(ServerUp{Queue: 0}).Transitions
-	if len(trs) == 0 || !strings.Contains(trs[0].Detail, "front") {
-		t.Fatalf("reaching the front was not reported: %+v", trs)
+	// Every later count says the same thing: still in the queue. Shorter,
+	// longer, or the same, none of them is news.
+	for _, q := range []int{5, 13, 5, 1} {
+		if res := m.Handle(ServerUp{Queue: q}); len(res.Transitions) != 0 {
+			t.Fatalf("a queue count of %d produced another update", q)
+		}
 	}
 
 	// And then the real join, from the log.
 	feed(m, LogEvent{Kind: "joined", Detail: "You're in the server."})
 	if m.State() != StateInServer {
 		t.Fatalf("state = %s, want in_server", m.State())
-	}
-}
-
-// If the game's log DOES report a position (an older build, a changed patch),
-// that number is the player's own place and beats the server's count. The
-// coarser server number must not overwrite it.
-func TestALogReportedPositionOutranksTheServerCount(t *testing.T) {
-	m, _ := newTestMachine(Config{})
-	feed(m, Start{}, LaunchOK{}, LogEvent{Kind: "queued", Position: 3, Detail: "In queue, position 3"})
-	feed(m, ServerUp{Queue: 40})
-	if m.Position() != 3 {
-		t.Fatalf("position = %d; the server's queue length overwrote the player's own position", m.Position())
 	}
 }
 
@@ -526,24 +575,28 @@ func TestServerQueueOnlyCountsWhileConnecting(t *testing.T) {
 	}
 }
 
-// The number shown is an estimate of the player's place: the lowest queue
-// length seen since they joined it. People joining behind them grow the line
-// but must never push their number back up.
-func TestQueueEstimateOnlyMovesTowardTheFront(t *testing.T) {
+// Nothing QueueUp can see is the player's place in the line, so no number is
+// ever published, in any state, from either source.
+func TestNoQueueNumberIsEverPublished(t *testing.T) {
 	m, _ := newTestMachine(Config{})
-	feed(m, Start{}, LaunchOK{}, ServerUp{Queue: 8})
-	if m.Position() != 8 {
-		t.Fatalf("position = %d, want 8", m.Position())
+	var all []Transition
+	collect := func(ins ...Input) {
+		for _, in := range ins {
+			all = append(all, m.Handle(in).Transitions...)
+		}
 	}
-	// Five more people arrive behind: total 13. The player has not moved back.
-	if res := m.Handle(ServerUp{Queue: 13}); len(res.Transitions) != 0 || m.Position() != 8 {
-		t.Fatalf("a growing line pushed the player's number up: position %d, %d transitions",
-			m.Position(), len(res.Transitions))
+	collect(Start{}, LaunchOK{}, ServerUp{Queue: 8}, ServerUp{Queue: 13},
+		LogEvent{Kind: "queued", Position: 212, Detail: "In queue, position 212"},
+		LogEvent{Kind: "loading", Detail: "Through the queue."},
+		LogEvent{Kind: "joined", Detail: "You're in the server."})
+
+	for _, tr := range all {
+		if tr.Position != 0 {
+			t.Errorf("transition %s published position %d", tr, tr.Position)
+		}
 	}
-	// The front admits three: total 5, and that IS progress.
-	feed(m, ServerUp{Queue: 5})
-	if m.Position() != 5 {
-		t.Fatalf("position = %d, want 5", m.Position())
+	if m.Position() != 0 {
+		t.Errorf("the machine is holding a position of %d", m.Position())
 	}
 }
 

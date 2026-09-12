@@ -62,7 +62,6 @@ export default function LiveStatus({ jobId }: { jobId: string }) {
   // the agent's confirming event to arrive.
   const state =
     job && isActive(job.state) === false ? job.state : (latest?.state ?? job?.state ?? 'pending')
-  const position = state === 'queued' ? (latest?.position ?? job?.position ?? 0) : 0
   const running = isActive(state)
 
   return (
@@ -79,13 +78,6 @@ export default function LiveStatus({ jobId }: { jobId: string }) {
         <p className="muted" style={{ margin: 0 }}>
           {latest?.detail || job?.detail || ''}
         </p>
-
-        {position > 0 && (
-          <>
-            <p className="position">{position}</p>
-            <p className="muted" style={{ margin: 0 }}>your place in the queue, about</p>
-          </>
-        )}
 
         {state === 'in_server' && (
           <p className="muted" style={{ marginBottom: 0 }}>

@@ -90,25 +90,28 @@ func TestInstantJoin(t *testing.T) {
 	}
 }
 
-func TestLongQueueReportsEveryPosition(t *testing.T) {
+// Five numbered queue lines arrive from the game. The phone is told once that
+// it is in the queue, and never told a number, because no number in that log is
+// the player's own place in the line.
+func TestALongQueueIsReportedOnceWithNoNumbers(t *testing.T) {
 	final, _, trs := runScenario(t, "long_queue", job.Config{InServerConfirm: 300 * time.Millisecond})
 	if final != job.StateDone {
 		t.Fatalf("final = %s, want done. transitions: %v", final, statesOf(trs))
 	}
-	var positions []int
+	var queued []job.Transition
 	for _, tr := range trs {
 		if tr.To == job.StateQueued {
-			positions = append(positions, tr.Position)
+			queued = append(queued, tr)
 		}
 	}
-	want := []int{212, 148, 61, 12, 1}
-	if len(positions) != len(want) {
-		t.Fatalf("queue positions reported = %v, want %v", positions, want)
+	if len(queued) != 1 {
+		t.Fatalf("said 'in the queue' %d times, want once: %v", len(queued), statesOf(trs))
 	}
-	for i := range want {
-		if positions[i] != want[i] {
-			t.Fatalf("queue positions reported = %v, want %v", positions, want)
-		}
+	if queued[0].Position != 0 {
+		t.Errorf("published a queue position of %d", queued[0].Position)
+	}
+	if strings.ContainsAny(queued[0].Detail, "0123456789") {
+		t.Errorf("a number reached the phone: %q", queued[0].Detail)
 	}
 }
 
@@ -303,24 +306,46 @@ func TestQueueNumbersComeFromTheServerWhenTheLogIsSilent(t *testing.T) {
 	if final != job.StateDone {
 		t.Fatalf("final = %s, want done. transitions: %v", final, statesOf(trs))
 	}
-	var counts []int
+	var queued []job.Transition
 	for _, tr := range trs {
 		if tr.To == job.StateQueued {
-			counts = append(counts, tr.Position)
+			queued = append(queued, tr)
 		}
 	}
-	if len(counts) < 2 {
-		t.Fatalf("queue counts reported = %v; the server's numbers never reached the phone", counts)
+	// The server's poll is what tells us there is a line at all, since the log
+	// says nothing. It is worth exactly one message on the phone.
+	if len(queued) != 1 {
+		t.Fatalf("said 'in the queue' %d times, want once: %v", len(queued), statesOf(trs))
 	}
-	for i := 1; i < len(counts); i++ {
-		if counts[i] > counts[i-1] {
-			t.Fatalf("queue counts went up: %v", counts)
-		}
-	}
-	if counts[0] != 8 {
-		t.Errorf("first count = %d, want the server's 8", counts[0])
+	if queued[0].Position != 0 {
+		t.Errorf("the server's queue LENGTH was published as the player's place: %d", queued[0].Position)
 	}
 	if m.Attempt() != 1 {
 		t.Errorf("attempts = %d; queueing must not look like failure", m.Attempt())
+	}
+}
+
+// The player gets in, then disconnects back to the main menu at the keyboard.
+// Rust stays open, so no process exit is coming: the log line is the only
+// signal. QueueUp must stop rather than drag them back into the server they
+// just walked out of.
+func TestLeavingTheServerStopsTheJobInsteadOfDraggingThePlayerBack(t *testing.T) {
+	final, m, trs := runScenario(t, "player_leaves_server", job.Config{
+		// Deliberately longer than the scenario, so the leave lands while the
+		// job is still live rather than after it has called itself a success.
+		InServerConfirm: 30 * time.Second,
+	})
+	if final != job.StateDone {
+		t.Fatalf("final = %s, want done. transitions: %v", final, statesOf(trs))
+	}
+	last := trs[len(trs)-1]
+	if last.Reason == nil || last.Reason.Code != "player_left" {
+		t.Fatalf("the ending does not say the player left: %+v", last)
+	}
+	if !strings.Contains(last.Detail, "left the server") {
+		t.Errorf("detail %q does not explain what happened in plain words", last.Detail)
+	}
+	if m.Attempt() != 1 {
+		t.Errorf("attempts = %d; leaving must not start a relaunch", m.Attempt())
 	}
 }

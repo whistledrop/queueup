@@ -175,7 +175,22 @@ type Machine struct {
 	mu  sync.Mutex
 	cfg Config
 
-	state    State
+	state State
+	// position is kept at zero, on purpose.
+	//
+	// QueueUp used to show a number here, taken from the server's queue
+	// LENGTH, and it was wrong in two ways at once. It was never the player's
+	// own place in the line, only how many people were standing in it. And a
+	// guard that let it count down but never up froze it at whatever it was
+	// when the player arrived, so on a busy server it sat still for an hour.
+	// Verified against a real full-server session on 2026-08-29: Rust logs
+	// nothing at all between Connecting and Spawning World, so there is no
+	// honest source for a position. The honest answer is "you are in the
+	// queue", with no number.
+	//
+	// The field and its plumbing (protocol, store, phone) stay, so that a
+	// future Rust build that does log a real position can fill them in without
+	// a database migration.
 	position int
 	attempt  int
 	failure  *Reason
@@ -191,12 +206,6 @@ type Machine struct {
 	// the world. From then on the server's queue count describes other people,
 	// and must not drag the display back into "queued".
 	loadingSeen bool
-
-	// logQueuePosition records that the game's own log reported a queue
-	// position this launch. When it does, that number is the player's actual
-	// place in line and outranks the server's coarser "how many are queued"
-	// count, so server updates stand down for the rest of the launch.
-	logQueuePosition bool
 
 	// sawUserQuit records that the game announced a graceful shutdown that WE
 	// did not ask for: the player closed Rust themselves. closeRequested is what
@@ -329,6 +338,15 @@ func (m *Machine) Handle(in Input) Result {
 		// are in, but only when the shutdown was not one we ordered.
 		if v.Kind == "user_quit" && !m.closeRequested {
 			m.sawUserQuit = true
+		}
+		// Leaving the server, or backing out of the queue, is the same answer
+		// as closing Rust, given a different way: the player is sitting at the
+		// PC and does not want this join. The difference is that the game keeps
+		// running, so no process exit is coming to tell us later. Act on it now,
+		// or the job sits in "queued" forever while they play something else.
+		if v.Kind == "user_left" && !m.closeRequested {
+			m.playerLeft(&res)
+			return res
 		}
 	}
 
@@ -490,18 +508,18 @@ func (m *Machine) handleLogEvent(v LogEvent, res *Result) {
 			res.Transitions = append(res.Transitions, m.moveTo(StateConnecting, v.Detail, nil))
 		}
 	case "queued":
-		m.logQueuePosition = true
-		if m.state == StateQueued && v.Position == m.position {
-			return // no change worth reporting
+		// Any number this line carried is deliberately dropped, and so is the
+		// pattern's own detail text, which may have had one baked into it. See
+		// the note on Machine.position. One "you are in the queue", then quiet.
+		if m.state == StateQueued {
+			return
 		}
-		m.position = v.Position
-		res.Transitions = append(res.Transitions, m.moveTo(StateQueued, v.Detail, nil))
+		res.Transitions = append(res.Transitions, m.moveTo(StateQueued, queueWaiting, nil))
 	case "joined":
 		if m.state == StateInServer {
 			return
 		}
 		m.inServerAt = m.now()
-		m.position = 0
 		res.Transitions = append(res.Transitions, m.moveTo(StateInServer, v.Detail, nil))
 	case "loading":
 		// Past the queue, into the world. This is what retires the queue
@@ -511,7 +529,6 @@ func (m *Machine) handleLogEvent(v LogEvent, res *Result) {
 		}
 		m.loadingSeen = true
 		if m.state == StateQueued || m.state == StateConnecting {
-			m.position = 0
 			res.Transitions = append(res.Transitions, m.moveTo(StateConnecting, v.Detail, nil))
 		}
 	case "server_full":
@@ -536,10 +553,9 @@ func (m *Machine) beginLaunch(res *Result) {
 	// A fresh launch is a fresh game: whatever the previous copy said on its
 	// way out no longer applies.
 	m.sawUserQuit, m.closeRequested = false, false
-	m.logQueuePosition, m.loadingSeen = false, false
+	m.loadingSeen = false
 	m.attempt++
 	m.launchTimes = append(m.launchTimes, m.now())
-	m.position = 0
 	res.Transitions = append(res.Transitions,
 		m.moveTo(StateLaunching, fmt.Sprintf("Launching Rust (attempt %d).", m.attempt), nil))
 	res.Actions = append(res.Actions, ActionLaunchGame)
@@ -573,43 +589,20 @@ func (m *Machine) fail(r Reason, res *Result) {
 // the wording is careful to say so. A position from the game's own log, if one
 // ever appears, outranks it.
 func (m *Machine) handleServerQueue(v ServerUp, res *Result) {
-	if m.logQueuePosition || m.loadingSeen {
+	// Only the move INTO the queue is news. Once the phone says "in the queue"
+	// there is nothing further to report until the game itself says something,
+	// so later polls are silent rather than restating the same fact.
+	if m.loadingSeen || m.state != StateConnecting || v.Queue <= 0 {
 		return
 	}
-	q := v.Queue
-	switch m.state {
-	case StateConnecting:
-		if q <= 0 {
-			return // no line; the connect is just taking its time
-		}
-	case StateQueued:
-		// The estimate only ever moves toward the front. Your place cannot be
-		// worse than the whole line, and people joining BEHIND you grow the
-		// line without moving you, so a bigger count than before means nothing
-		// about you and must not push your number back up.
-		if q >= m.position {
-			return
-		}
-	default:
-		return
-	}
-	m.position = q
-	res.Transitions = append(res.Transitions, m.moveTo(StateQueued, queueDetail(q), nil))
+	res.Transitions = append(res.Transitions, m.moveTo(StateQueued, queueWaiting, nil))
 }
 
-// queueDetail says where the player is, in words for the phone. The number is
-// an estimate from the server's queue length, and the wording says so: Rust
-// tells nobody their exact place outside the game.
-func queueDetail(q int) string {
-	switch {
-	case q <= 0:
-		return "At the front of the queue."
-	case q == 1:
-		return "Almost in: next in the queue."
-	default:
-		return fmt.Sprintf("In the queue, about position %d.", q)
-	}
-}
+// queueWaiting is what the phone says for the whole time the player is in the
+// line. There is deliberately no number in it: see the note on Machine.position
+// for why every number QueueUp could put here would be a guess about somebody
+// else's place in the queue.
+const queueWaiting = "In the queue. Your PC is waiting to get in."
 
 // playerClosed ends the job because the player shut the game themselves,
 // perhaps to play something else. It reads as a cancellation on the phone, not
@@ -617,6 +610,20 @@ func queueDetail(q int) string {
 // instead of in the app.
 func (m *Machine) playerClosed(res *Result) {
 	r := Reason{Code: "player_closed", Message: "Rust was closed on your PC, so QueueUp stopped this join."}
+	res.Transitions = append(res.Transitions, m.moveTo(StateDone, r.Message, &r))
+}
+
+// playerLeft ends the job because the player disconnected from the server, or
+// backed out of the queue, at the keyboard. Rust stays running, so unlike
+// playerClosed there is no process exit to fall back on: without this the job
+// would sit in "queued" until it expired, and any later retry would drag the
+// player back into a server they had just walked out of.
+//
+// Note there is no ActionCloseGame here. They are sitting in front of Rust,
+// probably on the main menu picking somewhere else to play; shutting the game
+// on them would be exactly the kind of fighting this is meant to stop.
+func (m *Machine) playerLeft(res *Result) {
+	r := Reason{Code: "player_left", Message: "You left the server on your PC, so QueueUp stopped this join."}
 	res.Transitions = append(res.Transitions, m.moveTo(StateDone, r.Message, &r))
 }
 

@@ -110,9 +110,12 @@ export function outcome(job: { state: string; reason_code: string }): {
 } {
   if (job.state === 'failed') return { label: 'Did not work', tone: 'bad' }
   if (job.state === 'done') {
-    // player_closed is the player closing Rust at the PC instead of tapping
-    // cancel in the app. Same intent, same label.
-    return job.reason_code === 'cancelled' || job.reason_code === 'player_closed'
+    // player_closed and player_left are the player answering at the PC instead
+    // of tapping cancel in the app: closing Rust, or walking out of the server.
+    // Same intent, same label.
+    const stoppedAtThePC =
+      job.reason_code === 'player_closed' || job.reason_code === 'player_left'
+    return job.reason_code === 'cancelled' || stoppedAtThePC
       ? { label: 'Cancelled', tone: '' }
       : { label: 'Joined', tone: 'good' }
   }

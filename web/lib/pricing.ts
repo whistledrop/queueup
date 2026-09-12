@@ -8,8 +8,8 @@ export const PLAN = {
   includes: [
     'Unlimited joins, any Rust server',
     'Scheduled wipe day joins',
-    'Live queue position on your phone',
-    'Notifications: milestones, you are in, PC offline',
+    'Live status on your phone, from launch to you are in',
+    'Rejoins on its own if Rust crashes or the PC reboots',
     'One PC linked to your account',
   ],
 } as const

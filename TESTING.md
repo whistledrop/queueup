@@ -170,15 +170,25 @@ If you could not put it in the same folder, right-click the tray icon, untick
 "Start with Windows", then tick it again. That points the remembered path at
 wherever the new copy actually is.
 
-### What the queue number means
+### Why there is no queue number
 
-The number on the queue screen is an estimate of your place in the line,
-worked out from the server's own queue length, refreshed every couple of
-seconds. Rust tells nobody their exact position outside the game, so QueueUp
-tracks the lowest the line has been since you joined it: your place can never
-be worse than that, and people joining behind you never push your number up.
-When the queue is passed, the screen switches to "loading into the server",
-then "You're in".
+The screen says "In the queue" and nothing more, on purpose. Rust does not
+write your place in the queue to its log, and does not publish it anywhere
+else, so there is no honest source for a number. QueueUp used to show one
+worked out from the server's total queue length, and it was misleading: that
+is how long the line is, not where you are in it, so it could sit unchanged
+for an hour while you were steadily moving up.
+
+When the queue is passed the screen switches to "loading into the server",
+then "You're in". Those come from the game's own log and are real.
+
+### Leaving the server stops the join
+
+Closing Rust, disconnecting from the server, or backing out of the queue all
+end the join: the app shows it as cancelled and will not relaunch the game.
+If you leave and the app still shows the join running a minute later, save a
+problem report and send it. The wording Rust uses when you disconnect differs
+between builds, and the report has the lines needed to fix it.
 
 ### If something goes wrong
 

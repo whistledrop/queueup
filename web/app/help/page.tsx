@@ -213,17 +213,35 @@ export default function HelpPage() {
           </p>
         </Q>
 
-        <Q q="The queue number looks wrong">
+        <Q q="Why doesn't it show my place in the queue?">
           <p>
-            The number is an estimate of your place, worked out from how long the
-            server&apos;s queue is. Rust does not tell anyone their exact
-            position outside the game, so QueueUp shows the shortest the line has
-            been since you joined it. It only ever counts down: people joining
-            behind you never push your number up.
+            Because nothing outside the game knows it. Rust does not write your
+            queue position to its log, and it does not publish it anywhere else
+            either. QueueUp used to show a number worked out from how long the
+            server&apos;s whole queue was, and it was misleading: that is the
+            length of the line, not your place in it, so it could sit unchanged
+            for an hour while you were steadily moving up.
           </p>
           <p>
-            Once you are through, the screen changes to loading into the server,
-            then &quot;You&apos;re in&quot;.
+            So the screen now says simply that you are in the queue. When you get
+            through it changes to loading into the server, then &quot;You&apos;re
+            in&quot;, and those are real: they come from the game&apos;s own log.
+          </p>
+        </Q>
+
+        <Q q="I left the server and the app is still showing the join">
+          <p>
+            Leaving the server, or backing out of the queue, stops the join. So
+            does closing Rust. QueueUp reads that from the game&apos;s log and
+            finishes the join as cancelled, and it will not relaunch the game or
+            pull you back into the server you just left.
+          </p>
+          <p>
+            If the app kept showing the join running for more than a minute after
+            you left, that is worth reporting: save a problem report from the
+            tray icon and send it. The exact wording Rust uses when you
+            disconnect varies between builds, and the report contains the lines
+            needed to fix it.
           </p>
         </Q>
 

@@ -124,9 +124,6 @@ export default function Dashboard({ email }: { email: string }) {
               <div style={{ fontWeight: 700, fontSize: 18 }}>{stateLabel(active.state)}</div>
               <div className="muted">{active.server_name || active.server_addr}</div>
             </div>
-            {active.state === 'queued' && active.position > 0 && (
-              <div style={{ fontSize: 30, fontWeight: 800 }}>{active.position}</div>
-            )}
           </div>
         </Link>
       )}

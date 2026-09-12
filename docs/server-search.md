@@ -46,8 +46,9 @@ and takes about a minute to get from https://steamcommunity.com/dev/apikey.
 - **Cost:** nothing
 - **Gives us:** server names, addresses, player counts, current map
 - **Does not give us:** queue length. Steam does not report it.
-- **Good for:** launching. Search works, joining works, and the queue position
-  the player actually cares about comes from their own game log anyway.
+- **Good for:** launching. Search works and joining works. The queue length is
+  only ever shown as information about a server, never as the player's place in
+  it, so nothing on the join screen depends on having it.
 
 ```bash
 QUEUEUP_SERVER_SOURCE=steam

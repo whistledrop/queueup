@@ -14,7 +14,11 @@ func TestScheduleTimesAreStoredAsUTC(t *testing.T) {
 	acct, d := pairedDevice(t, s)
 
 	madrid := time.FixedZone("Europe/Madrid (summer)", 2*60*60)
-	fireLocal := time.Date(2026, 9, 3, 20, 0, 0, 0, madrid) // 20:00 in Spain
+	// Tomorrow's date, not a fixed one. This test used to name a specific day
+	// in September 2026 and started failing the moment that day passed, which
+	// says nothing about timezones and everything about the calendar.
+	d1 := time.Now().UTC().AddDate(0, 0, 1)
+	fireLocal := time.Date(d1.Year(), d1.Month(), d1.Day(), 20, 0, 0, 0, madrid) // 20:00 in Spain
 
 	sc, err := s.CreateSchedule(store.NewSchedule{
 		AccountID: acct.ID, DeviceID: d.ID,

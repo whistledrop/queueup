@@ -244,23 +244,23 @@ func TestPairThenJoinThroughTheRelay(t *testing.T) {
 		t.Fatalf("job state = %s, want done. timeline:\n%v", j.State, h.timeline(jobID))
 	}
 
-	// The queue positions must have made it all the way up to the relay, since
-	// that is what the phone shows.
+	// Being in the queue must reach the relay, since that is what the phone
+	// shows. A NUMBER must not: the scenario's log lines carry five of them and
+	// none is the player's own place in the line. See job.Machine.position.
 	events, _ := h.st.Events(jobID, 0)
-	var positions []int
+	var queued int
 	for _, e := range events {
-		if e.State == "queued" {
-			positions = append(positions, e.Position)
+		if e.State != "queued" {
+			continue
+		}
+		queued++
+		if e.Position != 0 {
+			t.Errorf("the relay recorded a queue position of %d; no number here is honest", e.Position)
 		}
 	}
-	want := []int{212, 148, 61, 12, 1}
-	if len(positions) != len(want) {
-		t.Fatalf("relay recorded positions %v, want %v", positions, want)
-	}
-	for i := range want {
-		if positions[i] != want[i] {
-			t.Fatalf("relay recorded positions %v, want %v", positions, want)
-		}
+	if queued != 1 {
+		t.Fatalf("the relay recorded %d 'in the queue' events, want exactly 1. timeline:\n%v",
+			queued, h.timeline(jobID))
 	}
 }
 

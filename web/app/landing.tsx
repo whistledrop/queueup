@@ -103,11 +103,11 @@ export default function Landing() {
         <div className={s.step}>
           <div>
             <span className={s.stepNumber}>4</span>
-            <h3>Watch it live, get told when it matters</h3>
+            <h3>Watch it live from your phone</h3>
             <p>
-              Your queue position updates live on your phone. Notifications at
-              100, 50 and 10 places to go, one when you are in, and one if your
-              PC ever drops offline. The slot is held until you get there.
+              Every step shows up as it happens: launching, connecting, in the
+              queue, loading, you are in. If Rust crashes or the PC reboots it
+              starts again on its own. The slot is held until you get there.
             </p>
           </div>
           <div className={s.stepVisual}>
@@ -156,8 +156,8 @@ export default function Landing() {
           <div className={s.fairItem}>
             <h4>Reads the game&apos;s log file</h4>
             <p>
-              A text file Rust writes anyway. That is how it knows your queue
-              position.
+              A text file Rust writes anyway. That is how it follows your join,
+              step by step.
             </p>
           </div>
           <div className={s.fairItem}>
@@ -292,16 +292,15 @@ function LivePhone() {
         <div className={s.mockCard}>
           <div className={s.mockLabel}>Rustopia EU Main</div>
           <div className={s.mockState}>In the queue</div>
-          <div className={s.mockPosition}>47</div>
-          <div className={s.mockSub}>place in the queue</div>
+          <div className={s.mockSub}>your PC is waiting to get in</div>
         </div>
         <div className={s.mockCard}>
           <div className={s.mockLabel}>What happened</div>
           <ul className={s.mockTimeline}>
             <li>Launching Rust</li>
-            <li>In queue, position 212</li>
-            <li>In queue, position 108</li>
-            <li>In queue, position 47</li>
+            <li>Connecting to the server</li>
+            <li>In the queue</li>
+            <li>Loading into the server</li>
           </ul>
         </div>
       </div>
@@ -420,11 +419,11 @@ function PcVisual() {
         <br />
         connecting to 51.83.128.10
         <br />
-        <strong>in queue, position 212</strong>
+        <strong>in the queue, waiting</strong>
         <br />
-        in queue, position 108
+        through the queue, loading world
         <br />
-        in queue, position 47
+        spawned in, holding the slot
       </div>
     </div>
   )
