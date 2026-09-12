@@ -63,6 +63,16 @@ export default function LiveStatus({ jobId }: { jobId: string }) {
   const state =
     job && isActive(job.state) === false ? job.state : (latest?.state ?? job?.state ?? 'pending')
   const running = isActive(state)
+  const detail = latest?.detail || job?.detail || ''
+  // A job that ends for a reason sets its detail AND its reason to the same
+  // sentence, because the thing that happened is the thing worth saying. The
+  // screen printed both, so "You left the server on your PC" appeared twice
+  // under Cancelled, and so did every cancellation and every failure. Only say
+  // it again when it actually adds something the detail line did not say.
+  const alsoSay =
+    job && !running && job.reason_message && job.reason_message !== detail
+      ? job.reason_message
+      : ''
 
   return (
     <div className="shell">
@@ -76,7 +86,7 @@ export default function LiveStatus({ jobId }: { jobId: string }) {
           {running || !job ? stateLabel(state) : outcome(job).label}
         </p>
         <p className="muted" style={{ margin: 0 }}>
-          {latest?.detail || job?.detail || ''}
+          {detail}
         </p>
 
         {state === 'in_server' && (
@@ -85,8 +95,8 @@ export default function LiveStatus({ jobId }: { jobId: string }) {
           </p>
         )}
 
-        {job && !running && job.reason_message && (
-          <p className="muted" style={{ marginBottom: 0 }}>{job.reason_message}</p>
+        {alsoSay && (
+          <p className="muted" style={{ marginBottom: 0 }}>{alsoSay}</p>
         )}
       </div>
 
