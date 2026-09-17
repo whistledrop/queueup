@@ -17,6 +17,7 @@
 .signin {
   font-weight: 600;
   font-size: 15px;
+  white-space: nowrap;
   color: var(--muted);
   text-decoration: none;
   padding: 8px 14px;
@@ -24,6 +25,19 @@
   border-radius: 10px;
 }
 .signin:hover { color: var(--text); }
+
+/* The orange button in the top bar: the way in from any scroll position. */
+.navCta {
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 700;
+  font-size: 15px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.navCta:hover { filter: brightness(1.08); }
 
 /* ---------------------------------------------------------------- hero */
 
@@ -67,7 +81,7 @@
 .heroPoints li {
   position: relative;
   padding-left: 26px;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.5;
   color: var(--muted);
 }
@@ -262,7 +276,7 @@
 
 /* ---------------------------------------------------------- sections */
 
-.section { padding: 56px 0; border-top: 1px solid var(--line); }
+.section { padding: 64px 0; border-top: 1px solid var(--line); }
 
 .kicker {
   font-size: 13px;
@@ -281,10 +295,10 @@
 
 .sectionIntro {
   color: var(--muted);
-  font-size: 17px;
+  font-size: 18px;
   line-height: 1.6;
-  max-width: 56ch;
-  margin: 0 0 40px;
+  max-width: 52ch;
+  margin: 0 0 32px;
 }
 
 /* steps */
@@ -317,7 +331,7 @@
 
 .step p {
   color: var(--muted);
-  font-size: 16px;
+  font-size: 17px;
   line-height: 1.65;
   margin: 0;
   max-width: 46ch;
@@ -478,4 +492,13 @@
   .step:nth-child(even) .stepVisual { order: 0; }
   .fairGrid { grid-template-columns: 1fr; }
   .section h2 { font-size: 26px; }
+}
+
+/* The top bar has to hold the orange button on a 375px phone, which is where
+   nearly every visitor arrives from a video. Help steps aside first. */
+@media (max-width: 560px) {
+  .nav { padding: 16px 0; }
+  .navHide { display: none; }
+  .signin { padding: 8px 12px; font-size: 14px; }
+  .navCta { padding: 9px 14px; font-size: 14px; }
 }

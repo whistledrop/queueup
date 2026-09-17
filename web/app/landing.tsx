@@ -13,47 +13,32 @@ export default function Landing() {
           Queue<span>Up</span>
           {BETA && <span className="beta">beta</span>}
         </span>
-        <span style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-          <Link href="/help" className={s.signin}>Help</Link>
-          <Link href="/login" className={s.signin}>
-            Sign in
-          </Link>
+        <span style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <Link href="/help" className={`${s.signin} ${s.navHide}`}>Help</Link>
+          <Link href="/login" className={s.signin}>Sign in</Link>
+          <Link href="/login?mode=create" className={s.navCta}>Get QueueUp</Link>
         </span>
       </nav>
 
       <header className={s.hero}>
         <div>
           <h1>
-            Join any Rust server from your phone.{' '}
-            <em>Your PC does the queueing.</em>
+            Join Rust from your phone.{' '}
+            <em>Your PC sits in the queue.</em>
           </h1>
           <p className={s.lede}>
-            Tap join from work, the pub, or the back of a bus. At home your PC
-            starts Rust, sits in the queue for as long as it takes, and holds
-            your slot until you walk in and sit down.
+            Tap join from school, work or the traffic. Walk in and play.
           </p>
           <ul className={s.heroPoints}>
-            <li>
-              <b>Wipe day, sorted.</b> Schedule the join before you leave the
-              house and your PC beats the refresh-mashers to the restart.
-            </li>
-            <li>
-              <b>It fixes itself.</b> Rust crashes or Windows reboots mid queue?
-              It relaunches and rejoins without you.
-            </li>
-            <li>
-              <b>Not a cheat.</b> It starts the game through Steam and reads a
-              log file. It never plays for you, and never wants your Steam
-              password.
-            </li>
+            <li>Running late for wipe? Start queueing before you leave.</li>
+            <li>No 20 minute load screen. You are already in.</li>
+            <li>Not a cheat. It never touches the game.</li>
           </ul>
           <div className={s.ctaRow}>
             <Link href="/login?mode=create" className={s.cta}>
               Get QueueUp free
             </Link>
-            <span className={s.ctaNote}>
-              {costLine()}
-            </span>
+            <span className={s.ctaNote}>{costLine()}</span>
           </div>
         </div>
         <div>
@@ -63,23 +48,13 @@ export default function Landing() {
 
       <section className={s.section}>
         <p className={s.kicker}>How it works</p>
-        <h2>Exactly what happens, step by step</h2>
-        <p className={s.sectionIntro}>
-          No magic and no tricks. One small program on your PC, one website on
-          your phone, and the game&apos;s own queue doing what it always does.
-        </p>
+        <h2>Three steps, then never again</h2>
 
         <div className={s.step}>
           <div>
             <span className={s.stepNumber}>1</span>
-            <h3>Link your PC, once</h3>
-            <p>
-              Download one small file onto your gaming PC and double-click it.
-              It shows a six character code. Type that code into the website on
-              your phone and the two are paired. The agent then sits in your
-              system tray, connected out to QueueUp, waiting. There is nothing
-              to configure and no router settings to change.
-            </p>
+            <h3>Link your PC</h3>
+            <p>One file, one six character code. No router settings, ever.</p>
           </div>
           <div className={s.stepVisual}>
             <PairVisual />
@@ -89,13 +64,8 @@ export default function Landing() {
         <div className={s.step}>
           <div>
             <span className={s.stepNumber}>2</span>
-            <h3>Pick a server, tap join</h3>
-            <p>
-              Search any Rust server by name, save your regulars, and tap Join
-              from wherever you are. The command reaches your PC through a
-              connection your PC opened itself, so there is no router setup and
-              no port forwarding, ever.
-            </p>
+            <h3>Tap join, from anywhere</h3>
+            <p>Search any server. Your phone tells your PC. That is it.</p>
           </div>
           <div className={s.stepVisual}>
             <ServersPhone />
@@ -105,12 +75,10 @@ export default function Landing() {
         <div className={s.step}>
           <div>
             <span className={s.stepNumber}>3</span>
-            <h3>Your PC does the waiting</h3>
+            <h3>Turn up and play</h3>
             <p>
-              It starts Rust through Steam, pointed at your server. Rust joins
-              the queue the way it always does. The agent follows progress by
-              reading the game&apos;s own log file, and if Rust crashes mid
-              queue it relaunches and rejoins on its own.
+              It queues, loads the map and holds your slot. Crash or reboot, it
+              rejoins on its own.
             </p>
           </div>
           <div className={s.stepVisual}>
@@ -118,40 +86,18 @@ export default function Landing() {
           </div>
         </div>
 
-        <div className={s.step}>
-          <div>
-            <span className={s.stepNumber}>4</span>
-            <h3>Watch it live from your phone</h3>
-            <p>
-              Every step shows up as it happens: launching, connecting, in the
-              queue, loading, you are in. If Rust crashes or the PC reboots it
-              starts again on its own. The slot is held until you get there.
-            </p>
-          </div>
-          <div className={s.stepVisual}>
-            <LivePhone />
-          </div>
-        </div>
-
         <Diagram />
         <p className={s.diagramCaption}>
-          Nothing ever connects in to your PC. It makes one outbound connection
-          and holds it open, like a chat app.
+          Nothing connects in to your PC. It calls out, like a chat app.
         </p>
       </section>
 
       <section className={s.section}>
         <p className={s.kicker}>Wipe day</p>
-        <h2>Schedule it, then watch the restart get beaten</h2>
+        <h2>Beat the restart</h2>
         <p className={s.sectionIntro}>
-          Set the join for a few minutes before the announced wipe. When the
-          server goes down for its restart, QueueUp queries it directly, every
-          couple of seconds, and connects the moment it answers again. Faster
-          than anyone mashing refresh in the server browser. Force wipe also
-          ships a game update, so Steam has gigabytes to download before anyone
-          can play: QueueUp waits that out and shows you the progress, then
-          connects. If Windows forces a reboot mid queue, the job survives that
-          too.
+          Schedule it before you leave. QueueUp pings the server every couple of
+          seconds and connects the moment it is back, game update and all.
         </p>
         <div className={s.stepVisual}>
           <SchedulePhone />
@@ -162,45 +108,35 @@ export default function Landing() {
         <p className={s.kicker}>Fair play</p>
         <h2>Not a cheat. Not even close.</h2>
         <p className={s.sectionIntro}>
-          Rust runs Easy Anti-Cheat, and QueueUp is built to stay far away from
-          it. The agent is allowed to do exactly four things, and all four are
-          things you could do yourself with a mouse.
+          Four things, all of them things you could do with a mouse.
         </p>
         <div className={s.fairGrid}>
           <div className={s.fairItem}>
-            <h4>Starts the game through Steam</h4>
-            <p>The same steam link a browser bookmark would use. Nothing more.</p>
+            <h4>Opens the game through Steam</h4>
+            <p>The same link a bookmark would use.</p>
           </div>
           <div className={s.fairItem}>
             <h4>Reads the game&apos;s log file</h4>
-            <p>
-              A text file Rust writes anyway. That is how it follows your join,
-              step by step.
-            </p>
+            <p>A text file Rust writes anyway.</p>
           </div>
           <div className={s.fairItem}>
             <h4>Checks the game is running</h4>
-            <p>So it can relaunch after a crash. It never touches the process.</p>
+            <p>So it can relaunch after a crash.</p>
           </div>
           <div className={s.fairItem}>
-            <h4>Closes it when you say so</h4>
-            <p>The cancel button on your phone, nothing else.</p>
+            <h4>Closes it when you say</h4>
+            <p>Your cancel button, nothing else.</p>
           </div>
         </div>
-        <p className={s.sectionIntro} style={{ marginTop: 28, marginBottom: 0 }}>
-          No memory reading, no injection, no simulated keys or clicks, no
-          touching game files. QueueUp never asks for your Steam password and
-          has no way to use it. In game, everything is still you.
+        <p className={s.diagramCaption} style={{ marginTop: 18 }}>
+          No memory reading, no key presses, no game files. In game it is all
+          still you.
         </p>
       </section>
 
       <section className={s.section} id="pricing">
         <p className={s.kicker}>Price</p>
-        <h2>One plan, no tiers</h2>
-        <p className={s.sectionIntro}>
-          Less than the cost of losing one wipe night to a queue you were not
-          even home for.
-        </p>
+        <h2>Free while it is in beta</h2>
         <div className={s.priceCard}>
           <div className={s.priceAmount}>
             {BETA ? (
@@ -220,13 +156,13 @@ export default function Landing() {
               <li key={line}>{line}</li>
             ))}
           </ul>
-          <Link href="/login?mode=create" className={`${s.cta}`} style={{ display: 'block' }}>
-            Create your account
+          <Link href="/login?mode=create" className={s.cta} style={{ display: 'block' }}>
+            Get QueueUp free
           </Link>
           <p className={s.priceNote}>
             {BETA
-              ? `QueueUp is in beta and completely free while it is. In return, tell us how your joins went: there is a feedback link on every page, and one click on the PC sends us a problem report. When the beta ends it will be ${PLAN.symbol}${PLAN.monthly.toFixed(2)} a month, and nobody is charged without choosing to subscribe.`
-              : 'Setting up is free: account, linking your PC, all of it. You pay when you first join a server, and you can cancel anytime.'}
+              ? `All we ask is that you say how it went. ${PLAN.symbol}${PLAN.monthly.toFixed(2)} a month when the beta ends, and nobody is charged without subscribing.`
+              : 'Setting up is free. You pay when you first join a server, and you can cancel anytime.'}
           </p>
         </div>
       </section>
@@ -238,54 +174,34 @@ export default function Landing() {
           <details>
             <summary>Will this get me banned?</summary>
             <p>
-              QueueUp does nothing a ban system looks for. It starts the game
-              through Steam, reads a log file, and that is the whole
-              relationship. The queue it waits in is Rust&apos;s own queue,
-              joined the normal way. It never plays, moves, or acts in game for
-              you.
+              No. It opens the game through Steam and reads a log file. It never
+              plays, moves or acts in game for you.
             </p>
           </details>
           <details>
             <summary>Does my PC have to stay on?</summary>
             <p>
-              Yes. QueueUp assumes an always on PC: no sleep, no hibernate. It
-              does not wake sleeping machines. What it does handle is restarts:
-              if Windows forces an update reboot mid queue, the agent starts
-              back up, reconnects and resumes the join on its own.
+              Yes, awake and signed in, with Steam running. It cannot wake a
+              sleeping PC, but it does survive a Windows reboot.
             </p>
           </details>
           <details>
             <summary>Do you need my Steam password?</summary>
+            <p>Never. There is nowhere to type one.</p>
+          </details>
+          <details>
+            <summary>Which servers work?</summary>
             <p>
-              No, never. Steam stays signed in on your own PC exactly as it is
-              now. QueueUp has no field to type a Steam password into.
+              Any Rust server in the browser, official or community. Search by
+              name and QueueUp follows the address between wipes.
             </p>
           </details>
           <details>
-            <summary>Which servers does it work with?</summary>
+            <summary>How long does setup take?</summary>
             <p>
-              Any Rust server you can see in the server browser, official or
-              community. You search by name and QueueUp keeps track of the
-              address, even when a server moves between wipes.
-            </p>
-          </details>
-          <details>
-            <summary>What do I need to set up?</summary>
-            <p>
-              About two minutes. On your gaming PC, download the QueueUp agent
-              from your dashboard and double-click it. It shows a code, you type
-              that code into the website, and the PC is linked. Windows will warn
-              that it does not recognise the app, because it is not code signed
-              yet: choose More info, then Run anyway. After that, the only other
-              things are settings any always on gaming PC wants anyway: sleep
-              off, and Steam set to start with Windows.
-            </p>
-          </details>
-          <details>
-            <summary>Does it work on Mac?</summary>
-            <p>
-              The agent is Windows only, because Rust is. You can control it from
-              any phone, tablet or computer: the website works everywhere.
+              Two minutes on the PC. Windows will warn it does not recognise the
+              app, because it is not signed yet: choose More info, then Run
+              anyway.
             </p>
           </details>
         </div>
@@ -399,8 +315,8 @@ function SchedulePhone() {
           </div>
         </div>
         <div className={s.mockCard}>
-          <div className={s.mockLabel}>Notifications</div>
-          <div className={s.mockSub}>On. Test sent to this phone.</div>
+          <div className={s.mockLabel}>Sleep</div>
+          <div className={s.mockSub}>Off. This PC will stay awake for it.</div>
         </div>
       </div>
     </div>
