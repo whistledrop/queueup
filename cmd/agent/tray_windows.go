@@ -70,7 +70,8 @@ func trayReady() {
 	openWeb := systray.AddMenuItem("Open the QueueUp website", "")
 	autostart := systray.AddMenuItemCheckbox("Start with Windows", "", autostartInstalled())
 	systray.AddSeparator()
-	saveReport := systray.AddMenuItem("Save a problem report", "Puts one file on your Desktop to send when something goes wrong")
+	sendReport := systray.AddMenuItem("Send a problem report to QueueUp", "Sends the QueueUp log and the end of the Rust log (which includes your Steam ID). No passwords.")
+	saveReport := systray.AddMenuItem("Save a problem report to the Desktop", "Puts the same report in one file, if you would rather send it yourself")
 	openLog := systray.AddMenuItem("Open the log file", "For debugging")
 	openCfg := systray.AddMenuItem("Open the settings folder", "")
 	systray.AddSeparator()
@@ -97,6 +98,20 @@ func trayReady() {
 				} else {
 					autostart.Uncheck()
 				}
+			case <-sendReport.ClickedCh:
+				trayState.set("Sending the problem report...")
+				go func() {
+					sent, path, err := sendProblemReport()
+					switch {
+					case sent:
+						trayState.set("Problem report sent. Thank you!")
+					case path != "":
+						trayState.set("Couldn't send it, so it was saved to your Desktop instead")
+						openFile(filepath.Dir(path))
+					default:
+						trayState.set("Couldn't send the report: " + err.Error())
+					}
+				}()
 			case <-saveReport.ClickedCh:
 				if path, err := saveProblemReport(); err != nil {
 					trayState.set("Couldn't save the report: " + err.Error())

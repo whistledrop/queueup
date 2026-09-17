@@ -51,6 +51,8 @@ type Server struct {
 
 	// signIns throttles failed sign-ins, per account and per source.
 	signIns *throttle
+	// signUps counts new accounts per source, so a script cannot mint thousands.
+	signUps *throttle
 
 	// debugLogs keeps the last few raw Rust log lines per PC, in memory only, for
 	// the admin view. They are never shown to a player and never written to disk.
@@ -73,6 +75,7 @@ func New(cfg Config) *Server {
 		hub:       NewHub(cfg.Log),
 		mux:       http.NewServeMux(),
 		signIns:   newThrottle(signInLimit, signInWindow, time.Now),
+		signUps:   newThrottle(signUpLimit, signUpWindow, time.Now),
 		debugLogs: map[string][]string{},
 	}
 	s.routes()
@@ -103,6 +106,8 @@ func (s *Server) routes() {
 	s.scheduleRoutes()
 	// The subscription gate.
 	s.billingRoutes()
+	// Beta feedback and problem reports.
+	s.feedbackRoutes()
 
 	// Account-facing.
 	s.mux.HandleFunc("POST /api/pair", s.withAccount(s.handleClaimCode))
@@ -647,13 +652,17 @@ func (s *Server) handleAdminStatus(w http.ResponseWriter, r *http.Request) {
 	for _, j := range jobs {
 		js = append(js, s.jobJSON(j))
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	out := map[string]any{
 		"connected_agents": len(s.hub.Connections()),
 		"accounts":         accounts,
 		"devices":          ds,
 		"recent_jobs":      js,
 		"time":             time.Now().UTC(),
-	})
+	}
+	for k, v := range s.adminOutcomes(time.Now()) {
+		out[k] = v
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 const debugLogLines = 40

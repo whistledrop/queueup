@@ -6,6 +6,7 @@ import Nav, { Footer } from './nav'
 import { useRouter } from 'next/navigation'
 import { api, getBilling, isActive, outcome, stateLabel, type Billing, type Device, type Job } from '@/lib/api'
 import type { Favourite, Schedule } from '@/lib/types'
+import { BETA } from '@/lib/pricing'
 
 function siteHost(): string {
   if (typeof window === 'undefined') return 'queueup'
@@ -126,6 +127,15 @@ export default function Dashboard({ email }: { email: string }) {
             </div>
           </div>
         </Link>
+      )}
+
+      {BETA && (
+        <div className="notice">
+          <b>QueueUp is a free beta.</b> Tell us how your joins go on the{' '}
+          <Link href="/feedback">feedback page</Link>. If something breaks on
+          the PC, right-click the QueueUp icon and choose{' '}
+          <b>Send a problem report to QueueUp</b>.
+        </div>
       )}
 
       <div className="card">

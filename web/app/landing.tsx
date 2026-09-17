@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { PLAN, priceLine } from '@/lib/pricing'
+import { BETA, PLAN, costLine } from '@/lib/pricing'
 import s from './landing.module.css'
 
 // The landing page. Everything on it is a picture of the real app: the phone
@@ -11,6 +11,7 @@ export default function Landing() {
       <nav className={s.nav}>
         <span className="brand">
           Queue<span>Up</span>
+          {BETA && <span className="beta">beta</span>}
         </span>
         <span style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
           <Link href="/help" className={s.signin}>Help</Link>
@@ -34,7 +35,7 @@ export default function Landing() {
               Get QueueUp
             </Link>
             <span className={s.ctaNote}>
-              {priceLine()}. Setting up is free, you pay when you first join.
+              {costLine()}
             </span>
           </div>
         </div>
@@ -185,9 +186,17 @@ export default function Landing() {
         </p>
         <div className={s.priceCard}>
           <div className={s.priceAmount}>
-            {PLAN.symbol}
-            {PLAN.monthly.toFixed(2)}
-            <small> / month</small>
+            {BETA ? (
+              <>
+                Free<small> during the beta</small>
+              </>
+            ) : (
+              <>
+                {PLAN.symbol}
+                {PLAN.monthly.toFixed(2)}
+                <small> / month</small>
+              </>
+            )}
           </div>
           <ul className={s.priceIncludes}>
             {PLAN.includes.map((line) => (
@@ -198,9 +207,9 @@ export default function Landing() {
             Create your account
           </Link>
           <p className={s.priceNote}>
-            Setting up is free: account, linking your PC, all of it. You pay
-            when you first join a server, and you can cancel anytime. Payments
-            are not switched on yet, so early accounts run free until they are.
+            {BETA
+              ? `QueueUp is in beta and completely free while it is. In return, tell us how your joins went: there is a feedback link on every page, and one click on the PC sends us a problem report. When the beta ends it will be ${PLAN.symbol}${PLAN.monthly.toFixed(2)} a month, and nobody is charged without choosing to subscribe.`
+              : 'Setting up is free: account, linking your PC, all of it. You pay when you first join a server, and you can cancel anytime.'}
           </p>
         </div>
       </section>

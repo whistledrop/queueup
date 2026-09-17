@@ -30,6 +30,17 @@ const capBytes = 512 * 1024
 
 // Build writes the report into dir and returns its path.
 func Build(dir string, in Inputs) (string, error) {
+	name, content := Render(in)
+	path := filepath.Join(dir, name)
+	if err := os.WriteFile(path, content, 0o644); err != nil {
+		return "", fmt.Errorf("saving the report: %w", err)
+	}
+	return path, nil
+}
+
+// Render produces the report without saving it, for sending straight to
+// QueueUp. It returns a suggested file name and the contents.
+func Render(in Inputs) (name string, content []byte) {
 	now := time.Now
 	if in.Now != nil {
 		now = in.Now
@@ -40,19 +51,16 @@ func Build(dir string, in Inputs) (string, error) {
 	fmt.Fprintf(&b, "QueueUp problem report\n")
 	fmt.Fprintf(&b, "made:    %s\n", stamp.Format(time.RFC3339))
 	fmt.Fprintf(&b, "version: %s\n", in.AgentVersion)
-	fmt.Fprintf(&b, "\nSend this whole file to whoever asked for it. It contains the\n")
-	fmt.Fprintf(&b, "QueueUp agent's log and the tail of the game's own log, nothing else:\n")
-	fmt.Fprintf(&b, "no passwords, no account details.\n")
+	fmt.Fprintf(&b, "\nThis contains the QueueUp agent's log and the most recent part of the\n")
+	fmt.Fprintf(&b, "game's own log, nothing else. No passwords. Rust writes your Steam ID\n")
+	fmt.Fprintf(&b, "into its log, and file locations can include your Windows user name,\n")
+	fmt.Fprintf(&b, "so this report can contain both.\n")
 
 	appendSection(&b, "AGENT LOG ("+in.AgentLogPath+")", in.AgentLogPath)
 	appendSection(&b, "GAME LOG ("+in.GameLogPath+")", in.GameLogPath)
 
-	name := "QueueUp-report-" + stamp.Format("2006-01-02-150405") + ".txt"
-	path := filepath.Join(dir, name)
-	if err := os.WriteFile(path, []byte(b.String()), 0o644); err != nil {
-		return "", fmt.Errorf("saving the report: %w", err)
-	}
-	return path, nil
+	name = "QueueUp-report-" + stamp.Format("2006-01-02-150405") + ".txt"
+	return name, []byte(b.String())
 }
 
 // appendSection adds the tail of one file, or says plainly why it could not.

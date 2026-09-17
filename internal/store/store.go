@@ -162,7 +162,7 @@ func Open(path string) (*Store, error) {
 			return nil, fmt.Errorf("setting %s: %w", pragma, err)
 		}
 	}
-	for _, s := range []string{schema, authSchema, serversSchema} {
+	for _, s := range []string{schema, authSchema, serversSchema, feedbackSchema} {
 		if _, err := db.Exec(s); err != nil {
 			return nil, fmt.Errorf("creating schema: %w", err)
 		}
@@ -333,3 +333,10 @@ func (s *Store) DebugDump() (string, error) {
 
 // SetClockForTest replaces the store's idea of "now". Tests only.
 func (s *Store) SetClockForTest(now func() time.Time) { s.now = now }
+
+// ExecForTests runs raw SQL. It exists so tests can recreate the shape of an
+// older database; nothing outside tests calls it.
+func (s *Store) ExecForTests(query string, args ...any) error {
+	_, err := s.db.Exec(query, args...)
+	return err
+}

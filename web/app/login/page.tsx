@@ -77,6 +77,13 @@ function LoginForm() {
               required
             />
           </div>
+          {creating && (
+            <p className="muted small" style={{ margin: 0 }}>
+              QueueUp is a free beta. Creating an account means you have read
+              the <a href="/privacy">privacy notice</a>: we keep your email and
+              what your joins did, and never ask for your Steam password.
+            </p>
+          )}
           <button type="submit" className="primary btn-wide" disabled={busy}>
             {busy ? 'One moment' : creating ? 'Create account' : 'Sign in'}
           </button>

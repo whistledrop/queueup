@@ -7,6 +7,18 @@
       "runtimeArgs": ["run", "dev"],
       "port": 3000,
       "autoPort": true
+    },
+    {
+      "name": "queueup-relay-dev",
+      "runtimeExecutable": "./scripts/dev-relay.sh",
+      "runtimeArgs": [],
+      "port": 8090
+    },
+    {
+      "name": "queueup-web-dev-relay",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["RELAY_URL=http://127.0.0.1:8090", "npm", "--prefix", "web", "run", "dev", "--", "--port", "3100"],
+      "port": 3100
     }
   ]
 }

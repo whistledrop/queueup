@@ -1,6 +1,7 @@
 package store
 
 import (
+	"crypto/rand"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -149,4 +150,43 @@ func (s *Store) AccountBySession(token string) (Account, error) {
 func (s *Store) SignOut(token string) error {
 	_, err := s.db.Exec(`DELETE FROM sessions WHERE token_hash = ?`, HashToken(token))
 	return err
+}
+
+// tempPasswordAlphabet leaves out look-alike characters, because this password
+// is read off one screen and typed into another, usually on a phone.
+const tempPasswordAlphabet = "abcdefghjkmnpqrstuvwxyz23456789"
+
+// SetTemporaryPassword gives an account a new random password and returns it.
+//
+// This is the beta's answer to "I forgot my password". A proper emailed reset
+// needs an email provider, which does not exist yet; until it does, the
+// operator can hand somebody a temporary password over whatever channel they
+// already talk on. Every existing session is ended, so a password that might
+// have been compromised stops working everywhere at once.
+func (s *Store) SetTemporaryPassword(accountID string) (string, error) {
+	if _, err := s.AccountByID(accountID); err != nil {
+		return "", err
+	}
+	raw := make([]byte, 12)
+	if _, err := rand.Read(raw); err != nil {
+		return "", err
+	}
+	pw := make([]byte, len(raw))
+	for i, v := range raw {
+		pw[i] = tempPasswordAlphabet[int(v)%len(tempPasswordAlphabet)]
+	}
+	password := string(pw)
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	if _, err := s.db.Exec(`UPDATE accounts SET password_hash = ? WHERE id = ?`,
+		string(hash), accountID); err != nil {
+		return "", err
+	}
+	if _, err := s.db.Exec(`DELETE FROM sessions WHERE account_id = ?`, accountID); err != nil {
+		return "", err
+	}
+	return password, nil
 }

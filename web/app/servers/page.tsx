@@ -155,7 +155,7 @@ function ServerBrowser() {
   }
 
   return (
-    <>
+    <div className="shell">
       <Nav />
 
       {error && <div className="error">{error}</div>}
@@ -323,6 +323,6 @@ function ServerBrowser() {
       </div>
 
       <Footer />
-    </>
+    </div>
   )
 }

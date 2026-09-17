@@ -73,6 +73,11 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 			"Too many attempts. Wait a few minutes and try again.")
 		return
 	}
+	if s.signUps.blocked(from) {
+		writeError(w, http.StatusTooManyRequests,
+			"Too many new accounts from this connection. Try again in an hour.")
+		return
+	}
 
 	acct, err := s.st.Register(c.Email, c.Password)
 	if err != nil {
@@ -80,6 +85,7 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	s.signUps.fail(from) // counts accounts made, not mistakes
 	token, err := s.st.NewSession(acct.ID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError,

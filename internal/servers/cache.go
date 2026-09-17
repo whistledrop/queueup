@@ -25,6 +25,12 @@ type Cached struct {
 	inner Provider
 	now   func() time.Time
 
+	// FreshFor is how long an answer is served without asking the source again.
+	// Zero asks every time. Server search is typed a letter at a time by people
+	// arriving from a video all at once, and every question costs a call against
+	// a daily Steam allowance, while player counts barely move in a minute.
+	FreshFor time.Duration
+
 	mu       sync.Mutex
 	byID     map[string]cacheEntry
 	searches map[string]cacheEntry
@@ -58,6 +64,9 @@ func (c *Cached) Name() string { return c.inner.Name() }
 
 // ByID looks a server up, falling back to the last good answer.
 func (c *Cached) ByID(ctx context.Context, id string) (Server, error) {
+	if cached, ok := c.recallFresh(c.byID, id); ok && len(cached) > 0 {
+		return cached[0], nil
+	}
 	sv, err := c.inner.ByID(ctx, id)
 	if err == nil {
 		c.remember(c.byID, id, []Server{sv}, maxRememberedIDs)
@@ -72,6 +81,9 @@ func (c *Cached) ByID(ctx context.Context, id string) (Server, error) {
 // Search finds servers, falling back to the last good answer for this query.
 func (c *Cached) Search(ctx context.Context, query string, limit int) ([]Server, error) {
 	key := fmt.Sprintf("%s\x00%d", query, limit)
+	if cached, ok := c.recallFresh(c.searches, key); ok {
+		return cached, nil
+	}
 	found, err := c.inner.Search(ctx, query, limit)
 	if err == nil {
 		c.remember(c.searches, key, found, maxRememberedSearches)
@@ -121,6 +133,21 @@ func (c *Cached) recall(from map[string]cacheEntry, key string) ([]Server, bool)
 	defer c.mu.Unlock()
 	e, ok := from[key]
 	if !ok {
+		return nil, false
+	}
+	return e.servers, true
+}
+
+// recallFresh returns a remembered answer only while it is still inside
+// FreshFor.
+func (c *Cached) recallFresh(from map[string]cacheEntry, key string) ([]Server, bool) {
+	if c.FreshFor <= 0 {
+		return nil, false
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	e, ok := from[key]
+	if !ok || c.now().Sub(e.at) >= c.FreshFor {
 		return nil, false
 	}
 	return e.servers, true

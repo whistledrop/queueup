@@ -3,11 +3,16 @@
 package main
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
+	"queueup/internal/agentcfg"
 	"queueup/internal/game"
+	"queueup/internal/relayclient"
 	"queueup/internal/report"
 )
 
@@ -31,4 +36,43 @@ func saveProblemReport() (string, error) {
 		AgentLogPath: logFilePath(),
 		GameLogPath:  game.DefaultLogPath(),
 	})
+}
+
+// sendProblemReport uploads the same report straight to QueueUp, so a beta
+// tester never has to find a file and email it. If the upload fails for any
+// reason, the report is saved to the Desktop instead and the returned path
+// says where: a report that cannot be sent should still not be lost.
+func sendProblemReport() (sent bool, savedTo string, err error) {
+	in := report.Inputs{
+		AgentVersion: Version,
+		AgentLogPath: logFilePath(),
+		GameLogPath:  game.DefaultLogPath(),
+	}
+	_, content := report.Render(in)
+
+	cfgPath, cerr := agentcfg.DefaultPath()
+	if cerr == nil {
+		if cfg, lerr := agentcfg.Load(cfgPath); lerr == nil && cfg.Paired() {
+			relay := cfg.RelayURL
+			if relay == "" {
+				relay = DefaultRelayURL
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+			defer cancel()
+			if uerr := relayclient.SendReport(ctx, relay, cfg.DeviceToken, Version, content); uerr == nil {
+				return true, "", nil
+			} else {
+				err = uerr
+			}
+		}
+	}
+
+	path, serr := saveProblemReport()
+	if serr != nil {
+		if err != nil {
+			return false, "", fmt.Errorf("%v, and saving it failed too: %v", err, serr)
+		}
+		return false, "", serr
+	}
+	return false, path, err
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 )
 
 // flaky is a provider that can be switched off, the way Steam's server list
@@ -135,5 +136,33 @@ func TestTheCacheIsBounded(t *testing.T) {
 	c.mu.Unlock()
 	if n > maxRememberedIDs {
 		t.Fatalf("cache holds %d entries, cap is %d", n, maxRememberedIDs)
+	}
+}
+
+// With FreshFor set, a repeat question inside the window is answered without
+// spending a call against the source's daily allowance.
+func TestAFreshAnswerIsReusedInsideTheWindow(t *testing.T) {
+	f := &flaky{}
+	c := NewCached(f)
+	c.FreshFor = time.Minute
+	now := time.Date(2026, 10, 1, 18, 0, 0, 0, time.UTC)
+	c.now = func() time.Time { return now }
+	ctx := context.Background()
+
+	for i := 0; i < 5; i++ {
+		if _, err := c.Search(ctx, "rust", 10); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if f.calls != 1 {
+		t.Fatalf("source was asked %d times inside the window, want 1", f.calls)
+	}
+
+	now = now.Add(61 * time.Second)
+	if _, err := c.Search(ctx, "rust", 10); err != nil {
+		t.Fatal(err)
+	}
+	if f.calls != 2 {
+		t.Fatalf("source was not asked again after the window: %d calls", f.calls)
 	}
 }

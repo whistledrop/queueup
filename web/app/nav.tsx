@@ -7,6 +7,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { BETA } from '@/lib/pricing'
 
 const tabs = [
   { href: '/', label: 'Home' },
@@ -28,6 +29,7 @@ export default function Nav() {
     <header className="top">
       <Link href="/" className="brand">
         Queue<span>Up</span>
+        {BETA && <span className="beta">beta</span>}
       </Link>
       <nav className="tabs" aria-label="Main">
         {tabs.map((t) => (
@@ -52,6 +54,10 @@ export function Footer() {
   return (
     <footer className="foot">
       <Link href="/help">Help and troubleshooting</Link>
+      {' · '}
+      <Link href="/feedback">Send feedback</Link>
+      {' · '}
+      <Link href="/privacy">Privacy</Link>
       <br />
       QueueUp is an unofficial third-party tool, not affiliated with Facepunch
       Studios. It never modifies or automates the game itself.

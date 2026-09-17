@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import Nav, { Footer } from '../../nav'
 import { api, isActive, outcome, stateLabel, type Job, type JobEvent } from '@/lib/api'
 
@@ -97,6 +98,16 @@ export default function LiveStatus({ jobId }: { jobId: string }) {
 
         {alsoSay && (
           <p className="muted" style={{ marginBottom: 0 }}>{alsoSay}</p>
+        )}
+
+        {job && !running && (
+          <Link
+            href={`/feedback?job=${encodeURIComponent(job.id)}&server=${encodeURIComponent(job.server_name || job.server_addr)}`}
+            className="btn btn-wide"
+            style={{ marginTop: 14 }}
+          >
+            How did that go? Tell us
+          </Link>
         )}
       </div>
 

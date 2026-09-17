@@ -25,7 +25,7 @@ function Q({ q, children }: { q: string; children: React.ReactNode }) {
 
 export default function HelpPage() {
   return (
-    <>
+    <div className="shell">
       <header className="top">
         <Link href="/" className="brand">Queue<span>Up</span></Link>
         <Link href="/" className="btn quiet">Back</Link>
@@ -33,8 +33,9 @@ export default function HelpPage() {
 
       <h1 className={s.h1}>Help</h1>
       <p className="muted">
-        Find what you can see on your screen. If none of it fits, save a problem
-        report (bottom of this page) and send it over.
+        Find what you can see on your screen. If none of it fits, send a problem
+        report (bottom of this page) and <Link href="/feedback">tell us</Link>{' '}
+        what happened.
       </p>
 
       <div className="card">
@@ -200,7 +201,7 @@ export default function HelpPage() {
           <p>
             If <b>you</b> closed Rust, QueueUp takes that as a cancel and stops.
             It does not reopen a game a person just closed. If it did reopen
-            after you closed it, something is wrong: save a problem report.
+            after you closed it, something is wrong: send a problem report.
           </p>
         </Q>
 
@@ -208,8 +209,8 @@ export default function HelpPage() {
           <p>
             It should never do that. Once you are in a server the job is finished
             and QueueUp leaves the game completely alone, including if you quit
-            the QueueUp icon. If this happened, save a problem report and send
-            it: that is a bug and worth knowing about immediately.
+            the QueueUp icon. If this happened, send a problem report from
+            the tray icon: that is a bug and worth knowing about immediately.
           </p>
         </Q>
 
@@ -238,8 +239,8 @@ export default function HelpPage() {
           </p>
           <p>
             If the app kept showing the join running for more than a minute after
-            you left, that is worth reporting: save a problem report from the
-            tray icon and send it. The exact wording Rust uses when you
+            you left, that is worth reporting: send a problem report from the
+            tray icon. The exact wording Rust uses when you
             disconnect varies between builds, and the report contains the lines
             needed to fix it.
           </p>
@@ -316,25 +317,32 @@ export default function HelpPage() {
             <b>^</b> arrow).
           </li>
           <li>
-            Choose <b>Save a problem report</b>.
+            Choose <b>Send a problem report to QueueUp</b>. The icon says
+            &quot;Problem report sent&quot; when it has gone.
           </li>
           <li>
-            A file appears on your Desktop. Send it over, and say roughly what
-            time the problem happened.
+            Then <Link href="/feedback">tell us what happened</Link> in a
+            sentence or two, and roughly what time.
           </li>
         </ol>
         <p className="muted small">
-          The report holds the QueueUp log and the tail of the game&apos;s log.
-          No passwords, no account details.
+          If the PC is offline, the report is saved to the Desktop instead.
+          Older versions of QueueUp only have <b>Save a problem report</b>: use
+          that, and QueueUp will update itself soon.
         </p>
         <p className="muted small">
-          If it went wrong in the game, save the report{' '}
+          The report holds the QueueUp log and the most recent part of the
+          game&apos;s log. No passwords. Rust writes your Steam ID into its log,
+          so the report includes that. See <Link href="/privacy">privacy</Link>.
+        </p>
+        <p className="muted small">
+          If it went wrong in the game, send the report{' '}
           <b>before starting Rust again</b>: the game clears its log every time
           it starts.
         </p>
       </div>
 
       <Footer />
-    </>
+    </div>
   )
 }

@@ -14,6 +14,18 @@ export const PLAN = {
   ],
 } as const
 
+// BETA is true while QueueUp is handed out free in exchange for feedback. The
+// relay's billing gate is off at the same time (QUEUEUP_BILLING unset), so
+// nothing anywhere asks for money. Turn both off together when charging starts.
+export const BETA = true
+
+/** What the landing page says about cost. */
+export function costLine(): string {
+  return BETA
+    ? `Free while QueueUp is in beta. Try it and tell us how it went.`
+    : `${priceLine()}. Setting up is free, you pay when you first join.`
+}
+
 export function priceLine(): string {
   return `${PLAN.symbol}${PLAN.monthly.toFixed(2)} a month`
 }

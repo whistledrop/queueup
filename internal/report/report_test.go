@@ -33,7 +33,7 @@ func TestBuildBundlesBothLogs(t *testing.T) {
 	s := string(raw)
 	for _, want := range []string{
 		"v0.2.1", "agent line two", "Connecting: 1.2.3.4:28015",
-		"AGENT LOG", "GAME LOG", "no passwords",
+		"AGENT LOG", "GAME LOG", "No passwords", "Steam ID",
 	} {
 		if !strings.Contains(s, want) {
 			t.Errorf("report is missing %q", want)
