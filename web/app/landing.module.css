@@ -55,6 +55,38 @@
   max-width: 42ch;
 }
 
+.heroPoints {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 28px;
+  display: grid;
+  gap: 10px;
+  max-width: 46ch;
+}
+
+.heroPoints li {
+  position: relative;
+  padding-left: 26px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* A tick, drawn in CSS so the page needs no image. */
+.heroPoints li::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 6px;
+  width: 6px;
+  height: 11px;
+  border-right: 2px solid var(--accent);
+  border-bottom: 2px solid var(--accent);
+  transform: rotate(45deg);
+}
+
+.heroPoints b { color: var(--text); font-weight: 650; }
+
 .ctaRow {
   display: flex;
   align-items: center;

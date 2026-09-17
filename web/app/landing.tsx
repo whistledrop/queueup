@@ -24,15 +24,32 @@ export default function Landing() {
       <header className={s.hero}>
         <div>
           <h1>
-            Your PC waits in the Rust queue. <em>You get on with your day.</em>
+            Join any Rust server from your phone.{' '}
+            <em>Your PC does the queueing.</em>
           </h1>
           <p className={s.lede}>
-            Tap join on your phone. At home, your PC launches Rust, sits through
-            the queue and holds your slot until you sit down. Built for wipe day.
+            Tap join from work, the pub, or the back of a bus. At home your PC
+            starts Rust, sits in the queue for as long as it takes, and holds
+            your slot until you walk in and sit down.
           </p>
+          <ul className={s.heroPoints}>
+            <li>
+              <b>Wipe day, sorted.</b> Schedule the join before you leave the
+              house and your PC beats the refresh-mashers to the restart.
+            </li>
+            <li>
+              <b>It fixes itself.</b> Rust crashes or Windows reboots mid queue?
+              It relaunches and rejoins without you.
+            </li>
+            <li>
+              <b>Not a cheat.</b> It starts the game through Steam and reads a
+              log file. It never plays for you, and never wants your Steam
+              password.
+            </li>
+          </ul>
           <div className={s.ctaRow}>
             <Link href="/login?mode=create" className={s.cta}>
-              Get QueueUp
+              Get QueueUp free
             </Link>
             <span className={s.ctaNote}>
               {costLine()}
