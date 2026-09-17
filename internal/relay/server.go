@@ -14,6 +14,7 @@ import (
 
 	"github.com/coder/websocket"
 
+	"queueup/internal/mail"
 	"queueup/internal/protocol"
 	"queueup/internal/servers"
 	"queueup/internal/store"
@@ -36,6 +37,13 @@ type Config struct {
 	// three in a row is treated as the PC having gone away.
 	HeartbeatSeconds int
 
+	// Mail sends the few emails QueueUp needs. A disabled sender (no key) is
+	// fine: the forgotten-password page then says nothing was sent.
+	Mail *mail.Sender
+
+	// WebURL is the website's own address, used to build links inside emails.
+	WebURL string
+
 	// BillingEnabled turns the subscription gate on. Off (the default), every
 	// account runs free, which is the state until Stripe is connected.
 	BillingEnabled bool
@@ -53,6 +61,10 @@ type Server struct {
 	signIns *throttle
 	// signUps counts new accounts per source, so a script cannot mint thousands.
 	signUps *throttle
+	// resets counts password reset requests, per address and per source.
+	resets *throttle
+
+	mail *mail.Sender
 
 	// debugLogs keeps the last few raw Rust log lines per PC, in memory only, for
 	// the admin view. They are never shown to a player and never written to disk.
@@ -76,7 +88,16 @@ func New(cfg Config) *Server {
 		mux:       http.NewServeMux(),
 		signIns:   newThrottle(signInLimit, signInWindow, time.Now),
 		signUps:   newThrottle(signUpLimit, signUpWindow, time.Now),
+		resets:    newThrottle(resetRequestLimit, resetRequestWindow, time.Now),
 		debugLogs: map[string][]string{},
+	}
+	if cfg.Mail == nil {
+		s.mail = &mail.Sender{} // disabled
+	} else {
+		s.mail = cfg.Mail
+	}
+	if s.cfg.WebURL == "" {
+		s.cfg.WebURL = "https://queueuprust.com"
 	}
 	s.routes()
 	return s
@@ -100,6 +121,8 @@ func (s *Server) routes() {
 
 	// Signing in and out.
 	s.authRoutes()
+	// Forgotten passwords.
+	s.resetRoutes()
 	// Finding servers and starring them.
 	s.serverRoutes()
 	// Planned joins.

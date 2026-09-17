@@ -39,8 +39,8 @@ func (s *Store) Register(email, password string) (Account, error) {
 	if !strings.Contains(email, "@") || len(email) < 5 {
 		return Account{}, errors.New("that doesn't look like an email address")
 	}
-	if len(password) < 8 {
-		return Account{}, errors.New("please use a password of at least 8 characters")
+	if err := CheckPassword(password); err != nil {
+		return Account{}, err
 	}
 	if _, err := s.AccountByEmail(email); err == nil {
 		return Account{}, errors.New("there is already an account with that email address")

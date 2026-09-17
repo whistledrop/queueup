@@ -104,9 +104,11 @@ export default function PrivacyPage() {
           corrected, or ask for your account and everything in it to be
           deleted. Send the request from the{' '}
           <Link href="/feedback">feedback page</Link> while signed in, so we know
-          it is really you. If you are unhappy with how your information is
-          handled, you can complain to the UK Information Commissioner&apos;s
-          Office at ico.org.uk.
+          it is really you, or email{' '}
+          <a href="mailto:privacy@queueuprust.com">privacy@queueuprust.com</a>.
+          If you are unhappy with how your information is handled, you can
+          complain to the UK Information Commissioner&apos;s Office at
+          ico.org.uk.
         </p>
 
         <h2>Age</h2>

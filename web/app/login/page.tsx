@@ -1,6 +1,7 @@
 'use client'
 
 import { Suspense, useState } from 'react'
+import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 export default function LoginPage() {
@@ -96,6 +97,12 @@ function LoginForm() {
       >
         {creating ? 'I already have an account' : 'Create an account'}
       </button>
+
+      {!creating && (
+        <p className="muted small" style={{ textAlign: 'center', marginTop: 14 }}>
+          <Link href="/forgot">Forgotten your password?</Link>
+        </p>
+      )}
     </div>
   )
 }

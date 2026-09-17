@@ -153,7 +153,7 @@ pair it again.
    QueueUp icon, click the small "^" arrow: Windows hides new icons there.
    Right-click the icon and choose Quit. Windows will not let you replace the
    file while it is running.
-3. **Download the new one.** Open https://queueuprust.netlify.app/download
+3. **Download the new one.** Open https://queueuprust.com/download
    Windows or your browser will warn you about running a downloaded program.
    That is normal for any program that is not signed, which costs money we have
    not spent yet. Choose "Keep", then on the blue "Windows protected your PC"

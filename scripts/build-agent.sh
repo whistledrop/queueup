@@ -9,7 +9,7 @@ VERSION=$(git describe --tags --always 2>/dev/null || echo dev)
 # Baked into the exe so the download knows where its own service lives and the
 # user never has to type a URL.
 RELAY_URL=${RELAY_URL:-https://queueup-relay.fly.dev}
-WEB_URL=${WEB_URL:-https://queueuprust.netlify.app}
+WEB_URL=${WEB_URL:-https://queueuprust.com}
 
 mkdir -p dist
 

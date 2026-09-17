@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"queueup/internal/a2s"
+	"queueup/internal/mail"
 	"queueup/internal/relay"
 	"queueup/internal/servers"
 	"queueup/internal/store"
@@ -64,6 +65,13 @@ Settings come from environment variables, never from files in the repo:
                                          QUEUEUP_BATTLEMETRICS_TOKEN
 
   QUEUEUP_JOB_EXPIRY     how long a join waits for an absent PC (default 6h)
+  QUEUEUP_RESEND_KEY     API key from resend.com, for forgotten-password
+                         emails. Without it the reset page still works but
+                         sends nothing.
+  QUEUEUP_MAIL_FROM      the From address (default QueueUp <noreply@queueuprust.com>)
+  QUEUEUP_WEB_URL        the website's address, for links inside emails
+                         (default https://queueuprust.com)
+
   QUEUEUP_BILLING=on     turn the subscription gate on. Off by default, which
                          means every account runs free. Flip it when Stripe is
                          connected.
@@ -174,6 +182,14 @@ func serve(st *store.Store) error {
 			"Set QUEUEUP_SERVER_SOURCE to steam or battlemetrics for real servers")
 	}
 
+	mailer := mail.FromEnv()
+	if mailer.Enabled() {
+		log.Info("email is on", "from", mailer.From)
+	} else {
+		log.Warn("QUEUEUP_RESEND_KEY is not set, so forgotten-password emails cannot be sent")
+	}
+	webURL := os.Getenv("QUEUEUP_WEB_URL")
+
 	billing := os.Getenv("QUEUEUP_BILLING") == "on"
 	if !billing {
 		log.Warn("billing is off: every account runs free. Set QUEUEUP_BILLING=on once Stripe is connected")
@@ -181,7 +197,7 @@ func serve(st *store.Store) error {
 
 	srv := relay.New(relay.Config{
 		Store: st, Log: log, AdminToken: adminToken, Servers: provider,
-		BillingEnabled: billing,
+		BillingEnabled: billing, Mail: mailer, WebURL: webURL,
 	})
 	httpSrv := &http.Server{
 		Addr:    addr,
