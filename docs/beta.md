@@ -63,6 +63,8 @@ page says they go no later than that.
 - **Code signing.** Without it every new tester sees the Windows "protected
   your PC" warning. The dashboard walks them through it, but it costs signups.
 - **Email.** Needed for a real password reset.
-- **Your details on the privacy page.** A privacy notice should say who is
-  responsible for the data and how to reach them directly. It currently points
-  people at the feedback page; add a name and a contact address.
+- **A contact address on the privacy page.** A privacy notice should say who
+  is responsible for the data and how to reach them. Logan's personal name
+  stays off it: it will say "QueueUp" with a contact address on QueueUp's own
+  domain (for example privacy@...) once the domain exists. Until then it points
+  people at the feedback page.
