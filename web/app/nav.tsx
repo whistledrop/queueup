@@ -58,6 +58,8 @@ export function Footer() {
       <Link href="/feedback">Send feedback</Link>
       {' · '}
       <Link href="/privacy">Privacy</Link>
+      {' · '}
+      <Link href="/terms">Terms</Link>
       <br />
       QueueUp is an unofficial third-party tool, not affiliated with Facepunch
       Studios. It never modifies or automates the game itself.

@@ -1,32 +1,49 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { api, getBilling } from '@/lib/api'
+import { useSearchParams } from 'next/navigation'
+import { api, getBilling, type Billing } from '@/lib/api'
 import { PLAN, priceLine } from '@/lib/pricing'
 
 // The paywall. Someone lands here in exactly one situation: their PC is set up
 // and they tapped Join without a subscription. Everything on this page assumes
 // that moment: they are one step from the queue, not browsing.
+//
+// The price is said in full, both halves, before they pay: £1.99 now AND £4.99
+// after. A first-month offer that only mentions the first month is how people
+// end up feeling tricked, and feeling tricked is a chargeback.
 
 export default function SubscribePage() {
+  return (
+    <Suspense>
+      <Subscribe />
+    </Suspense>
+  )
+}
+
+function Subscribe() {
+  // ?preview=1 shows the page even while billing is off, so the whole
+  // checkout can be tried in Stripe's test mode during the free beta.
+  const preview = useSearchParams().get('preview') === '1'
+  const [billing, setBilling] = useState<Billing | null>(null)
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState('')
 
-  // If they are already subscribed, or billing is off, this page has no job.
   useEffect(() => {
     getBilling()
       .then((b) => {
-        if (b.subscribed) window.location.href = '/'
+        // Already paying, or nothing to pay for: this page has no job.
+        if (b.paying || (b.subscribed && !preview)) window.location.href = '/'
+        else setBilling(b)
       })
       .catch(() => {})
-  }, [])
+  }, [preview])
 
   async function checkout() {
     setBusy(true)
     setNote('')
     try {
-      // When Stripe is connected this returns its checkout page URL.
       const res = await api<{ url?: string }>('/api/billing/checkout', { method: 'POST' })
       if (res.url) window.location.href = res.url
     } catch (e) {
@@ -35,38 +52,52 @@ export default function SubscribePage() {
     }
   }
 
+  const intro = billing?.intro_available ?? true
+  const now = intro ? PLAN.intro : PLAN.monthly
+
   return (
     <div className="shell">
       <header className="top">
         <Link href="/" className="brand">Queue<span>Up</span></Link>
-        <Link href="/" className="btn small" style={{ minHeight: 36, padding: '6px 12px' }}>
-          Back
-        </Link>
+        <Link href="/" className="btn quiet">Back</Link>
       </header>
 
-      <div className="card">
-        <h2>One thing left</h2>
-        <p style={{ marginTop: 0, fontSize: 22, fontWeight: 700 }}>
-          Your PC is set up. Joining is the paid part.
+      {billing?.test_mode && (
+        <div className="notice">
+          <b>Test mode.</b> No real money moves. Pay with card 4242 4242 4242
+          4242, any future date, any three digits.
+        </div>
+      )}
+
+      <div className="card" style={{ textAlign: 'center' }}>
+        <h2>Your PC is ready</h2>
+        <p style={{ margin: '4px 0 0', fontSize: 15 }} className="muted">
+          {intro ? 'Your first month' : 'Every month'}
         </p>
-        <p className="muted" style={{ marginTop: 0 }}>
-          {priceLine()}, cancel anytime. Everything you have done so far stays
-          free.
+        <p style={{ margin: '2px 0 0', fontSize: 52, fontWeight: 800, letterSpacing: '-0.03em' }}>
+          {PLAN.symbol}
+          {now.toFixed(2)}
         </p>
-        <ul style={{ margin: '0 0 4px', paddingLeft: 20, color: 'var(--muted)' }}>
+        <p className="muted" style={{ margin: '0 0 18px' }}>
+          {intro ? `then ${priceLine()}. Cancel anytime.` : 'Cancel anytime.'}
+        </p>
+        <ul className="ticks">
           {PLAN.includes.map((line) => (
-            <li key={line} style={{ margin: '6px 0' }}>{line}</li>
+            <li key={line}>{line}</li>
           ))}
         </ul>
       </div>
 
       {note && <div className="notice">{note}</div>}
 
-      <button className="primary btn-wide" onClick={checkout} disabled={busy}>
-        {busy ? 'One moment' : `Subscribe, ${priceLine()}`}
+      <button className="primary btn-wide" onClick={checkout} disabled={busy} style={{ fontSize: 17 }}>
+        {busy ? 'One moment' : intro ? `Start for ${PLAN.symbol}${PLAN.intro.toFixed(2)}` : `Subscribe, ${priceLine()}`}
       </button>
-      <p className="muted small" style={{ textAlign: 'center' }}>
-        Payment is handled by Stripe. We never see your card.
+      <p className="muted small" style={{ textAlign: 'center', lineHeight: 1.5 }}>
+        Payment by Stripe. We never see your card.
+        <br />
+        Cancel in two taps from your dashboard, any time. By subscribing you
+        agree to the <Link href="/terms">terms</Link>.
       </p>
     </div>
   )

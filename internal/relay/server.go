@@ -18,6 +18,7 @@ import (
 	"queueup/internal/protocol"
 	"queueup/internal/servers"
 	"queueup/internal/store"
+	"queueup/internal/stripe"
 	"queueup/internal/update"
 )
 
@@ -43,6 +44,15 @@ type Config struct {
 
 	// WebURL is the website's own address, used to build links inside emails.
 	WebURL string
+
+	// Stripe is the payment provider. Disabled (no key) means checkout says
+	// payments are not switched on.
+	Stripe *stripe.Client
+	// StripePriceID is the monthly price; StripeIntroCouponID the first-month
+	// discount; StripeWebhookSecret checks that webhooks came from Stripe.
+	StripePriceID       string
+	StripeIntroCouponID string
+	StripeWebhookSecret string
 
 	// BillingEnabled turns the subscription gate on. Off (the default), every
 	// account runs free, which is the state until Stripe is connected.
@@ -95,6 +105,9 @@ func New(cfg Config) *Server {
 		s.mail = &mail.Sender{} // disabled
 	} else {
 		s.mail = cfg.Mail
+	}
+	if s.cfg.Stripe == nil {
+		s.cfg.Stripe = &stripe.Client{} // disabled
 	}
 	if s.cfg.WebURL == "" {
 		s.cfg.WebURL = "https://queueuprust.com"

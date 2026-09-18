@@ -36,7 +36,7 @@ export default function Landing() {
           </ul>
           <div className={s.ctaRow}>
             <Link href="/login?mode=create" className={s.cta}>
-              Get QueueUp free
+              {BETA ? 'Get QueueUp free' : 'Get QueueUp'}
             </Link>
             <span className={s.ctaNote}>{costLine()}</span>
           </div>
@@ -136,7 +136,7 @@ export default function Landing() {
 
       <section className={s.section} id="pricing">
         <p className={s.kicker}>Price</p>
-        <h2>Free while it is in beta</h2>
+        <h2>{BETA ? 'Free while it is in beta' : 'Try it for £1.99'}</h2>
         <div className={s.priceCard}>
           <div className={s.priceAmount}>
             {BETA ? (
@@ -146,8 +146,8 @@ export default function Landing() {
             ) : (
               <>
                 {PLAN.symbol}
-                {PLAN.monthly.toFixed(2)}
-                <small> / month</small>
+                {PLAN.intro.toFixed(2)}
+                <small> first month, then {PLAN.symbol}{PLAN.monthly.toFixed(2)}</small>
               </>
             )}
           </div>
@@ -157,12 +157,12 @@ export default function Landing() {
             ))}
           </ul>
           <Link href="/login?mode=create" className={s.cta} style={{ display: 'block' }}>
-            Get QueueUp free
+            {BETA ? 'Get QueueUp free' : 'Get QueueUp'}
           </Link>
           <p className={s.priceNote}>
             {BETA
-              ? `All we ask is that you say how it went. ${PLAN.symbol}${PLAN.monthly.toFixed(2)} a month when the beta ends, and nobody is charged without subscribing.`
-              : 'Setting up is free. You pay when you first join a server, and you can cancel anytime.'}
+              ? `All we ask is that you say how it went. After the beta it is ${PLAN.symbol}${PLAN.intro.toFixed(2)} for your first month, then ${PLAN.symbol}${PLAN.monthly.toFixed(2)}, and nobody is charged without choosing to subscribe.`
+              : 'Setting up is free. You only pay when you first join a server. Cancel in two taps, any time.'}
           </p>
         </div>
       </section>

@@ -23,7 +23,18 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
 export type Billing = {
   enabled: boolean
   subscribed: boolean
+  paying: boolean
   price_line: string
+  intro_available: boolean
+  can_manage: boolean
+  checkout_ready: boolean
+  test_mode: boolean
+}
+
+/** Opens Stripe's own page for changing card, receipts and cancelling. */
+export async function openManageSubscription(): Promise<void> {
+  const res = await api<{ url: string }>('/api/billing/portal', { method: 'POST' })
+  if (res.url) window.location.href = res.url
 }
 
 /** The subscription gate's state. With billing off, everyone reads subscribed,

@@ -25,6 +25,7 @@ import (
 	"queueup/internal/relay"
 	"queueup/internal/servers"
 	"queueup/internal/store"
+	"queueup/internal/stripe"
 )
 
 func main() {
@@ -45,6 +46,11 @@ QueueUp relay
   relay delete-account <email>       remove an account that has no PCs or joins
   relay query <ip:port>              ask a Rust server how it is doing, right
                                      now, the same way the wipe watcher does
+  relay stripe-setup                 create the product, price, first-month
+                                     offer, webhook and manage page in the
+                                     Stripe account whose key is in
+                                     QUEUEUP_STRIPE_SECRET_KEY, and print the
+                                     settings to store
   relay set-subscription <email> <active|none>
                                      open or close the gate for one account by
                                      hand (used for testing and comped accounts
@@ -72,6 +78,11 @@ Settings come from environment variables, never from files in the repo:
   QUEUEUP_WEB_URL        the website's address, for links inside emails
                          (default https://queueuprust.com)
 
+  QUEUEUP_STRIPE_SECRET_KEY        Stripe secret key (sk_test_... to try it safely)
+  QUEUEUP_STRIPE_PRICE_ID          the monthly price       } all three are printed
+  QUEUEUP_STRIPE_INTRO_COUPON_ID   the first-month offer   } by relay stripe-setup
+  QUEUEUP_STRIPE_WEBHOOK_SECRET    checks webhooks are real}
+
   QUEUEUP_BILLING=on     turn the subscription gate on. Off by default, which
                          means every account runs free. Flip it when Stripe is
                          connected.
@@ -82,6 +93,11 @@ func run(args []string) error {
 	if len(args) == 0 {
 		fmt.Println(usage())
 		return nil
+	}
+
+	// Setting up Stripe touches no database, so it runs before one is opened.
+	if args[0] == "stripe-setup" {
+		return stripeSetup()
 	}
 
 	dbPath := envOr("QUEUEUP_DB", "queueup.db")
@@ -190,7 +206,25 @@ func serve(st *store.Store) error {
 	}
 	webURL := os.Getenv("QUEUEUP_WEB_URL")
 
+	pay := &stripe.Client{SecretKey: os.Getenv("QUEUEUP_STRIPE_SECRET_KEY")}
+	priceID := os.Getenv("QUEUEUP_STRIPE_PRICE_ID")
+	stripeReady := pay.Enabled() && priceID != ""
+	switch {
+	case !pay.Enabled():
+		log.Warn("Stripe is not connected: nobody can pay yet")
+	case pay.TestMode():
+		log.Warn("Stripe is in TEST mode: checkout works but no real money moves")
+	default:
+		log.Info("Stripe is live")
+	}
+
 	billing := os.Getenv("QUEUEUP_BILLING") == "on"
+	if billing && !stripeReady {
+		// A gate with no way through it locks every customer out of the thing
+		// they came for. Fail open, loudly, rather than shut.
+		log.Error("QUEUEUP_BILLING=on but Stripe is not fully connected, so billing stays OFF until it is")
+		billing = false
+	}
 	if !billing {
 		log.Warn("billing is off: every account runs free. Set QUEUEUP_BILLING=on once Stripe is connected")
 	}
@@ -198,6 +232,10 @@ func serve(st *store.Store) error {
 	srv := relay.New(relay.Config{
 		Store: st, Log: log, AdminToken: adminToken, Servers: provider,
 		BillingEnabled: billing, Mail: mailer, WebURL: webURL,
+		Stripe:              pay,
+		StripePriceID:       priceID,
+		StripeIntroCouponID: os.Getenv("QUEUEUP_STRIPE_INTRO_COUPON_ID"),
+		StripeWebhookSecret: os.Getenv("QUEUEUP_STRIPE_WEBHOOK_SECRET"),
 	})
 	httpSrv := &http.Server{
 		Addr:    addr,
@@ -249,4 +287,38 @@ func envOr(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// stripeSetup creates QueueUp's product, price, first-month offer, webhook and
+// manage page in one Stripe account, then prints the settings the relay needs.
+func stripeSetup() error {
+	pay := &stripe.Client{SecretKey: os.Getenv("QUEUEUP_STRIPE_SECRET_KEY")}
+	if !pay.Enabled() {
+		return errors.New("set QUEUEUP_STRIPE_SECRET_KEY first")
+	}
+	relayURL := strings.TrimSuffix(envOr("QUEUEUP_PUBLIC_URL", "https://queueup-relay.fly.dev"), "/")
+	webURL := strings.TrimSuffix(envOr("QUEUEUP_WEB_URL", "https://queueuprust.com"), "/")
+	mode := "LIVE"
+	if pay.TestMode() {
+		mode = "test"
+	}
+	fmt.Printf("Setting up Stripe (%s mode)...\n", mode)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	made, err := pay.Setup(ctx, stripe.Plan{
+		Name: "QueueUp", Currency: "gbp", MonthlyPence: 499, IntroPence: 199,
+		WebhookURL:     relayURL + "/stripe/webhook",
+		PortalReturn:   webURL + "/",
+		TermsOfService: webURL + "/terms",
+	})
+	if err != nil {
+		return err
+	}
+	fmt.Printf("\nDone. Store these on the relay:\n\n")
+	fmt.Printf("  QUEUEUP_STRIPE_PRICE_ID=%s\n", made.PriceID)
+	fmt.Printf("  QUEUEUP_STRIPE_INTRO_COUPON_ID=%s\n", made.IntroCouponID)
+	fmt.Printf("  QUEUEUP_STRIPE_WEBHOOK_SECRET=%s\n", made.WebhookSecret)
+	fmt.Printf("\n(product %s, manage page %s)\n", made.ProductID, made.PortalConfig)
+	return nil
 }

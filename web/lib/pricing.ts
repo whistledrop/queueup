@@ -4,6 +4,9 @@ export const PLAN = {
   currency: 'GBP',
   symbol: '£',
   monthly: 4.99,
+  // The first month is discounted, once per account. Stripe applies it at
+  // checkout and charges the full price from month two on its own.
+  intro: 1.99,
   name: 'QueueUp',
   includes: [
     'Unlimited joins, any Rust server',
@@ -23,7 +26,12 @@ export const BETA = true
 export function costLine(): string {
   return BETA
     ? `Free while QueueUp is in beta. Try it and tell us how it went.`
-    : `${priceLine()}. Setting up is free, you pay when you first join.`
+    : `${introLine()}. Cancel anytime.`
+}
+
+/** The first-month offer, spelled out in full: what it costs now AND after. */
+export function introLine(): string {
+  return `${PLAN.symbol}${PLAN.intro.toFixed(2)} for your first month, then ${priceLine()}`
 }
 
 export function priceLine(): string {

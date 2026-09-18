@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import Nav, { Footer } from './nav'
 import { useRouter } from 'next/navigation'
-import { api, getBilling, isActive, outcome, stateLabel, type Billing, type Device, type Job } from '@/lib/api'
+import { api, getBilling, isActive, openManageSubscription, outcome, stateLabel, type Billing, type Device, type Job } from '@/lib/api'
 import type { Favourite, Schedule } from '@/lib/types'
 import { BETA } from '@/lib/pricing'
 
@@ -56,6 +56,16 @@ export default function Dashboard({ email }: { email: string }) {
 
   // The gate, stated up front so the paywall is never a surprise later.
   const needsSub = billing !== null && billing.enabled && !billing.subscribed
+
+  // Back from Stripe's checkout. The webhook can take a moment to land, so the
+  // thank-you is shown from the address rather than waiting for it.
+  const [justPaid, setJustPaid] = useState(false)
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('subscribed') === '1') {
+      setJustPaid(true)
+      window.history.replaceState(null, '', '/')
+    }
+  }, [])
 
 
 
@@ -129,7 +139,14 @@ export default function Dashboard({ email }: { email: string }) {
         </Link>
       )}
 
-      {BETA && (
+      {justPaid && (
+        <div className="notice">
+          <b>You&apos;re subscribed. Thank you.</b> Joining is unlocked. Your
+          receipt is on its way from Stripe.
+        </div>
+      )}
+
+      {BETA && !justPaid && (
         <div className="notice">
           <b>QueueUp is a free beta.</b> Tell us how your joins go on the{' '}
           <Link href="/feedback">feedback page</Link>. If something breaks on
@@ -240,8 +257,18 @@ export default function Dashboard({ email }: { email: string }) {
         )}
         {needsSub && (
           <p className="muted small" style={{ marginBottom: 0 }}>
-            Setting up is free. Joining needs the subscription, {billing?.price_line}.
+            Setting up is free. Joining needs the subscription:{' '}
+            <Link href="/subscribe">{billing?.price_line}</Link>.
           </p>
+        )}
+        {billing?.can_manage && (
+          <button
+            className="quiet"
+            style={{ marginTop: 10, minHeight: 36, padding: '6px 12px' }}
+            onClick={() => openManageSubscription().catch((e) => setError((e as Error).message))}
+          >
+            Manage subscription
+          </button>
         )}
       </div>
 
