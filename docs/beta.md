@@ -66,5 +66,5 @@ page says they go no later than that.
 - **A contact address on the privacy page.** A privacy notice should say who
   is responsible for the data and how to reach them. Logan's personal name
   stays off it: it will say "QueueUp" with a contact address on QueueUp's own
-  domain (for example privacy@...) once the domain exists. Until then it points
+  domain (hello@queueuprust.com) once the domain exists. Until then it points
   people at the feedback page.

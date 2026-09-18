@@ -105,7 +105,7 @@ export default function PrivacyPage() {
           deleted. Send the request from the{' '}
           <Link href="/feedback">feedback page</Link> while signed in, so we know
           it is really you, or email{' '}
-          <a href="mailto:privacy@queueuprust.com">privacy@queueuprust.com</a>.
+          <a href="mailto:hello@queueuprust.com">hello@queueuprust.com</a>.
           If you are unhappy with how your information is handled, you can
           complain to the UK Information Commissioner&apos;s Office at
           ico.org.uk.
