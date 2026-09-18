@@ -71,6 +71,24 @@ export default function Dashboard({ email }: { email: string }) {
 
 
 
+  // Unlinking is for a new PC, a sold PC, or starting again. The confirm says
+  // exactly what stops, so nobody loses a wipe join by surprise.
+  async function unlinkPC(id: string, name: string) {
+    const ok = confirm(
+      `Unlink ${name}?\n\n` +
+        'QueueUp on that PC stops working and shows a new code. Any join running ' +
+        'on it now is stopped, and joins scheduled for it are cancelled.\n\n' +
+        'You can link this PC, or a different one, again at any time.',
+    )
+    if (!ok) return
+    try {
+      await api(`/api/devices/${id}/revoke`, { method: 'POST' })
+      await load()
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+
   async function cancelSchedule(id: string) {
     try {
       await api(`/api/schedules/${id}/cancel`, { method: 'POST' })
@@ -254,6 +272,15 @@ export default function Dashboard({ email }: { email: string }) {
             QueueUp starts with Windows and keeps itself up to date on its own.
             If the dot stays red, check the PC is on and connected.
           </p>
+        )}
+        {pc && (
+          <button
+            className="quiet"
+            style={{ marginTop: 10, minHeight: 36, padding: '6px 12px', color: 'var(--bad)' }}
+            onClick={() => unlinkPC(pc.id, pc.name)}
+          >
+            Unlink this PC
+          </button>
         )}
         {needsSub && (
           <p className="muted small" style={{ marginBottom: 0 }}>

@@ -321,6 +321,16 @@ func (s *Server) handleRevokeDevice(w http.ResponseWriter, r *http.Request, acct
 	if a, ok := s.hub.Agent(id); ok {
 		a.cancel()
 	}
+	// A join running on it is over too. Left alone it would sit "active" until
+	// the absent-PC expiry, six hours later, looking like it might still work.
+	if j, err := s.st.ActiveJobForDevice(id); err == nil {
+		const msg = "This PC was unlinked, so the join was stopped."
+		if err := s.st.FinishJob(j.ID, "done", "cancelled", msg); err != nil {
+			s.log.Error("stopping the join on an unlinked PC", "job", j.ID, "err", err)
+		} else if events, err := s.st.Events(j.ID, 0); err == nil && len(events) > 0 {
+			s.hub.Publish(events[len(events)-1])
+		}
+	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "unlinked"})
 }
 

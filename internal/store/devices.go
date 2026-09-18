@@ -210,7 +210,7 @@ func (s *Store) SeenDevice(deviceID string) error {
 func (s *Store) Devices(accountID string) ([]Device, error) {
 	rows, err := s.db.Query(`
 		SELECT id FROM devices
-		 WHERE account_id = ? AND claimed_at != 0
+		 WHERE account_id = ? AND claimed_at != 0 AND revoked_at = 0
 		 ORDER BY claimed_at DESC`, accountID)
 	if err != nil {
 		return nil, err
@@ -240,6 +240,10 @@ func (s *Store) Devices(accountID string) ([]Device, error) {
 
 // RevokeDevice is the "unlink this PC" button. The agent's token stops working
 // immediately, and it can never be un-revoked: pair again to get a new one.
+//
+// Scheduled joins for the PC are cancelled at the same moment. Left pending,
+// they would sit on the Schedule page for a PC that no longer exists, and hold
+// up joins on whichever PC replaces it until each one fired and failed.
 func (s *Store) RevokeDevice(accountID, deviceID string) error {
 	res, err := s.db.Exec(
 		`UPDATE devices SET revoked_at = ? WHERE id = ? AND account_id = ? AND revoked_at = 0`,
@@ -250,7 +254,11 @@ func (s *Store) RevokeDevice(accountID, deviceID string) error {
 	if n, _ := res.RowsAffected(); n == 0 {
 		return ErrNotFound
 	}
-	return nil
+	_, err = s.db.Exec(
+		`UPDATE schedules SET state = 'cancelled', note = ?
+		  WHERE device_id = ? AND account_id = ? AND state = 'pending'`,
+		"Cancelled because the PC it was for was unlinked.", deviceID, accountID)
+	return err
 }
 
 // AllDevices powers the admin view.
