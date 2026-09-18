@@ -73,6 +73,8 @@ type Server struct {
 	signUps *throttle
 	// resets counts password reset requests, per address and per source.
 	resets *throttle
+	// pcLinks counts "email me the PC link" presses per account.
+	pcLinks *throttle
 
 	mail *mail.Sender
 
@@ -99,6 +101,7 @@ func New(cfg Config) *Server {
 		signIns:   newThrottle(signInLimit, signInWindow, time.Now),
 		signUps:   newThrottle(signUpLimit, signUpWindow, time.Now),
 		resets:    newThrottle(resetRequestLimit, resetRequestWindow, time.Now),
+		pcLinks:   newThrottle(pcLinkLimit, pcLinkWindow, time.Now),
 		debugLogs: map[string][]string{},
 	}
 	if cfg.Mail == nil {
@@ -136,6 +139,8 @@ func (s *Server) routes() {
 	s.authRoutes()
 	// Forgotten passwords.
 	s.resetRoutes()
+	// Getting from "signed up on my phone" to "PC linked".
+	s.onboardingRoutes()
 	// Finding servers and starring them.
 	s.serverRoutes()
 	// Planned joins.

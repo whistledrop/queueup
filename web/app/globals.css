@@ -557,3 +557,18 @@ textarea { min-height: 120px; resize: vertical; line-height: 1.45; }
   border-bottom: 2px solid var(--accent);
   transform: rotate(45deg);
 }
+
+/* The address to type on the PC, shown big on the phone. */
+.getLink {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent);
+  text-align: center;
+  background: var(--card-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 10px;
+  margin: 6px 0 14px;
+  word-break: break-all;
+}

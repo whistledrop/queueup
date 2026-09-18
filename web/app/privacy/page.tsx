@@ -21,7 +21,7 @@ export default function PrivacyPage() {
 
       <div className="card prose">
         <h1 style={{ marginTop: 0 }}>Privacy</h1>
-        <p className="muted">Last updated 17 September 2026.</p>
+        <p className="muted">Last updated 18 September 2026.</p>
 
         <p>
           QueueUp is a small, independent tool, currently a free beta. It is an
@@ -78,7 +78,10 @@ export default function PrivacyPage() {
         <h2>Why</h2>
         <p>
           Only to run QueueUp for you and to fix it when it goes wrong. Your
-          email is used to sign you in. We do not sell your information or share
+          email is used to sign you in, and for the few emails QueueUp sends:
+          ones you ask for (a password reset, or the link for your PC), and one
+          reminder a day after signing up if you have not linked a PC yet. That
+          reminder is sent once, ever. We do not sell your information or share
           it with anyone for marketing, and we will not email you marketing
           without asking first.
         </p>

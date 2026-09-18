@@ -71,6 +71,28 @@ export default function Dashboard({ email }: { email: string }) {
 
 
 
+  // Most people arrive from a video, on their phone, nowhere near their PC.
+  // The phone gets a different setup card: where to go on the PC, and a button
+  // that puts the link in their inbox for when they get there.
+  const [onPhone, setOnPhone] = useState(false)
+  useEffect(() => {
+    setOnPhone(/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent))
+  }, [])
+  const [sendingLink, setSendingLink] = useState(false)
+  const [linkSent, setLinkSent] = useState('')
+  async function emailPCLink() {
+    setSendingLink(true)
+    setError('')
+    try {
+      const res = await api<{ status: string }>('/api/onboarding/pc-link', { method: 'POST' })
+      setLinkSent(res.status)
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setSendingLink(false)
+    }
+  }
+
   // Unlinking is for a new PC, a sold PC, or starting again. The confirm says
   // exactly what stops, so nobody loses a wipe join by surprise.
   async function unlinkPC(id: string, name: string) {
@@ -177,7 +199,44 @@ export default function Dashboard({ email }: { email: string }) {
         <h2>Your PC</h2>
         {loading && !pc && <div className="muted">Loading</div>}
 
-        {!loading && !pc && (
+        {!loading && !pc && onPhone && (
+          <>
+            <p style={{ marginTop: 0, fontSize: 18, fontWeight: 700 }}>
+              Now, on your gaming PC
+            </p>
+            <p className="muted" style={{ marginTop: 0 }}>
+              Linking your PC takes two minutes. Next time you are at it, go to:
+            </p>
+            <p className="getLink">{siteHost()}/get</p>
+            <button className="primary btn-wide" onClick={emailPCLink} disabled={sendingLink}>
+              {sendingLink ? 'Sending' : linkSent ? 'Send it again' : 'Email me the link'}
+            </button>
+            {linkSent && (
+              <p className="muted small" style={{ textAlign: 'center' }}>{linkSent}</p>
+            )}
+
+            <p className="muted small" style={{ margin: '18px 0 6px' }}>
+              At your PC already? It will show a six character code. Type it here:
+            </p>
+            <form onSubmit={pair} className="stack">
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                placeholder="ABC123"
+                maxLength={6}
+                autoCapitalize="characters"
+                autoCorrect="off"
+                spellCheck={false}
+                aria-label="Pairing code"
+              />
+              <button type="submit" className="btn-wide" disabled={pairing || code.length < 6}>
+                {pairing ? 'Linking' : 'Link my PC'}
+              </button>
+            </form>
+          </>
+        )}
+
+        {!loading && !pc && !onPhone && (
           <>
             <p className="muted" style={{ marginTop: 0 }}>
               Do this once, on the gaming PC you want QueueUp to use.
@@ -185,17 +244,10 @@ export default function Dashboard({ email }: { email: string }) {
 
             <ol className="setup">
               <li>
-                <strong>Download the QueueUp agent on that PC.</strong>
-                <span className="muted small">
-                  Open this page in a browser on the PC itself, not on your phone.
-                </span>
+                <strong>Download QueueUp on this PC.</strong>
                 <a className="btn btn-primary" href="/download" style={{ marginTop: 8 }}>
                   Download for Windows
                 </a>
-                <span className="muted small" style={{ marginTop: 8, display: 'block' }}>
-                  Or type this into the PC&apos;s browser:{' '}
-                  <span className="mono">{siteHost()}/download</span>
-                </span>
               </li>
               <li>
                 <strong>Put it somewhere permanent and double-click it.</strong>
@@ -228,7 +280,7 @@ export default function Dashboard({ email }: { email: string }) {
 
             <p className="muted small" style={{ marginBottom: 0 }}>
               Stuck? The code lasts ten minutes. Close the black window and
-              double-click the agent again for a fresh one.
+              double-click QueueUp again for a fresh one.
             </p>
           </>
         )}
@@ -375,7 +427,7 @@ export default function Dashboard({ email }: { email: string }) {
    link that does not look like a button, and the whole thing reads like a virus
    warning, so people stop here. Showing them the dialog before they see it,
    with the two clicks numbered, turns a scare into a formality. */
-function SmartScreenHelp() {
+export function SmartScreenHelp() {
   return (
     <div className="warnBox">
       <h4>Windows will try to stop you. This is expected.</h4>

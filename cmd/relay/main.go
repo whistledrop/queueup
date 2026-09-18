@@ -251,6 +251,8 @@ func serve(st *store.Store) error {
 	// The scheduler fires planned joins; the watcher polls each active job's
 	// server and is what detects a wipe restart.
 	go srv.RunScheduler(ctx, 5*time.Second)
+	// The one "your PC isn't linked yet" reminder, a day after signing up.
+	go srv.RunPCReminders(ctx, 15*time.Minute)
 
 	// Close joins whose PC never came back, so an ancient job cannot spring to
 	// life weeks later or block every new one.

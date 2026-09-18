@@ -25,8 +25,14 @@ export default function SubscribePage() {
 function Subscribe() {
   // ?preview=1 shows the page even while billing is off, so the whole
   // checkout can be tried in Stripe's test mode during the free beta.
-  const preview = useSearchParams().get('preview') === '1'
+  const params = useSearchParams()
+  const preview = params.get('preview') === '1'
+  const welcome = params.get('welcome') === '1'
   const [billing, setBilling] = useState<Billing | null>(null)
+  // Asked before any money changes hands: QueueUp only works on a Windows PC,
+  // and a Mac or console player who pays finds out the hard way and asks for
+  // their money back.
+  const [windows, setWindows] = useState<'unknown' | 'yes' | 'no'>('unknown')
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState('')
 
@@ -70,7 +76,7 @@ function Subscribe() {
       )}
 
       <div className="card" style={{ textAlign: 'center' }}>
-        <h2>Your PC is ready</h2>
+        <h2>{welcome ? 'Welcome to QueueUp' : 'Your PC is ready'}</h2>
         <p style={{ margin: '4px 0 0', fontSize: 15 }} className="muted">
           {intro ? 'Your first month' : 'Every month'}
         </p>
@@ -90,9 +96,32 @@ function Subscribe() {
 
       {note && <div className="notice">{note}</div>}
 
-      <button className="primary btn-wide" onClick={checkout} disabled={busy} style={{ fontSize: 17 }}>
-        {busy ? 'One moment' : intro ? `Start for ${PLAN.symbol}${PLAN.intro.toFixed(2)}` : `Subscribe, ${priceLine()}`}
-      </button>
+      {windows === 'unknown' && (
+        <div className="card" style={{ textAlign: 'center' }}>
+          <p style={{ margin: '0 0 12px', fontWeight: 700 }}>Do you play Rust on a Windows PC?</p>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button className="primary btn-wide" onClick={() => setWindows('yes')}>Yes</button>
+            <button className="btn-wide" onClick={() => setWindows('no')}>No</button>
+          </div>
+        </div>
+      )}
+
+      {windows === 'no' && (
+        <div className="card">
+          <p style={{ marginTop: 0, fontWeight: 700 }}>QueueUp needs a Windows PC</p>
+          <p className="muted" style={{ marginBottom: 0 }}>
+            It runs on the PC you play Rust on, so it cannot work on a Mac or a
+            console. Nothing has been charged. If you do have a Windows PC after
+            all, <button className="quiet" style={{ minHeight: 0, padding: 0, textDecoration: 'underline' }} onClick={() => setWindows('yes')}>carry on</button>.
+          </p>
+        </div>
+      )}
+
+      {windows === 'yes' && (
+        <button className="primary btn-wide" onClick={checkout} disabled={busy} style={{ fontSize: 17 }}>
+          {busy ? 'One moment' : intro ? `Start for ${PLAN.symbol}${PLAN.intro.toFixed(2)}` : `Subscribe, ${priceLine()}`}
+        </button>
+      )}
       <p className="muted small" style={{ textAlign: 'center', lineHeight: 1.5 }}>
         Payment by Stripe. We never see your card.
         <br />

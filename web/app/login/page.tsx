@@ -38,6 +38,15 @@ function LoginForm() {
         setBusy(false)
         return
       }
+      if (creating) {
+        const billing = await fetch('/api/relay/api/billing')
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null)
+        if (billing && billing.enabled && !billing.subscribed && billing.checkout_ready) {
+          router.push('/subscribe?welcome=1')
+          return
+        }
+      }
       router.push('/')
       router.refresh()
     } catch {

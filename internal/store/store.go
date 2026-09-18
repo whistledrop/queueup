@@ -248,6 +248,7 @@ func (s *Store) migrate() error {
 		{"jobs", "query_addr", "TEXT NOT NULL DEFAULT ''"},
 		{"accounts", "stripe_customer_id", "TEXT NOT NULL DEFAULT ''"},
 		{"accounts", "intro_used", "INTEGER NOT NULL DEFAULT 0"},
+		{"accounts", "pc_reminder_at", "INTEGER NOT NULL DEFAULT 0"},
 	} {
 		has, err := s.hasColumn(m.table, m.column)
 		if err != nil {
