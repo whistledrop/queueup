@@ -476,6 +476,11 @@ export function SmartScreenHelp() {
           do this once.
         </span>
       </div>
+      <span className="muted small" style={{ display: 'block', marginTop: 8 }}>
+        On a new Windows 11 PC you may instead see{' '}
+        <b>Smart App Control blocked this app</b>, which has no way past it.{' '}
+        <Link href="/help">Help</Link> explains how to switch that off.
+      </span>
     </div>
   )
 }

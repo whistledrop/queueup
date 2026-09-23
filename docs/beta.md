@@ -60,8 +60,15 @@ page says they go no later than that.
 
 ## Still missing before a big launch
 
-- **Code signing.** Without it every new tester sees the Windows "protected
-  your PC" warning. The dashboard walks them through it, but it costs signups.
+- **Code signing.** Two separate problems, and the second is worse.
+  Every tester sees the "Windows protected your PC" warning; the dashboard
+  walks them through it, but it costs signups. On a NEW Windows 11 PC, which is
+  what a new gaming laptop is, **Smart App Control blocks QueueUp outright**,
+  with no "run anyway": it refuses anything not signed by a known publisher.
+  Those people have to turn Smart App Control off before they can run QueueUp
+  at all (Windows Security, App & browser control), and help says so. That is a
+  hard stop for some share of exactly the audience TikTok sends. Signing moves
+  from "nice to have" to the thing most likely to cap the beta.
 - **Email.** Needed for a real password reset.
 - **A contact address on the privacy page.** A privacy notice should say who
   is responsible for the data and how to reach them. Logan's personal name

@@ -73,6 +73,35 @@ export default function HelpPage() {
           </p>
         </Q>
 
+        <Q q="Windows says Smart App Control blocked it">
+          <p>
+            Smart App Control is a newer Windows 11 feature, stricter than the
+            usual &quot;Windows protected your PC&quot; warning: it blocks
+            anything that is not signed by a known publisher, and gives you no
+            way past it. New Windows 11 laptops often have it switched on.
+          </p>
+          <p>To turn it off:</p>
+          <ol>
+            <li>Open <b>Windows Security</b> from the Start menu.</li>
+            <li>
+              <b>App &amp; browser control</b>, then{' '}
+              <b>Smart App Control settings</b>.
+            </li>
+            <li>Set it to <b>Off</b>.</li>
+          </ol>
+          <p>
+            Since the April 2026 Windows update you can switch it back on
+            afterwards. On a PC missing that update, turning it off is permanent
+            unless Windows is reinstalled, so update Windows first if you would
+            rather keep it.
+          </p>
+          <p className="muted">
+            Why does this happen? Signing an app costs a few hundred pounds a
+            year, and QueueUp has not bought that yet. It is honestly the next
+            thing on the list.
+          </p>
+        </Q>
+
         <Q q="What does QueueUp actually do to my game?">
           <p>
             Four things, and nothing else: it starts Rust through Steam the same
