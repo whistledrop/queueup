@@ -1,5 +1,40 @@
-/* The landing page. Same palette as the app so the story is continuous:
-   what you see here is what you get after signing in. */
+/* The landing page.
+
+   The app itself is dark, because it is used at night on a phone. The landing
+   page is WHITE, because it is doing a different job: convincing a stranger
+   from a video that this is a real product and safe to install. White reads as
+   a company; dark reads as a hobby project, fairly or not.
+
+   It is done by redefining the palette on the wrapper rather than rewriting
+   every rule, and by redefining it BACK to dark inside the phone and PC
+   mockups, so the screenshots still look like the real app. Dark screens on a
+   white page also draw the eye exactly where we want it. */
+
+/* The white canvas. Everything on the page sits inside this. */
+.light {
+  --bg: #ffffff;
+  --card: #ffffff;
+  --card-2: #f5f6f8;
+  --line: #e3e7ec;
+  --text: #0b0e12;
+  --muted: #5c6672;
+
+  background: #ffffff;
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* The mockups keep the app's real colours: they are pictures of a dark app. */
+.light .phone,
+.light .pcWindow {
+  --bg: #0f1113;
+  --card: #191c1f;
+  --card-2: #212529;
+  --line: #2b3036;
+  --text: #eef1f4;
+  --muted: #99a2ab;
+  color: var(--text);
+}
 
 .page {
   max-width: 1040px;
@@ -134,7 +169,7 @@
   border: 1px solid #2e343b;
   border-radius: 34px;
   padding: 14px 12px 20px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 18px 44px rgba(11, 14, 18, 0.22);
   margin: 0 auto;
 }
 
@@ -347,7 +382,7 @@
   border: 1px solid #2e343b;
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 16px 40px rgba(11, 14, 18, 0.2);
 }
 
 .pcTitlebar {
@@ -396,7 +431,7 @@
 }
 
 .fairItem {
-  background: var(--card);
+  background: var(--card-2);
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 16px;
@@ -502,3 +537,27 @@
   .signin { padding: 8px 12px; font-size: 14px; }
   .navCta { padding: 9px 14px; font-size: 14px; }
 }
+
+/* Light-page touches. A white page shows every join and edge, so the seams
+   want to be quieter than they were on black. */
+.light .section { border-top-color: var(--line); }
+
+.light .cta,
+.light .navCta {
+  box-shadow: 0 6px 16px rgba(208, 90, 42, 0.28);
+}
+
+.light .priceCard {
+  box-shadow: 0 12px 34px rgba(11, 14, 18, 0.08);
+}
+
+.light .faq details {
+  background: var(--card-2);
+  border-color: var(--line);
+}
+
+.light .signin {
+  border-color: var(--line);
+  color: #3d4652;
+}
+.light .signin:hover { color: var(--text); }

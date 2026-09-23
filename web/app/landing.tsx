@@ -7,6 +7,7 @@ import s from './landing.module.css'
 
 export default function Landing() {
   return (
+    <div className={s.light} data-landing="">
     <div className={s.page}>
       <nav className={s.nav}>
         <span className="brand">
@@ -217,6 +218,7 @@ export default function Landing() {
           <Link href="/login">Sign in</Link>
         </p>
       </footer>
+      </div>
     </div>
   )
 }
@@ -382,7 +384,7 @@ function Diagram() {
     >
       <defs>
         <marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
-          <path d="M0,0 L8,4 L0,8 z" fill="#99a2ab" />
+          <path d="M0,0 L8,4 L0,8 z" fill="#7a838d" />
         </marker>
       </defs>
 
@@ -425,18 +427,18 @@ function Diagram() {
       </text>
 
       {/* arrows */}
-      <line x1="132" y1="75" x2="226" y2="75" stroke="#99a2ab" strokeWidth="1.5" markerEnd="url(#arr)" />
-      <text x="179" y="65" textAnchor="middle" fill="#99a2ab" fontSize="11">
+      <line x1="132" y1="75" x2="226" y2="75" stroke="#7a838d" strokeWidth="1.5" markerEnd="url(#arr)" />
+      <text x="179" y="65" textAnchor="middle" fill="#5c6672" fontSize="11">
         tap join
       </text>
 
-      <line x1="448" y1="75" x2="354" y2="75" stroke="#99a2ab" strokeWidth="1.5" markerEnd="url(#arr)" />
-      <text x="401" y="65" textAnchor="middle" fill="#99a2ab" fontSize="11">
+      <line x1="448" y1="75" x2="354" y2="75" stroke="#7a838d" strokeWidth="1.5" markerEnd="url(#arr)" />
+      <text x="401" y="65" textAnchor="middle" fill="#5c6672" fontSize="11">
         PC connects out
       </text>
 
-      <line x1="562" y1="75" x2="636" y2="75" stroke="#99a2ab" strokeWidth="1.5" markerEnd="url(#arr)" />
-      <text x="599" y="65" textAnchor="middle" fill="#99a2ab" fontSize="11">
+      <line x1="562" y1="75" x2="636" y2="75" stroke="#7a838d" strokeWidth="1.5" markerEnd="url(#arr)" />
+      <text x="599" y="65" textAnchor="middle" fill="#5c6672" fontSize="11">
         Steam
       </text>
     </svg>
