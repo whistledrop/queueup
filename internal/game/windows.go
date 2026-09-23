@@ -43,6 +43,7 @@ type WindowsLauncher struct {
 	Log string
 
 	mu            sync.Mutex
+	addr          Addr // what the current launch was aimed at, for a re-send
 	exited        chan Exit
 	watch         chan struct{}
 	closing       bool
@@ -116,15 +117,12 @@ func (w *WindowsLauncher) Launch(a Addr) error {
 		waitForProcessGone(rustProcess, 20*time.Second)
 	}
 
-	uri := SteamConnectURI(a)
-	// "start" is the shell's own URL opener. cmd needs the empty "" title argument
-	// before the URL, otherwise it treats the quoted URL as a window title.
-	cmd := silent(exec.Command("cmd", "/c", "start", "", uri))
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("Windows refused to open the Steam link: %w", err)
+	if err := openSteamURI(a); err != nil {
+		return err
 	}
 
 	w.mu.Lock()
+	w.addr = a
 	w.closing = false
 	if w.exited == nil {
 		w.exited = make(chan Exit, 1)
@@ -141,6 +139,18 @@ func (w *WindowsLauncher) Launch(a Addr) error {
 	return nil
 }
 
+// openSteamURI hands the launch link to Windows, exactly as if the user had
+// clicked a steam:// link in a browser.
+func openSteamURI(a Addr) error {
+	uri := SteamConnectURI(a)
+	// "start" is the shell's own URL opener. cmd needs the empty "" title argument
+	// before the URL, otherwise it treats the quoted URL as a window title.
+	if err := silent(exec.Command("cmd", "/c", "start", "", uri)).Run(); err != nil {
+		return fmt.Errorf("Windows refused to open the Steam link: %w", err)
+	}
+	return nil
+}
+
 // watchProcess waits for the game to appear, then reports when it disappears.
 func (w *WindowsLauncher) watchProcess(ch chan Exit, stop chan struct{}) {
 	// Rust and Easy Anti-Cheat take a while to start, hence the grace period
@@ -148,6 +158,7 @@ func (w *WindowsLauncher) watchProcess(ch chan Exit, stop chan struct{}) {
 	const startupGrace = 3 * time.Minute
 	deadline := time.Now().Add(startupGrace)
 	appeared := false
+	nudges := 0
 
 	for {
 		select {
@@ -179,6 +190,19 @@ func (w *WindowsLauncher) watchProcess(ch chan Exit, stop chan struct{}) {
 		// wait, and keep the phone informed.
 		update := w.freshUpdate()
 		w.setUpdate(update)
+
+		// Steam knows an update is needed but has not started it. Ask it to
+		// launch the game again: that is what makes Steam deal with the update.
+		if shouldNudgeLaunch(update, appeared, nudges) {
+			nudges++
+			w.mu.Lock()
+			a := w.addr
+			w.mu.Unlock()
+			if err := openSteamURI(a); err == nil {
+				deadline = time.Now().Add(startupGrace)
+			}
+		}
+
 		switch judgeLaunchWait(update, time.Now().After(deadline)) {
 		case verdictExtendGrace:
 			deadline = time.Now().Add(startupGrace)

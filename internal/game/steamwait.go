@@ -43,6 +43,31 @@ const (
 	verdictGiveUpBlaming                      // out of patience AND we know why: tell the player
 )
 
+// A pending update that never starts is the wipe-day nightmare: Steam knows
+// Rust needs a patch, has not begun, and the player is out. Waiting politely
+// achieves nothing. Asking Steam to launch the game again is the one thing that
+// reliably makes Steam deal with an update first, and it is the same permitted
+// action the agent already performs to start the game at all.
+//
+// Nudged rather than hammered: a couple of minutes of no movement before the
+// first, a small number in total, and never while the download is paused, which
+// means a person chose to stop it and only a person can start it again.
+const (
+	LaunchNudgeAfter = 2 * time.Minute
+	MaxLaunchNudges  = 3
+)
+
+// shouldNudgeLaunch reports whether to ask Steam to launch the game again.
+func shouldNudgeLaunch(u UpdateState, appeared bool, nudges int) bool {
+	if appeared || nudges >= MaxLaunchNudges {
+		return false
+	}
+	if !u.Known || !u.Updating || u.Paused {
+		return false
+	}
+	return u.StalledFor >= LaunchNudgeAfter
+}
+
 // launchFailureReason is what the phone says when the game never appeared.
 //
 // "Rust closed unexpectedly" is wrong and useless here: nothing closed, it

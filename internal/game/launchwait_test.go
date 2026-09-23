@@ -107,3 +107,40 @@ func TestAGameThatNeverStartedIsNotReportedAsACrash(t *testing.T) {
 		t.Errorf("a paused download was not explained: %q", got)
 	}
 }
+
+// Wipe day's worst case: Steam knows Rust needs a patch and has not begun.
+// Waiting politely achieves nothing, and the player is not there to click.
+// Asking Steam to launch the game again is what gets it moving.
+func TestAPendingUpdateThatNeverStartsGetsNudged(t *testing.T) {
+	pending := func(stalled time.Duration) UpdateState {
+		return UpdateState{Known: true, Updating: true, StalledFor: stalled}
+	}
+	if shouldNudgeLaunch(pending(0), false, 0) {
+		t.Error("nudged immediately; Steam deserves a moment to get going")
+	}
+	if !shouldNudgeLaunch(pending(LaunchNudgeAfter), false, 0) {
+		t.Error("a pending update that has not moved for two minutes was not nudged")
+	}
+	if shouldNudgeLaunch(pending(time.Hour), false, MaxLaunchNudges) {
+		t.Error("kept nudging past the limit")
+	}
+	// The game is running: nothing to nudge.
+	if shouldNudgeLaunch(pending(time.Hour), true, 0) {
+		t.Error("nudged a game that had already started")
+	}
+	// A person paused it. Only a person can unpause it, and re-launching would
+	// fight them.
+	paused := UpdateState{Known: true, Updating: true, Paused: true, StalledFor: time.Hour}
+	if shouldNudgeLaunch(paused, false, 0) {
+		t.Error("nudged a download somebody had deliberately paused")
+	}
+	// A download that is actually moving needs no help.
+	moving := UpdateState{Known: true, Updating: true, StalledFor: 0}
+	if shouldNudgeLaunch(moving, false, 0) {
+		t.Error("nudged a download that was progressing")
+	}
+	// Nothing known about Steam: leave it alone.
+	if shouldNudgeLaunch(UpdateState{}, false, 0) {
+		t.Error("nudged with no idea what Steam was doing")
+	}
+}
