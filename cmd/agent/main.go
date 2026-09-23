@@ -12,6 +12,10 @@
 //
 //	agent status
 //	    Show what this PC is set up with.
+//
+//	agent steam-state
+//	    Show what QueueUp can see about Steam and Rust on this PC: useful while
+//	    Steam is downloading a Rust update, or has paused one.
 package main
 
 import (
@@ -67,6 +71,8 @@ func main() {
 		err = cmdSim(args[1:])
 	case "status":
 		err = cmdStatus(args[1:])
+	case "steam-state":
+		err = cmdSteamState(args[1:])
 	case "-h", "--help", "help":
 		fmt.Println(usage())
 		return
@@ -108,6 +114,8 @@ QueueUp agent ` + Version + `
   agent uninstall-autostart    stop doing that
   agent sim  --scenario <file> run one join against the fake Rust client
   agent status                 show what this PC is set up with
+  agent steam-state            show what QueueUp can see about Steam and Rust,
+                               useful while Steam is updating or paused
 
 This tool never asks for, stores, or uses your Steam password.
 `)

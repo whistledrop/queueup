@@ -42,6 +42,10 @@ type UpdateState struct {
 	// steamapps\common, from the manifest's installdir field. It is how the
 	// log file is found, since Rust writes its log next to its own exe.
 	InstallDir string
+	// StateFlags is Steam's raw bitmask, kept as it was read. The meaning of
+	// some bits is inferred rather than documented, so when a real machine
+	// disagrees with what QueueUp concluded, this is the evidence.
+	StateFlags int64
 	// StalledFor is how long the byte count has sat still. Steam does not
 	// always mark a wedged download as paused (a full disk, or a Steam that
 	// lost its connection, often just stop), so the only honest signal is that
@@ -205,6 +209,7 @@ func parseAppManifest(content string) UpdateState {
 
 	st := UpdateState{
 		Known:           true,
+		StateFlags:      flags,
 		InstallDir:      fields["installdir"],
 		Installed:       flags&stateFullyInstalled != 0,
 		BytesDownloaded: num("bytesdownloaded"),
