@@ -76,11 +76,16 @@ export default function HelpPage() {
         <Q q="Windows says Smart App Control blocked it">
           <p>
             Smart App Control is a newer Windows 11 feature, stricter than the
-            usual &quot;Windows protected your PC&quot; warning: it blocks
-            anything that is not signed by a known publisher, and gives you no
-            way past it. New Windows 11 laptops often have it switched on.
+            usual &quot;Windows protected your PC&quot; warning, and it treats
+            anything not signed by a known publisher with suspicion. New
+            Windows 11 laptops often have it on.
           </p>
-          <p>To turn it off:</p>
+          <p>
+            It behaves in one of two ways. Often it shows its message and lets
+            you carry on anyway: click through it and QueueUp starts normally.
+            On some PCs it refuses outright, with no way past. If that happens,
+            turn it off:
+          </p>
           <ol>
             <li>Open <b>Windows Security</b> from the Start menu.</li>
             <li>
