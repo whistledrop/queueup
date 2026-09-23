@@ -43,6 +43,26 @@ const (
 	verdictGiveUpBlaming                      // out of patience AND we know why: tell the player
 )
 
+// launchFailureReason is what the phone says when the game never appeared.
+//
+// "Rust closed unexpectedly" is wrong and useless here: nothing closed, it
+// never started. Something on the PC is in the way, and the commonest cause is
+// a box waiting for a click that nobody is there to give. Windows asks for
+// permission when Steam installs the pieces that come with the game, such as
+// Easy Anti-Cheat, which can happen when a patch ships a new one. Naming that
+// possibility is the difference between a player checking their PC and a
+// player shrugging.
+func launchFailureReason(update UpdateState, appeared bool) string {
+	if update.NeedsPlayer() {
+		return update.Describe()
+	}
+	if appeared {
+		return "" // it ran and then stopped: the ordinary crash wording fits
+	}
+	return "Rust didn't start on your PC. Something there may be waiting for a click, " +
+		"such as a Windows permission box from Steam, or Steam may need attention."
+}
+
 // judgeLaunchWait decides what the launch watcher should do while the game has
 // not yet appeared.
 //

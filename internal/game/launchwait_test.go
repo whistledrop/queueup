@@ -1,6 +1,7 @@
 package game
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -74,5 +75,35 @@ func TestForceWipeSequenceStaysPatientUntilTheDownloadEnds(t *testing.T) {
 	done := UpdateState{Known: true, Installed: true}
 	if v := judgeLaunchWait(done, false); v != verdictKeepWaiting {
 		t.Fatalf("after the update finished, verdict = %v, want keep waiting", v)
+	}
+}
+
+// When the game never appears, the phone must not say it "closed
+// unexpectedly": nothing closed. Verified against a real PC on 23 September
+// 2026, where Windows asked permission before Steam could install Easy
+// Anti-Cheat. Nobody is at the PC on wipe day to click Yes.
+func TestAGameThatNeverStartedIsNotReportedAsACrash(t *testing.T) {
+	idle := UpdateState{Known: true, Installed: true}
+	msg := launchFailureReason(idle, false)
+	if msg == "" {
+		t.Fatal("a game that never started got the generic crash wording")
+	}
+	for _, want := range []string{"didn't start", "waiting for a click"} {
+		if !strings.Contains(msg, want) {
+			t.Errorf("message %q does not mention %q", msg, want)
+		}
+	}
+
+	// It did start, then stopped: that IS a crash, and the ordinary wording is
+	// better than guessing at permission boxes.
+	if got := launchFailureReason(idle, true); got != "" {
+		t.Errorf("a real crash was given the never-started wording: %q", got)
+	}
+
+	// A wedged Steam explains itself, and that explanation wins.
+	stuck := UpdateState{Known: true, Updating: true, Paused: true,
+		BytesDownloaded: 1 << 30, BytesToDownload: 4 << 30}
+	if got := launchFailureReason(stuck, false); !strings.Contains(got, "paused") {
+		t.Errorf("a paused download was not explained: %q", got)
 	}
 }

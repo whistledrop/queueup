@@ -187,10 +187,7 @@ func (w *WindowsLauncher) watchProcess(ch chan Exit, stop chan struct{}) {
 		case verdictGiveUp, verdictGiveUpBlaming:
 			// A wedged download is worth explaining. Waiting longer will not fix
 			// a paused Steam or a full disk, and the player needs to know that.
-			ex := Exit{Code: -1}
-			if update.NeedsPlayer() {
-				ex.Reason = update.Describe()
-			}
+			ex := Exit{Code: -1, Reason: launchFailureReason(update, appeared)}
 			select {
 			case ch <- ex:
 			default:
