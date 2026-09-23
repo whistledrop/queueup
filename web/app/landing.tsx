@@ -17,7 +17,6 @@ export default function Landing() {
         <span style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <Link href="/help" className={`${s.signin} ${s.navHide}`}>Help</Link>
           <Link href="/login" className={s.signin}>Sign in</Link>
-          <Link href="/login?mode=create" className={s.navCta}>Get QueueUp</Link>
         </span>
       </nav>
 

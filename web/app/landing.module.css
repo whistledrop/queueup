@@ -61,18 +61,6 @@
 }
 .signin:hover { color: var(--text); }
 
-/* The orange button in the top bar: the way in from any scroll position. */
-.navCta {
-  background: var(--accent);
-  color: var(--accent-text);
-  font-weight: 700;
-  font-size: 15px;
-  padding: 9px 16px;
-  border-radius: 10px;
-  text-decoration: none;
-  white-space: nowrap;
-}
-.navCta:hover { filter: brightness(1.08); }
 
 /* ---------------------------------------------------------------- hero */
 
@@ -535,15 +523,13 @@
   .nav { padding: 16px 0; }
   .navHide { display: none; }
   .signin { padding: 8px 12px; font-size: 14px; }
-  .navCta { padding: 9px 14px; font-size: 14px; }
 }
 
 /* Light-page touches. A white page shows every join and edge, so the seams
    want to be quieter than they were on black. */
 .light .section { border-top-color: var(--line); }
 
-.light .cta,
-.light .navCta {
+.light .cta {
   box-shadow: 0 6px 16px rgba(208, 90, 42, 0.28);
 }
 
