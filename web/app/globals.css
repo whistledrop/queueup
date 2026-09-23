@@ -1,17 +1,24 @@
 /* Mobile first. This is opened on a phone, on wipe day, usually in a hurry. */
 
 :root {
-  --bg: #0f1113;
-  --card: #191c1f;
-  --card-2: #212529;
-  --line: #2b3036;
-  --text: #eef1f4;
-  --muted: #99a2ab;
+  /* Light throughout. The app used to be dark, on the theory that it is used
+     at night on a phone. In practice the first thing anybody sees is a website
+     asking them to install a program on their PC, and white reads as a company
+     while dark reads as a side project. The whole app follows the landing
+     page so the story does not change halfway through. */
+  --bg: #ffffff;
+  --card: #ffffff;
+  --card-2: #f5f6f8;
+  --line: #e3e7ec;
+  --text: #0b0e12;
+  --muted: #5c6672;
   --accent: #d05a2a;
   --accent-text: #ffffff;
-  --good: #4caf7d;
-  --warn: #d6a13a;
-  --bad: #d4574e;
+  /* Darker than the dark theme's versions: these sit on white now, and the
+     old ones were chosen to glow against black. */
+  --good: #1a7f52;
+  --warn: #8a6410;
+  --bad: #c0392f;
   --radius: 12px;
 }
 
@@ -148,9 +155,9 @@ label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 6px
 .pill.bad { color: var(--bad); border-color: var(--bad); }
 
 .error {
-  background: rgba(212, 87, 78, 0.12);
+  background: rgba(212, 87, 78, 0.08);
   border: 1px solid var(--bad);
-  color: #ffb9b4;
+  color: #8c2f27;
   border-radius: 10px;
   padding: 10px 12px;
   font-size: 14px;
@@ -158,9 +165,9 @@ label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 6px
 }
 
 .notice {
-  background: rgba(214, 161, 58, 0.1);
-  border: 1px solid var(--warn);
-  color: #f0d69b;
+  background: rgba(214, 161, 58, 0.12);
+  border: 1px solid rgba(138, 100, 16, 0.35);
+  color: #6b4d09;
   border-radius: 10px;
   padding: 10px 12px;
   font-size: 13px;
@@ -281,7 +288,7 @@ label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 6px
 .warnBox h4 {
   margin: 0 0 4px;
   font-size: 15px;
-  color: #f0d69b;
+  color: #6b4d09;
 }
 
 /* The setup list makes its strongs block-level headings. Inside this box they
@@ -495,7 +502,7 @@ header.top {
   border-radius: 10px;
   border: 1px solid var(--warn);
   background: rgba(214, 161, 58, 0.1);
-  color: #f0d69b;
+  color: #6b4d09;
   font-size: 14px;
   line-height: 1.5;
 }

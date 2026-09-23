@@ -24,17 +24,12 @@ export default function Landing() {
       <header className={s.hero}>
         <div>
           <h1>
-            Join Rust from your phone.{' '}
-            <em>Your PC sits in the queue.</em>
+            Load into Rust servers <em>from anywhere.</em>
           </h1>
           <p className={s.lede}>
-            Tap join from school, work or the traffic. Walk in and play.
+            Tap join from school, work or the traffic. Your PC queues. You walk
+            in and play.
           </p>
-          <ul className={s.heroPoints}>
-            <li>Running late for wipe? Start queueing before you leave.</li>
-            <li>No 20 minute load screen. You are already in.</li>
-            <li>Not a cheat. It never touches the game.</li>
-          </ul>
           <div className={s.ctaRow}>
             <Link href="/login?mode=create" className={s.cta}>
               {BETA ? 'Get QueueUp free' : 'Get QueueUp'}
