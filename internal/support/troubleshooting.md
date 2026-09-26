@@ -159,10 +159,30 @@ would cost you the scheduled one, usually the wipe. Cancel the schedule on the
 Schedule page if you would rather play now.
 
 ### How do I set up for a wipe?
-Night before: PC green on the dashboard, server saved, join scheduled for a few
-minutes **before** the announced wipe time with "wait for the server to come
-back up" ticked, PC left on and signed in with Steam running and Rust closed.
-The time is your local time wherever you are; the PC acts on the same instant.
+Night before: PC green on the dashboard, server saved, join scheduled **before**
+the announced wipe time with **Wait for the wipe** ticked, PC left on and signed
+in with Steam running and Rust closed. The time is your local time wherever you
+are; the PC acts on the same instant.
+
+Set it earlier than you think you need to. With Wait for the wipe ticked, your
+PC will not touch the server until it has actually wiped, so being early costs
+nothing and being late costs you the wipe.
+
+### What if I schedule too early?
+Nothing goes wrong, as long as **Wait for the wipe** is ticked. Your PC watches
+the old server without joining it, waits for it to go down for the restart, and
+goes in when the new one answers.
+
+Without that ticked, an early join means joining the server that is about to
+wipe. The restart will throw you out, and the force wipe update then has to
+download before you can get back in. Leave it ticked on wipe day.
+
+### It says the server is still up and it has not joined
+That is it working. On wipe day the server that is up at your scheduled time is
+the OLD one, and joining it would only get you kicked when the wipe restarts it.
+QueueUp waits for the restart and goes into the new server instead. If no
+restart happens at all, it gives up waiting after a couple of hours and joins
+anyway, and says so on the join's timeline.
 
 ### Will it beat everyone else?
 It queries the server directly every couple of seconds and connects the moment

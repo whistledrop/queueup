@@ -39,7 +39,12 @@ func runScenario(t *testing.T, name string, cfg job.Config) (job.State, *job.Mac
 	var server serverstat.Source = serverstat.AlwaysUp{}
 	if len(sc.Server) > 0 {
 		server = serverstat.NewScripted(sc.Server, speed)
-		cfg.WaitForServerUp = true
+		// Wipe mode only for the scenarios that are actually a wipe: ones that
+		// begin with the server DOWN. Switching it on for every scenario with
+		// server data used to be harmless, because wipe mode would connect
+		// straight into a server that was already up. That was the bug, and a
+		// scenario about queue numbers should not quietly depend on it.
+		cfg.WaitForServerUp = !sc.Server[0].Online
 	}
 
 	m := job.New(cfg)

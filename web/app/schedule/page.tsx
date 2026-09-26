@@ -169,11 +169,13 @@ function ScheduleForm() {
           <label className="row" style={{ cursor: 'pointer', marginBottom: 0 }}>
             <span>
               <span style={{ color: 'var(--text)', fontWeight: 600 }}>
-                Wait for the server to come back up
+                Wait for the wipe
               </span>
               <span className="muted small" style={{ display: 'block' }}>
-                For wipe day. From the scheduled time, your PC watches the server
-                through its restart and connects the moment it returns.
+                Your PC will not touch the server until it has actually wiped.
+                It watches for the restart and goes in the moment the new
+                server answers. Set this earlier than you think you need to:
+                early is safe, late is not.
               </span>
             </span>
             <input

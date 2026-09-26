@@ -34,6 +34,15 @@ func (s State) Terminal() bool { return s == StateDone || s == StateFailed }
 
 // Config is the tuning for one job. Zero values get sensible defaults.
 type Config struct {
+	// WipeWaitFallback is how long a wipe-mode job will hold out for a restart
+	// that never comes before giving up and joining whatever is there.
+	//
+	// It exists for one case: somebody scheduling AFTER the wipe has already
+	// happened. To us that looks identical to scheduling before a wipe that is
+	// running late, because both are "the server is up". Waiting forever would
+	// be the worse answer of the two, so eventually we join and say why.
+	WipeWaitFallback time.Duration
+
 	// WaitForServerUp arms "join as soon as the server comes back after wipe".
 	// When false the job launches immediately.
 	WaitForServerUp bool
@@ -76,6 +85,9 @@ func (c *Config) applyDefaults() {
 	}
 	if c.InServerConfirm == 0 {
 		c.InServerConfirm = 30 * time.Second
+	}
+	if c.WipeWaitFallback == 0 {
+		c.WipeWaitFallback = 2 * time.Hour
 	}
 }
 
@@ -219,6 +231,14 @@ type Machine struct {
 	inServerAt     time.Time
 	launchTimes    []time.Time // for the per-minute connect cap
 	lastDetail     string
+	// sawServerDown records that the wipe restart has actually begun: we have
+	// seen this server stop answering since the job started waiting.
+	sawServerDown bool
+	// waitingSince is when the wipe wait began, for the fallback.
+	waitingSince time.Time
+	// gaveUpWaiting means the fallback fired and we joined without ever seeing
+	// a restart.
+	gaveUpWaiting bool
 }
 
 // Option customises a Machine, mostly for tests.
@@ -372,12 +392,25 @@ func (m *Machine) handleIdle(in Input, res *Result) {
 		return
 	}
 	if m.cfg.WaitForServerUp {
-		res.Transitions = append(res.Transitions,
-			m.moveTo(StateWaitingForServerUp, "Waiting for the server to come back up.", nil))
-		// If we already know it is up, the next Tick will pick it up.
-		if m.serverUp {
-			m.armConnect()
+		m.waitingSince = m.now()
+		// Deliberately NOT connecting just because the server answers right now.
+		//
+		// On wipe day the server that is up at the scheduled time is the OLD
+		// one. Joining it looks like success, holds for the thirty seconds it
+		// takes to call the job done, and then the wipe restart throws the
+		// player out of a job that has already finished, so nothing rejoins and
+		// the phone goes on saying "you're in" for the rest of the evening.
+		//
+		// What this mode promises on the schedule screen is to watch the server
+		// THROUGH its restart, so that is what it does: wait for it to go down,
+		// then come back, and join that.
+		detail := "Waiting for the wipe. The server is still up."
+		if m.serverKnown && !m.serverUp {
+			detail = "Waiting for the server to come back up."
+			m.sawServerDown = true
 		}
+		res.Transitions = append(res.Transitions,
+			m.moveTo(StateWaitingForServerUp, detail, nil))
 		return
 	}
 	m.beginLaunch(res)
@@ -386,6 +419,13 @@ func (m *Machine) handleIdle(in Input, res *Result) {
 func (m *Machine) handleWaiting(in Input, res *Result) {
 	switch in.(type) {
 	case ServerUp:
+		// A server that is up but has never been seen to go down has not wiped
+		// yet. Connecting now would join the server that is about to restart,
+		// which is the whole thing this mode exists to avoid.
+		if !m.sawServerDown && !m.pastWipeWait() {
+			m.lastDetail = "Waiting for the wipe. The server is still up."
+			return
+		}
 		// Arm a short randomised delay rather than connecting instantly. During a
 		// wipe restart the server flaps; a tiny wait avoids a pointless connect
 		// into a server that is only half up, and staggers us against everyone else.
@@ -393,11 +433,30 @@ func (m *Machine) handleWaiting(in Input, res *Result) {
 			m.armConnect()
 		}
 	case ServerDown:
-		// It went down again before we fired. Disarm and keep waiting. This is the
-		// flap tolerance: no giving up, no attempt burned.
+		// The restart. From here a return to "up" is the new wipe, and joining
+		// it is exactly right.
+		if !m.sawServerDown {
+			m.sawServerDown = true
+			m.lastDetail = "The server has gone down for the wipe. Connecting the moment it is back."
+		} else {
+			// It went down again before we fired. Disarm and keep waiting. This is
+			// the flap tolerance: no giving up, no attempt burned.
+			m.lastDetail = "Server went down again, still waiting."
+		}
 		m.haveTimer = false
-		m.lastDetail = "Server went down again, still waiting."
 	case Tick:
+		// The restart that never came. Rather than waiting all night, join what
+		// is there and be honest about it on the timeline.
+		if !m.sawServerDown && !m.gaveUpWaiting && m.pastWipeWait() && m.serverUp {
+			m.gaveUpWaiting = true
+			// A real timeline entry rather than a passing status, because the
+			// launch that follows immediately overwrites the status, and this is
+			// the one line that explains why they are in a server that never
+			// wiped.
+			res.Transitions = append(res.Transitions, m.moveTo(StateWaitingForServerUp,
+				"No wipe restart came. Joining the server as it is.", nil))
+			m.armConnect()
+		}
 		if m.haveTimer && !m.now().Before(m.connectAt) && m.serverUp {
 			m.haveTimer = false
 			if m.rateLimited() {
@@ -406,6 +465,14 @@ func (m *Machine) handleWaiting(in Input, res *Result) {
 			m.beginLaunch(res)
 		}
 	}
+}
+
+// pastWipeWait reports whether we have held out for a restart long enough.
+func (m *Machine) pastWipeWait() bool {
+	if m.waitingSince.IsZero() || m.cfg.WipeWaitFallback <= 0 {
+		return false
+	}
+	return !m.now().Before(m.waitingSince.Add(m.cfg.WipeWaitFallback))
 }
 
 func (m *Machine) handleLaunching(in Input, res *Result) {
@@ -477,6 +544,16 @@ func (m *Machine) handleRetrying(in Input, res *Result) {
 		return
 	}
 	if m.cfg.WaitForServerUp && m.serverKnown && !m.serverUp {
+		// Dropped, and the server is now down: this IS the wipe restart, caught
+		// from the other side. Record it, so that when the server returns we
+		// connect straight away instead of sitting there deciding it has not
+		// wiped yet.
+		//
+		// This is the path that carries somebody through a force wipe they
+		// joined too early for: kicked, Rust closed so Steam can finally patch,
+		// then back in as soon as the new server answers.
+		m.sawServerDown = true
+		m.waitingSince = m.now()
 		res.Transitions = append(res.Transitions,
 			m.moveTo(StateWaitingForServerUp, "Server is down, waiting for it to come back.", nil))
 		return

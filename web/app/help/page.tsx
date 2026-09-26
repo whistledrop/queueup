@@ -317,13 +317,45 @@ export default function HelpPage() {
         <Q q="How do I set up a wipe day join?">
           <p>
             Go to Schedule, pick your server and the wipe time, and tick{' '}
-            <b>join as soon as the server comes back up</b>. QueueUp then watches
-            that server, and the moment it returns from its wipe restart your PC
-            starts connecting, without waiting for the clock.
+            <b>Wait for the wipe</b>. QueueUp then watches that server, and the
+            moment it returns from its wipe restart your PC starts connecting,
+            without waiting for the clock.
+          </p>
+          <p>
+            <b>Set it earlier than you think you need to.</b> With that ticked,
+            your PC will not touch the server until it has actually wiped, so
+            being early costs you nothing and being late costs you the wipe.
           </p>
           <p>
             Times are in your phone&apos;s local time. If you are travelling, set
             it in the time zone you are actually in and it will be right.
+          </p>
+        </Q>
+
+        <Q q="It says the server is still up and it has not joined">
+          <p>
+            That is it working. On wipe day the server that is up at your
+            scheduled time is the <b>old</b> one. Joining it would only get you
+            kicked a few minutes later when the wipe restarts it, and then the
+            force wipe update has to download before you can get back in.
+          </p>
+          <p>
+            So QueueUp waits for the server to go down for its restart and goes
+            into the new one instead. If no restart happens at all, it stops
+            waiting after a couple of hours and joins anyway, and says so on the
+            join&apos;s timeline.
+          </p>
+        </Q>
+
+        <Q q="What if I schedule too early?">
+          <p>
+            Nothing goes wrong, as long as <b>Wait for the wipe</b> is ticked.
+            Your PC watches the old server without joining it and goes in when
+            the new one answers.
+          </p>
+          <p>
+            Without it ticked, joining early means joining the server that is
+            about to wipe. Leave it ticked on wipe day.
           </p>
         </Q>
 
