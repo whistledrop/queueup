@@ -344,6 +344,58 @@ export default function HelpPage() {
       </div>
 
       <div className="card">
+        <h2>Your account</h2>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Everything about your account is on one page:{' '}
+          <Link href="/settings"><b>Settings</b></Link>, top right of every
+          screen.
+        </p>
+
+        <Q q="How do I change my password?">
+          <p>
+            Settings, then <b>Change password</b>. It asks for your current one.
+          </p>
+          <p>
+            Doing it signs out anything else that is signed in to your account,
+            which is how you throw off a PC or a phone you no longer trust. You
+            stay signed in where you changed it.
+          </p>
+          <p className="muted small">
+            Forgotten it instead? <Link href="/forgot">Get a reset link</Link>{' '}
+            by email. It lasts an hour and works once.
+          </p>
+        </Q>
+
+        <Q q="How do I move QueueUp to a different PC?">
+          <p>
+            One account, one PC. In Settings, press <b>Unlink</b> next to the
+            PC you have now, then set up the new one the usual way.
+          </p>
+          <p>
+            Unlinking stops any join running on that PC and cancels joins
+            scheduled for it, so do not do it on wipe morning.
+          </p>
+        </Q>
+
+        <Q q="How do I delete my account?">
+          <p>
+            Settings, then <b>Delete my account</b>. It asks for your password
+            and for you to type DELETE.
+          </p>
+          <p>
+            Everything goes at once: your PC link, every join and its timeline,
+            your schedules, your saved servers, and anything you have sent us.
+            It cannot be undone and we cannot get it back for you.
+          </p>
+          <p className="muted small">
+            If a subscription is running, cancel it first under Subscription on
+            the same page. Otherwise your card would keep being charged with no
+            account left to cancel from.
+          </p>
+        </Q>
+      </div>
+
+      <div className="card">
         <h2>Still stuck</h2>
         <p className="muted" style={{ marginTop: 0 }}>
           Send a problem report. It takes one click and tells us exactly what

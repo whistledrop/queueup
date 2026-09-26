@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import Nav, { Footer } from './nav'
 import { useRouter } from 'next/navigation'
-import { api, getBilling, isActive, openManageSubscription, outcome, stateLabel, type Billing, type Device, type Job } from '@/lib/api'
+import { api, getBilling, isActive, outcome, stateLabel, type Billing, type Device, type Job } from '@/lib/api'
 import type { Favourite, Schedule } from '@/lib/types'
 import { BETA } from '@/lib/pricing'
 
@@ -90,24 +90,6 @@ export default function Dashboard({ email }: { email: string }) {
       setError((e as Error).message)
     } finally {
       setSendingLink(false)
-    }
-  }
-
-  // Unlinking is for a new PC, a sold PC, or starting again. The confirm says
-  // exactly what stops, so nobody loses a wipe join by surprise.
-  async function unlinkPC(id: string, name: string) {
-    const ok = confirm(
-      `Unlink ${name}?\n\n` +
-        'QueueUp on that PC stops working and shows a new code. Any join running ' +
-        'on it now is stopped, and joins scheduled for it are cancelled.\n\n' +
-        'You can link this PC, or a different one, again at any time.',
-    )
-    if (!ok) return
-    try {
-      await api(`/api/devices/${id}/revoke`, { method: 'POST' })
-      await load()
-    } catch (e) {
-      setError((e as Error).message)
     }
   }
 
@@ -325,29 +307,11 @@ export default function Dashboard({ email }: { email: string }) {
             If the dot stays red, check the PC is on and connected.
           </p>
         )}
-        {pc && (
-          <button
-            className="quiet"
-            style={{ marginTop: 10, minHeight: 36, padding: '6px 12px', color: 'var(--bad)' }}
-            onClick={() => unlinkPC(pc.id, pc.name)}
-          >
-            Unlink this PC
-          </button>
-        )}
         {needsSub && (
           <p className="muted small" style={{ marginBottom: 0 }}>
             Setting up is free. Joining needs the subscription:{' '}
             <Link href="/subscribe">{billing?.price_line}</Link>.
           </p>
-        )}
-        {billing?.can_manage && (
-          <button
-            className="quiet"
-            style={{ marginTop: 10, minHeight: 36, padding: '6px 12px' }}
-            onClick={() => openManageSubscription().catch((e) => setError((e as Error).message))}
-          >
-            Manage subscription
-          </button>
         )}
       </div>
 
@@ -416,7 +380,9 @@ export default function Dashboard({ email }: { email: string }) {
         </div>
       )}
 
-      <p className="muted small" style={{ textAlign: 'center' }}>{email}</p>
+      <p className="muted small" style={{ textAlign: 'center' }}>
+        Signed in as {email}. <Link href="/settings">Settings</Link>
+      </p>
       <Footer />
     </>
   )

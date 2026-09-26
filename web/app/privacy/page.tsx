@@ -103,9 +103,11 @@ export default function PrivacyPage() {
 
         <h2>Your rights</h2>
         <p>
-          You can ask for a copy of what we hold about you, ask for it to be
-          corrected, or ask for your account and everything in it to be
-          deleted. Send the request from the{' '}
+          You can delete your account and everything in it yourself, without
+          asking us: <Link href="/settings">Settings</Link>, then{' '}
+          <b>Delete my account</b>. It happens immediately and cannot be undone.
+          To ask for a copy of what we hold about you, or to have it corrected,
+          send the request from the{' '}
           <Link href="/feedback">feedback page</Link> while signed in, so we know
           it is really you, or email{' '}
           <a href="mailto:hello@queueuprust.com">hello@queueuprust.com</a>.

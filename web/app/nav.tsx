@@ -6,7 +6,7 @@
 // destinations, always in the same place.
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { BETA } from '@/lib/pricing'
 import HelpBot from './helpBot'
 
@@ -17,14 +17,7 @@ const tabs = [
 ]
 
 export default function Nav() {
-  const router = useRouter()
   const pathname = usePathname()
-
-  async function signOut() {
-    await fetch('/api/auth/logout', { method: 'POST' })
-    router.push('/login')
-    router.refresh()
-  }
 
   return (
     <header className="top">
@@ -43,10 +36,15 @@ export default function Nav() {
           </Link>
         ))}
       </nav>
-      <button className="quiet" onClick={signOut}>
-        Sign out
-      </button>
-
+      {/* Sign out used to own this corner, which is an odd thing to make the
+          easiest button in the app to reach. Settings takes it, and signing
+          out is the first thing on that page. */}
+      <Link
+        href="/settings"
+        className={`tab ${pathname === '/settings' ? 'active' : ''}`}
+      >
+        Settings
+      </Link>
     </header>
   )
 }

@@ -174,18 +174,31 @@ that out, shows the progress, and connects after.
 
 ## Account
 
+Everything about the account lives on one page: **Settings**, top right of
+every screen.
+
+### I want to change my password
+Settings, then **Change password**. It asks for the current one. Doing it signs
+out anything else that is signed in to the account, which is how to throw off a
+PC or phone you no longer trust. You stay signed in where you changed it.
+
 ### I forgot my password
 "Forgotten your password?" on the sign-in page emails a link, good for one hour
 and one use. Completing it signs the account out everywhere.
 
 ### Can I use two PCs?
-One account, one PC. To move to a different PC, press **Unlink this PC** on the
-dashboard, then pair the new one. Unlinking stops any join running on that PC
-and cancels joins scheduled for it.
+One account, one PC. To move to a different PC, go to Settings and press
+**Unlink** next to it, then pair the new one. Unlinking stops any join running
+on that PC and cancels joins scheduled for it.
 
 ### Delete my account and data
-From the feedback page while signed in, or hello@queueuprust.com. Everything
-goes: PC, joins, schedules, saved servers, feedback and problem reports.
+Settings, then **Delete my account**. It asks for the password and for the word
+DELETE, and then everything goes at once: PC, joins and their timelines,
+schedules, saved servers, feedback and problem reports. It cannot be undone.
+
+If a subscription is running it has to be cancelled first, under Subscription
+on the same page. Otherwise the card would keep being charged with no account
+left to cancel from.
 
 ---
 

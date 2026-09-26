@@ -166,6 +166,8 @@ func (s *Server) routes() {
 	s.billingRoutes()
 	// Beta feedback and problem reports.
 	s.feedbackRoutes()
+	// Changing your password, and leaving.
+	s.accountRoutes()
 
 	// Account-facing.
 	s.mux.HandleFunc("POST /api/pair", s.withAccount(s.handleClaimCode))

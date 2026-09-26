@@ -190,3 +190,65 @@ func (s *Store) SetTemporaryPassword(accountID string) (string, error) {
 	}
 	return password, nil
 }
+
+// ChangePassword sets a new password for somebody who is already signed in and
+// knows their current one.
+//
+// Until this existed, the only way to change a password was to sign out and
+// go through "forgotten password", which means anybody who simply wants a
+// better password has to prove they can read their own email first. That is
+// the wrong shape: forgetting and changing are different problems.
+//
+// The current password is required. A session left open on a shared PC should
+// not be enough to lock the real owner out of their own account.
+//
+// Every session is then ended, exactly as a reset does, and the caller issues
+// a fresh one for the browser doing the changing. Changing a password is how
+// somebody throws out a device they no longer trust, and that only works if
+// the old sessions actually die.
+func (s *Store) ChangePassword(accountID, current, next string) error {
+	var hash sql.NullString
+	err := s.db.QueryRow(`SELECT password_hash FROM accounts WHERE id = ?`, accountID).Scan(&hash)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	if !hash.Valid || bcrypt.CompareHashAndPassword([]byte(hash.String), []byte(current)) != nil {
+		return ErrBadCredentials
+	}
+	if err := CheckPassword(next); err != nil {
+		return err
+	}
+	if current == next {
+		return errors.New("that is the password you already have")
+	}
+	fresh, err := bcrypt.GenerateFromPassword([]byte(next), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	if _, err := s.db.Exec(`UPDATE accounts SET password_hash = ? WHERE id = ?`,
+		string(fresh), accountID); err != nil {
+		return err
+	}
+	_, err = s.db.Exec(`DELETE FROM sessions WHERE account_id = ?`, accountID)
+	return err
+}
+
+// CheckOwnPassword reports whether this is really the account holder, for the
+// things that are not undoable.
+func (s *Store) CheckOwnPassword(accountID, password string) error {
+	var hash sql.NullString
+	err := s.db.QueryRow(`SELECT password_hash FROM accounts WHERE id = ?`, accountID).Scan(&hash)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	if !hash.Valid || bcrypt.CompareHashAndPassword([]byte(hash.String), []byte(password)) != nil {
+		return ErrBadCredentials
+	}
+	return nil
+}
