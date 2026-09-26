@@ -8,8 +8,10 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"queueup/internal/servers"
+	"queueup/internal/store"
 )
 
 // testPassword is the one newBetaRig signs its player up with.
@@ -26,7 +28,7 @@ func newPayingRig(t *testing.T) *betaRig {
 	})
 	ts := httptest.NewServer(srv)
 	t.Cleanup(ts.Close)
-	r.ts = ts
+	r.ts, r.srv = ts, srv
 	return r
 }
 
@@ -87,21 +89,24 @@ func TestChangingAPasswordNeedsTheCurrentOne(t *testing.T) {
 	}
 }
 
-// Deleting an account is the one action with no undo, so it takes the password
-// and the typed word, and it really does remove the rows.
-func TestDeletingYourOwnAccount(t *testing.T) {
+// Deleting an account takes the password and the typed word, and then it does
+// not delete anything: it starts a week's countdown, because people ask for
+// this on bad nights and it is the one action with no undo.
+func TestDeletingYourOwnAccountStartsAWeeksCountdown(t *testing.T) {
 	r := newBetaRig(t)
 
 	if code, _ := r.do(t, "POST", "/api/account/erase", r.session,
 		`{"password":"wrong","confirm":"DELETE"}`); code != http.StatusUnauthorized {
-		t.Error("a wrong password deleted the account")
+		t.Error("a wrong password started the countdown")
 	}
 	if code, _ := r.do(t, "POST", "/api/account/erase", r.session,
 		`{"password":"`+testPassword+`","confirm":""}`); code != http.StatusBadRequest {
-		t.Error("the account went without the confirmation word")
+		t.Error("the countdown started without the confirmation word")
 	}
-	if _, err := r.st.AccountByID(r.acct.ID); err != nil {
-		t.Fatal("the account is already gone after two refusals")
+	if acct, err := r.st.AccountByID(r.acct.ID); err != nil {
+		t.Fatal(err)
+	} else if _, leaving := acct.LeavingOn(); leaving {
+		t.Fatal("two refusals still scheduled the deletion")
 	}
 
 	code, body := r.do(t, "POST", "/api/account/erase", r.session,
@@ -109,8 +114,74 @@ func TestDeletingYourOwnAccount(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("erase = %d %s", code, body)
 	}
+
+	// Nothing is gone, and everything still works. Changing their mind on day
+	// five has to give them back what they had, not a slower deletion.
+	acct, err := r.st.AccountByID(r.acct.ID)
+	if err != nil {
+		t.Fatal("the account was deleted immediately")
+	}
+	when, leaving := acct.LeavingOn()
+	if !leaving {
+		t.Fatal("no countdown was started")
+	}
+	if d := time.Until(when); d < 6*24*time.Hour || d > 8*24*time.Hour {
+		t.Errorf("the countdown is %v, not about a week", d)
+	}
+	if code, _ := r.do(t, "GET", "/api/devices", r.session, ""); code != http.StatusOK {
+		t.Error("the account stopped working during its own grace period")
+	}
+	if _, err := r.st.AccountByID(r.acct.ID); err != nil {
+		t.Error("the PC link was torn down early")
+	}
+}
+
+// The change of mind, which is the entire point of the week.
+func TestChangingYourMindKeepsTheAccount(t *testing.T) {
+	r := newBetaRig(t)
+	if code, body := r.do(t, "POST", "/api/account/erase", r.session,
+		`{"password":"`+testPassword+`","confirm":"DELETE"}`); code != http.StatusOK {
+		t.Fatalf("erase = %d %s", code, body)
+	}
+	code, body := r.do(t, "POST", "/api/account/erase/cancel", r.session, "")
+	if code != http.StatusOK {
+		t.Fatalf("cancel = %d %s", code, body)
+	}
+	acct, err := r.st.AccountByID(r.acct.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, leaving := acct.LeavingOn(); leaving {
+		t.Fatal("the countdown is still running")
+	}
+	// And the sweep leaves them alone.
+	r.srv.eraseSweep(time.Now().Add(30 * 24 * time.Hour))
+	if _, err := r.st.AccountByID(r.acct.ID); err != nil {
+		t.Fatal("the sweep erased an account that had been kept")
+	}
+	// Pressing it twice is not an error: they have what they asked for.
+	if code, _ := r.do(t, "POST", "/api/account/erase/cancel", r.session, ""); code != http.StatusOK {
+		t.Error("cancelling twice failed")
+	}
+}
+
+// When the week is up, the sweep really does erase everything.
+func TestTheSweepErasesAccountsWhoseWeekIsUp(t *testing.T) {
+	r := newBetaRig(t)
+	if code, _ := r.do(t, "POST", "/api/account/erase", r.session,
+		`{"password":"`+testPassword+`","confirm":"DELETE"}`); code != http.StatusOK {
+		t.Fatal("could not ask to leave")
+	}
+
+	// A day early, nothing happens.
+	r.srv.eraseSweep(time.Now().Add(6 * 24 * time.Hour))
+	if _, err := r.st.AccountByID(r.acct.ID); err != nil {
+		t.Fatal("the account went a day early")
+	}
+
+	r.srv.eraseSweep(time.Now().Add(store.GracePeriod + time.Minute))
 	if _, err := r.st.AccountByID(r.acct.ID); err == nil {
-		t.Error("the account is still there")
+		t.Error("the account is still there after its week")
 	}
 	if code, _ := r.do(t, "GET", "/api/devices", r.session, ""); code != http.StatusUnauthorized {
 		t.Error("the session outlived the account")

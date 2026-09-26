@@ -193,12 +193,27 @@ on that PC and cancels joins scheduled for it.
 
 ### Delete my account and data
 Settings, then **Delete my account**. It asks for the password and for the word
-DELETE, and then everything goes at once: PC, joins and their timelines,
-schedules, saved servers, feedback and problem reports. It cannot be undone.
+DELETE.
+
+Nothing is deleted straight away. The account is scheduled for deletion in
+**seven days**, and an email says so. Nothing stops working in the meantime:
+the PC, schedules and saved servers all carry on as normal. On the day,
+everything goes at once: PC, joins and their timelines, schedules, saved
+servers, feedback and problem reports. After that it cannot be brought back.
 
 If a subscription is running it has to be cancelled first, under Subscription
 on the same page. Otherwise the card would keep being charged with no account
 left to cancel from.
+
+### I asked to delete my account and I want to stop it
+Sign in. Every screen carries a bar saying when the account goes, with a
+**Keep my account** button. Pressing it cancels the deletion completely, with
+nothing lost. It works any time before the day.
+
+### I got an email saying my account will be deleted and I did not ask
+Somebody else is in the account. Sign in and press **Keep my account** on the
+bar at the top, then change the password in Settings, which signs out whoever
+else is signed in.
 
 ---
 

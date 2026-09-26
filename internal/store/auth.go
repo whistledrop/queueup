@@ -70,9 +70,10 @@ func (s *Store) SignIn(email, password string) (Account, string, error) {
 	var a Account
 	var created int64
 	var hash sql.NullString
+	var erase int64
 	err := s.db.QueryRow(
-		`SELECT id, email, created_at, password_hash FROM accounts WHERE email = ?`, email).
-		Scan(&a.ID, &a.Email, &created, &hash)
+		`SELECT `+accountColumns+`, password_hash FROM accounts WHERE email = ?`, email).
+		Scan(&a.ID, &a.Email, &created, &erase, &hash)
 	if errors.Is(err, sql.ErrNoRows) {
 		// Spend the time anyway. Answering instantly for unknown addresses and
 		// slowly for known ones would leak which is which.
@@ -89,6 +90,7 @@ func (s *Store) SignIn(email, password string) (Account, string, error) {
 		return Account{}, "", ErrBadCredentials
 	}
 	a.CreatedAt = fromMs(created)
+	a.EraseAfter = fromMs(erase)
 
 	token, err := s.NewSession(a.ID)
 	if err != nil {
@@ -135,14 +137,11 @@ func (s *Store) AccountBySession(token string) (Account, error) {
 		return Account{}, err
 	}
 
-	var a Account
-	var created int64
-	if err := s.db.QueryRow(
-		`SELECT id, email, created_at FROM accounts WHERE id = ?`, accountID).
-		Scan(&a.ID, &a.Email, &created); err != nil {
+	a, err := scanAccount(s.db.QueryRow(
+		`SELECT `+accountColumns+` FROM accounts WHERE id = ?`, accountID))
+	if err != nil {
 		return Account{}, fmt.Errorf("loading the account for that session: %w", err)
 	}
-	a.CreatedAt = fromMs(created)
 	return a, nil
 }
 

@@ -9,6 +9,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { BETA } from '@/lib/pricing'
 import HelpBot from './helpBot'
+import LeavingBanner from './leavingBanner'
 
 const tabs = [
   { href: '/', label: 'Home' },
@@ -20,32 +21,38 @@ export default function Nav() {
   const pathname = usePathname()
 
   return (
-    <header className="top">
-      <Link href="/" className="brand">
-        Queue<span>Up</span>
-        {BETA && <span className="beta">beta</span>}
-      </Link>
-      <nav className="tabs" aria-label="Main">
-        {tabs.map((t) => (
-          <Link
-            key={t.href}
-            href={t.href}
-            className={`tab ${pathname === t.href ? 'active' : ''}`}
-          >
-            {t.label}
-          </Link>
-        ))}
-      </nav>
-      {/* Sign out used to own this corner, which is an odd thing to make the
-          easiest button in the app to reach. Settings takes it, and signing
-          out is the first thing on that page. */}
-      <Link
-        href="/settings"
-        className={`tab ${pathname === '/settings' ? 'active' : ''}`}
-      >
-        Settings
-      </Link>
-    </header>
+    <>
+      <header className="top">
+        <Link href="/" className="brand">
+          Queue<span>Up</span>
+          {BETA && <span className="beta">beta</span>}
+        </Link>
+        <nav className="tabs" aria-label="Main">
+          {tabs.map((t) => (
+            <Link
+              key={t.href}
+              href={t.href}
+              className={`tab ${pathname === t.href ? 'active' : ''}`}
+            >
+              {t.label}
+            </Link>
+          ))}
+        </nav>
+        {/* Sign out used to own this corner, which is an odd thing to make the
+            easiest button in the app to reach. Settings takes it, and signing
+            out is the first thing on that page. */}
+        <Link
+          href="/settings"
+          className={`tab ${pathname === '/settings' ? 'active' : ''}`}
+        >
+          Settings
+        </Link>
+      </header>
+
+      {/* Below the bar, not inside it: the bar is sticky, and a sticky
+          paragraph would eat a phone screen all the way down the page. */}
+      <LeavingBanner />
+    </>
   )
 }
 

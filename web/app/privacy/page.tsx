@@ -105,7 +105,10 @@ export default function PrivacyPage() {
         <p>
           You can delete your account and everything in it yourself, without
           asking us: <Link href="/settings">Settings</Link>, then{' '}
-          <b>Delete my account</b>. It happens immediately and cannot be undone.
+          <b>Delete my account</b>. It is scheduled for seven days later, so
+          that a deletion you did not mean, or did not make, can be stopped.
+          Press <b>Keep my account</b> at any point in that week to cancel it.
+          After the seventh day it is done and cannot be undone.
           To ask for a copy of what we hold about you, or to have it corrected,
           send the request from the{' '}
           <Link href="/feedback">feedback page</Link> while signed in, so we know

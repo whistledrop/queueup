@@ -265,6 +265,9 @@ func serve(st *store.Store) error {
 	go srv.RunScheduler(ctx, 5*time.Second)
 	// The one "your PC isn't linked yet" reminder, a day after signing up.
 	go srv.RunPCReminders(ctx, 15*time.Minute)
+	// Accounts whose week is up. Hourly is plenty: the promise is a day, not
+	// a minute, and a relay that restarts often must not miss the moment.
+	go srv.RunErasureSweep(ctx, time.Hour)
 
 	// Close joins whose PC never came back, so an ancient job cannot spring to
 	// life weeks later or block every new one.

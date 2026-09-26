@@ -383,14 +383,34 @@ export default function HelpPage() {
             and for you to type DELETE.
           </p>
           <p>
-            Everything goes at once: your PC link, every join and its timeline,
-            your schedules, your saved servers, and anything you have sent us.
-            It cannot be undone and we cannot get it back for you.
+            Nothing is deleted straight away. Your account is set to be deleted
+            in <b>seven days</b>, and we email you to say so. Nothing stops
+            working in the meantime: your PC, your schedules and your saved
+            servers all carry on as normal.
+          </p>
+          <p>
+            On the day, everything goes at once: your PC link, every join and
+            its timeline, your schedules, your saved servers, and anything you
+            have sent us. After that we cannot get it back for you.
           </p>
           <p className="muted small">
             If a subscription is running, cancel it first under Subscription on
             the same page. Otherwise your card would keep being charged with no
             account left to cancel from.
+          </p>
+        </Q>
+
+        <Q q="I changed my mind, or I did not ask for this">
+          <p>
+            Sign in. Every screen carries a bar saying when your account goes,
+            with a <b>Keep my account</b> button. Press it and the deletion is
+            cancelled completely, with nothing lost. It works any time before
+            the day.
+          </p>
+          <p>
+            If you got the email and did not ask for it, somebody else is in
+            your account. Press <b>Keep my account</b>, then change your
+            password, which signs out whoever else is signed in.
           </p>
         </Q>
       </div>

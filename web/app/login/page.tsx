@@ -14,12 +14,8 @@ export default function LoginPage() {
 
 function LoginForm() {
   const router = useRouter()
-  const params = useSearchParams()
   // The landing page's buttons land people straight on the create form.
-  const wantsCreate = params.get('mode') === 'create'
-  // Somebody who has just deleted their account arrives here, and being
-  // dropped at a sign-in page with no word about it reads like a bug.
-  const justDeleted = params.get('deleted') === '1'
+  const wantsCreate = useSearchParams().get('mode') === 'create'
   const [creating, setCreating] = useState(wantsCreate)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -67,12 +63,6 @@ function LoginForm() {
 
       <div className="card">
         <h2>{creating ? 'Create an account' : 'Sign in'}</h2>
-        {justDeleted && (
-          <div className="notice">
-            <b>Your account is deleted.</b> Everything we held about it is gone.
-            You are welcome back any time.
-          </div>
-        )}
         {error && <div className="error">{error}</div>}
         <form onSubmit={submit} className="stack">
           <div>

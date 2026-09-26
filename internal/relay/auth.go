@@ -146,7 +146,11 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleMe(w http.ResponseWriter, r *http.Request, acct store.Account) {
-	writeJSON(w, http.StatusOK, map[string]any{
-		"id": acct.ID, "email": acct.Email, "created_at": acct.CreatedAt,
-	})
+	out := map[string]any{"id": acct.ID, "email": acct.Email, "created_at": acct.CreatedAt}
+	// Somebody counting down to deletion must be reminded of it everywhere,
+	// not only on the page where they asked.
+	if when, leaving := acct.LeavingOn(); leaving {
+		out["erase_after"] = when
+	}
+	writeJSON(w, http.StatusOK, out)
 }

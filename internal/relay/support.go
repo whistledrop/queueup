@@ -103,6 +103,12 @@ func (s *Server) accountFacts(acct store.Account) []string {
 		}
 	}
 
+	if when, leaving := acct.LeavingOn(); leaving {
+		facts = append(facts, fmt.Sprintf(
+			"They have asked to delete their account. Everything will be erased on %s (in %s) unless they press \"Keep my account\" on the Settings page. Nothing has been deleted yet.",
+			when.Format("Mon 2 Jan"), niceAge(when.Sub(now))))
+	}
+
 	if jobs, err := s.st.RecentJobs(acct.ID, 3); err == nil {
 		for _, j := range jobs {
 			where := j.ServerName

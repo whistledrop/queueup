@@ -21,6 +21,7 @@ import { api, getBilling, openManageSubscription, type Billing, type Device } fr
 export default function SettingsPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
+  const [leavingOn, setLeavingOn] = useState<string | null>(null)
   const [devices, setDevices] = useState<Device[]>([])
   const [billing, setBilling] = useState<Billing | null>(null)
   const [error, setError] = useState('')
@@ -29,10 +30,11 @@ export default function SettingsPage() {
   const load = useCallback(async () => {
     try {
       const [me, d] = await Promise.all([
-        api<{ email: string }>('/api/auth/me'),
+        api<{ email: string; erase_after?: string }>('/api/auth/me'),
         api<{ devices: Device[] }>('/api/devices'),
       ])
       setEmail(me.email)
+      setLeavingOn(me.erase_after ?? null)
       setDevices(d.devices ?? [])
     } catch (e) {
       setError((e as Error).message)
@@ -149,7 +151,12 @@ export default function SettingsPage() {
         )}
       </div>
 
-      <DeleteAccount canManage={!!billing?.can_manage} onError={setError} />
+      <DeleteAccount
+        canManage={!!billing?.can_manage}
+        leavingOn={leavingOn}
+        onError={setError}
+        onChanged={load}
+      />
 
       <Footer />
     </div>
@@ -238,16 +245,23 @@ function ChangePassword({
   )
 }
 
-/* Leaving. Kept behind its own two gates and put last, because it is the one
-   thing on this page that cannot be undone. */
+/* Leaving. Kept behind its own two gates, put last, and then it does not
+   delete anything for a week: people ask for this after a ban, after losing a
+   base, in an argument, and the week is the only chance they get to be wrong
+   about it. Nothing is switched off in the meantime, because a change of mind
+   on day five has to give them back what they had rather than a half-deleted
+   account. */
 function DeleteAccount({
   canManage,
+  leavingOn,
   onError,
+  onChanged,
 }: {
   canManage: boolean
+  leavingOn: string | null
   onError: (s: string) => void
+  onChanged: () => void
 }) {
-  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -262,14 +276,53 @@ function DeleteAccount({
         method: 'POST',
         body: JSON.stringify({ password, confirm }),
       })
-      // The session died with the account; drop the cookie too.
-      await fetch('/api/auth/logout', { method: 'POST' })
-      router.push('/login?deleted=1')
-      router.refresh()
+      setOpen(false)
+      setPassword('')
+      setConfirm('')
+      onChanged()
     } catch (err) {
       onError((err as Error).message)
+    } finally {
       setBusy(false)
     }
+  }
+
+  async function keep() {
+    setBusy(true)
+    onError('')
+    try {
+      await api('/api/account/erase/cancel', { method: 'POST' })
+      onChanged()
+    } catch (err) {
+      onError((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // Already counting down: the only thing worth offering is the way back.
+  if (leavingOn) {
+    const day = new Date(leavingOn).toLocaleDateString(undefined, {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    })
+    return (
+      <div className="card">
+        <h2>Delete account</h2>
+        <p style={{ marginTop: 0 }}>
+          <b>Your account will be deleted on {day}.</b>
+        </p>
+        <p className="muted">
+          Nothing has been deleted yet and nothing has stopped: your PC, your
+          schedules and your saved servers all still work until then. On the
+          day, all of it goes at once and cannot be brought back.
+        </p>
+        <button className="primary btn-wide" onClick={keep} disabled={busy}>
+          {busy ? 'Keeping' : 'Keep my account'}
+        </button>
+      </div>
+    )
   }
 
   return (
@@ -280,7 +333,11 @@ function DeleteAccount({
           <p className="muted" style={{ marginTop: 0 }}>
             Removes your account and everything we hold about it: your linked
             PC, every join and its timeline, your schedules, your saved servers
-            and anything you have sent us. It cannot be undone.
+            and anything you have sent us.
+          </p>
+          <p className="muted">
+            You get seven days to change your mind. Nothing stops working in the
+            meantime, and one button brings it all back.
           </p>
           <button
             className="btn-wide"
@@ -322,11 +379,15 @@ function DeleteAccount({
             style={{ background: 'var(--bad)', color: '#fff' }}
             disabled={busy || !password || confirm.trim().toUpperCase() !== 'DELETE'}
           >
-            {busy ? 'Deleting' : 'Delete my account for good'}
+            {busy ? 'Working' : 'Delete my account in seven days'}
           </button>
           <button type="button" className="quiet" onClick={() => setOpen(false)}>
             Keep my account
           </button>
+          <p className="muted small" style={{ marginBottom: 0 }}>
+            We will email you to confirm. If this was not you, that email is how
+            you find out in time to stop it.
+          </p>
         </form>
       )}
     </div>

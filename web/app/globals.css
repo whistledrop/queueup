@@ -653,3 +653,34 @@ header.top {
 @media (max-width: 560px) {
   header.top { border-radius: 22px; padding: 12px 12px 10px; }
 }
+
+/* An account counting down to deletion says so on every screen. Warm rather
+   than red: nothing has gone wrong, and the button is the way out. */
+.leaving {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 14px 0;
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: #fdf3e4;
+  border: 1px solid #f0dcb9;
+  font-size: 13.5px;
+  line-height: 1.5;
+  text-align: left;
+  color: var(--text);
+}
+
+.leaving > div { flex: 1 1 240px; }
+
+.leaving button {
+  flex: none;
+  min-height: 36px;
+  padding: 7px 16px;
+  font-size: 13.5px;
+  background: var(--text);
+  color: #fff;
+  border: none;
+}

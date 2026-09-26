@@ -14,6 +14,14 @@ type Account struct {
 	ID        string
 	Email     string
 	CreatedAt time.Time
+	// EraseAfter is when this account is due to be deleted, if its owner has
+	// asked to leave. Zero for almost everybody.
+	EraseAfter time.Time
+}
+
+// LeavingOn reports whether this account is counting down to deletion.
+func (a Account) LeavingOn() (time.Time, bool) {
+	return a.EraseAfter, !a.EraseAfter.IsZero()
 }
 
 // CreateAccount makes an account and returns its API token. The token is shown
@@ -35,56 +43,54 @@ func (s *Store) CreateAccount(email string) (Account, string, error) {
 	return a, token, nil
 }
 
-// AccountByToken looks up the account an API token belongs to.
-func (s *Store) AccountByToken(token string) (Account, error) {
+// accountColumns is every column an Account needs, in the order scanAccount
+// reads them. One list, so adding a field to the struct cannot leave one of
+// the several lookups behind.
+const accountColumns = `id, email, created_at, erase_after`
+
+type scannable interface{ Scan(dest ...any) error }
+
+func scanAccount(row scannable) (Account, error) {
 	var a Account
-	var created int64
-	err := s.db.QueryRow(
-		`SELECT id, email, created_at FROM accounts WHERE token_hash = ?`,
-		HashToken(token)).Scan(&a.ID, &a.Email, &created)
-	if errors.Is(err, sql.ErrNoRows) {
-		return Account{}, ErrNotFound
-	}
-	if err != nil {
+	var created, erase int64
+	if err := row.Scan(&a.ID, &a.Email, &created, &erase); err != nil {
 		return Account{}, err
 	}
 	a.CreatedAt = fromMs(created)
+	a.EraseAfter = fromMs(erase)
 	return a, nil
+}
+
+// AccountByToken looks up the account an API token belongs to.
+func (s *Store) AccountByToken(token string) (Account, error) {
+	a, err := scanAccount(s.db.QueryRow(
+		`SELECT `+accountColumns+` FROM accounts WHERE token_hash = ?`, HashToken(token)))
+	if errors.Is(err, sql.ErrNoRows) {
+		return Account{}, ErrNotFound
+	}
+	return a, err
 }
 
 // AccountByEmail finds an existing account, so the setup script can be run twice
 // without creating duplicates.
 func (s *Store) AccountByEmail(email string) (Account, error) {
-	var a Account
-	var created int64
-	err := s.db.QueryRow(
-		`SELECT id, email, created_at FROM accounts WHERE email = ?`,
-		strings.ToLower(strings.TrimSpace(email))).Scan(&a.ID, &a.Email, &created)
+	a, err := scanAccount(s.db.QueryRow(
+		`SELECT `+accountColumns+` FROM accounts WHERE email = ?`,
+		strings.ToLower(strings.TrimSpace(email))))
 	if errors.Is(err, sql.ErrNoRows) {
 		return Account{}, ErrNotFound
 	}
-	if err != nil {
-		return Account{}, err
-	}
-	a.CreatedAt = fromMs(created)
-	return a, nil
+	return a, err
 }
 
 // AccountByID reads one account.
 func (s *Store) AccountByID(id string) (Account, error) {
-	var a Account
-	var created int64
-	err := s.db.QueryRow(
-		`SELECT id, email, created_at FROM accounts WHERE id = ?`, id).
-		Scan(&a.ID, &a.Email, &created)
+	a, err := scanAccount(s.db.QueryRow(
+		`SELECT `+accountColumns+` FROM accounts WHERE id = ?`, id))
 	if errors.Is(err, sql.ErrNoRows) {
 		return Account{}, ErrNotFound
 	}
-	if err != nil {
-		return Account{}, err
-	}
-	a.CreatedAt = fromMs(created)
-	return a, nil
+	return a, err
 }
 
 // DeleteAccount removes an account, but only a clean one: an account that has
@@ -162,6 +168,66 @@ func (s *Store) AllAccounts() ([]AccountSummary, error) {
 			return nil, err
 		}
 		a.CreatedAt, a.LastJobAt, a.LastSeenAt = fromMs(created), fromMs(lastJob), fromMs(lastSeen)
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
+// GracePeriod is how long somebody has to change their mind after asking to
+// delete their account.
+//
+// Deletion is the one thing here that cannot be undone, and people ask for it
+// on bad nights: after a ban, after losing a base, in an argument. Seven days
+// is long enough that a bad night has passed and short enough that "delete my
+// data" is still an honest answer to give a regulator.
+const GracePeriod = 7 * 24 * time.Hour
+
+// RequestErasure starts the countdown, and returns the day it runs out.
+//
+// Nothing is deleted or switched off yet, and the account keeps working
+// exactly as before. That is deliberate: if leaving unlinked their PC today,
+// then changing their mind on day five would mean setting it all up again,
+// which is not a change of mind, it is a slower deletion.
+func (s *Store) RequestErasure(accountID string) (time.Time, error) {
+	if _, err := s.AccountByID(accountID); err != nil {
+		return time.Time{}, err
+	}
+	when := s.now().UTC().Add(GracePeriod)
+	if _, err := s.db.Exec(`UPDATE accounts SET erase_after = ? WHERE id = ?`,
+		ms(when), accountID); err != nil {
+		return time.Time{}, err
+	}
+	return when, nil
+}
+
+// CancelErasure is the change of mind. It works right up until the sweep.
+func (s *Store) CancelErasure(accountID string) error {
+	res, err := s.db.Exec(
+		`UPDATE accounts SET erase_after = 0 WHERE id = ? AND erase_after != 0`, accountID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// AccountsDueForErasure lists the accounts whose week is up.
+func (s *Store) AccountsDueForErasure(now time.Time) ([]Account, error) {
+	rows, err := s.db.Query(
+		`SELECT `+accountColumns+` FROM accounts WHERE erase_after != 0 AND erase_after <= ?`,
+		ms(now.UTC()))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Account
+	for rows.Next() {
+		a, err := scanAccount(rows)
+		if err != nil {
+			return nil, err
+		}
 		out = append(out, a)
 	}
 	return out, rows.Err()

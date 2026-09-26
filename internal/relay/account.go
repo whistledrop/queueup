@@ -1,10 +1,12 @@
 package relay
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"queueup/internal/store"
 )
@@ -21,6 +23,7 @@ import (
 func (s *Server) accountRoutes() {
 	s.mux.HandleFunc("POST /api/auth/password", s.withAccount(s.handleChangePassword))
 	s.mux.HandleFunc("POST /api/account/erase", s.withAccount(s.handleEraseOwnAccount))
+	s.mux.HandleFunc("POST /api/account/erase/cancel", s.withAccount(s.handleKeepAccount))
 }
 
 func (s *Server) handleChangePassword(w http.ResponseWriter, r *http.Request, acct store.Account) {
@@ -118,21 +121,104 @@ func (s *Server) handleEraseOwnAccount(w http.ResponseWriter, r *http.Request, a
 		return
 	}
 
-	// Any PC linked to this account is told to stop before its rows go, so it
-	// does not carry on running a join for an account that no longer exists.
-	if devices, err := s.st.Devices(acct.ID); err == nil {
-		for _, d := range devices {
-			s.hub.Disconnect(d.ID)
-		}
-	}
-	if err := s.st.EraseAccount(acct.ID); err != nil {
-		s.log.Error("erasing an account at its owner's request", "account", acct.ID, "err", err)
+	// Nothing is deleted today. People ask for this on bad nights, and an
+	// instant, silent, irreversible delete is how somebody loses six months of
+	// wipe-day schedules over an argument. The week costs us nothing and is
+	// the only chance they get to be wrong.
+	when, err := s.st.RequestErasure(acct.ID)
+	if err != nil {
+		s.log.Error("scheduling an erasure", "account", acct.ID, "err", err)
 		writeError(w, http.StatusInternalServerError,
-			"Couldn't delete the account. Nothing was changed. Tell us on the feedback page and we'll do it by hand.")
+			"Couldn't do that. Nothing was changed. Tell us on the feedback page and we'll do it by hand.")
 		return
 	}
-	s.log.Info("account erased at its owner's request", "account", acct.ID)
-	writeJSON(w, http.StatusOK, map[string]string{
-		"status": "Your account and everything in it is gone.",
+	s.log.Info("account deletion requested", "account", acct.ID, "erase_after", when)
+
+	// And they are told, by email, because the account this protects most is
+	// the one somebody else got into: if a stranger deletes it, the owner has
+	// a week and a message telling them how to stop it.
+	s.tellThemTheyAreLeaving(r.Context(), acct, when)
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"erase_after": when,
+		"status": "Your account will be deleted on " + when.Format("Monday 2 January") +
+			". Sign in before then if you change your mind.",
 	})
+}
+
+// handleKeepAccount is the change of mind.
+func (s *Server) handleKeepAccount(w http.ResponseWriter, r *http.Request, acct store.Account) {
+	if err := s.st.CancelErasure(acct.ID); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			// Already cancelled, or never asked. Either way they have what they
+			// want, so this is not an error to shout about.
+			writeJSON(w, http.StatusOK, map[string]string{"status": "Your account is staying."})
+			return
+		}
+		s.log.Error("cancelling an erasure", "account", acct.ID, "err", err)
+		writeError(w, http.StatusInternalServerError, "Couldn't do that. Try again in a moment.")
+		return
+	}
+	s.log.Info("account deletion cancelled", "account", acct.ID)
+	writeJSON(w, http.StatusOK, map[string]string{
+		"status": "Your account is staying. Nothing has been deleted.",
+	})
+}
+
+func (s *Server) tellThemTheyAreLeaving(ctx context.Context, acct store.Account, when time.Time) {
+	if !s.mail.Enabled() {
+		return
+	}
+	body := "Somebody asked to delete your QueueUp account.\n\n" +
+		"Nothing has been deleted yet. On " + when.Format("Monday 2 January") +
+		" your account and everything\nin it will be erased: your linked PC, your joins, your schedules and your\n" +
+		"saved servers. That cannot be undone.\n\n" +
+		"If you meant to do this, you do not need to do anything.\n\n" +
+		"If this was not you, sign in at " + strings.TrimSuffix(s.cfg.WebURL, "/") + "/settings" + " and press \"Keep my account\"\n" +
+		"on the Settings page. Change your password while you are there.\n"
+	sendCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	if err := s.mail.Send(sendCtx, acct.Email, "Your QueueUp account is scheduled for deletion", body); err != nil {
+		s.log.Error("sending a deletion notice", "account", acct.ID, "err", err)
+	}
+}
+
+// eraseSweep is how the week actually ends: accounts past their day are
+// erased, once, by the relay itself.
+func (s *Server) RunErasureSweep(ctx context.Context, every time.Duration) {
+	if every <= 0 {
+		every = time.Hour
+	}
+	tick := time.NewTicker(every)
+	defer tick.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-tick.C:
+			s.eraseSweep(time.Now())
+		}
+	}
+}
+
+func (s *Server) eraseSweep(now time.Time) {
+	due, err := s.st.AccountsDueForErasure(now)
+	if err != nil {
+		s.log.Error("finding accounts due for erasure", "err", err)
+		return
+	}
+	for _, a := range due {
+		// The PC is told to stop before its rows go, so it does not carry on
+		// running a join for an account that no longer exists.
+		if devices, err := s.st.Devices(a.ID); err == nil {
+			for _, d := range devices {
+				s.hub.Disconnect(d.ID)
+			}
+		}
+		if err := s.st.EraseAccount(a.ID); err != nil {
+			s.log.Error("erasing an account whose week is up", "account", a.ID, "err", err)
+			continue
+		}
+		s.log.Info("account erased after its week", "account", a.ID)
+	}
 }

@@ -20,6 +20,7 @@ const testAdminToken = "admin-secret"
 type betaRig struct {
 	st          *store.Store
 	ts          *httptest.Server
+	srv         *Server
 	acct        store.Account
 	session     string
 	deviceToken string
@@ -60,7 +61,7 @@ func newBetaRig(t *testing.T) *betaRig {
 	srv := New(Config{Store: st, Log: quiet, Servers: servers.NewStub(), AdminToken: testAdminToken})
 	ts := httptest.NewServer(srv)
 	t.Cleanup(ts.Close)
-	return &betaRig{st: st, ts: ts, acct: acct, session: session, deviceToken: token, deviceID: d.ID}
+	return &betaRig{st: st, ts: ts, srv: srv, acct: acct, session: session, deviceToken: token, deviceID: d.ID}
 }
 
 func (r *betaRig) do(t *testing.T, method, path, token, body string) (int, string) {

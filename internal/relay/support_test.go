@@ -75,7 +75,7 @@ func supportRig(t *testing.T, reply string) (*betaRig, *fakeClaude) {
 	srv := New(Config{Store: r.st, Log: quiet, Servers: servers.NewStub(), AdminToken: testAdminToken, Bot: bot})
 	ts := httptest.NewServer(srv)
 	t.Cleanup(ts.Close)
-	r.ts = ts
+	r.ts, r.srv = ts, srv
 	return r, fake
 }
 
