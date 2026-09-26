@@ -8,10 +8,10 @@
      page so the story does not change halfway through. */
   --bg: #ffffff;
   --card: #ffffff;
-  --card-2: #f5f6f8;
-  --line: #e3e7ec;
-  --text: #0b0e12;
-  --muted: #5c6672;
+  --card-2: #f7f7f9;
+  --line: #e9e9ee;
+  --text: #121111;
+  --muted: #51515a;
   --accent: #d05a2a;
   --accent-text: #ffffff;
   /* Darker than the dark theme's versions: these sit on white now, and the
@@ -19,7 +19,10 @@
   --good: #1a7f52;
   --warn: #8a6410;
   --bad: #c0392f;
-  --radius: 12px;
+  --radius: 16px;
+  /* Big, soft corners on anything card-shaped. */
+  --radius-lg: 22px;
+  --radius-pill: 999px;
 }
 
 * { box-sizing: border-box; }
@@ -587,3 +590,66 @@ body:has([data-landing]) { background: #ffffff; }
 /* The help assistant's back-and-forth. */
 .askQuestion { font-weight: 600; margin-bottom: 6px; }
 .askAnswer { color: var(--muted); white-space: pre-wrap; line-height: 1.6; }
+
+/* ---------------------------------------------------------------- type
+
+   Headings are weight 500, not bold, with tight letter-spacing. Bold headings
+   shout; medium weight at a large size reads as confident, which is the whole
+   difference between a page that looks designed and one that looks defaulted.
+   Body copy sits at 15px in a soft grey so the headings carry the page. */
+
+h1, h2, h3, h4 {
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+
+h1 { font-size: 40px; line-height: 1.08; }
+h2 { font-size: 22px; }
+
+body { font-size: 15px; }
+
+.card {
+  border-radius: var(--radius-lg);
+}
+
+/* Buttons: pill-shaped, and they lift slightly rather than changing colour. */
+button, .btn {
+  border-radius: var(--radius-pill);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  transition: transform 0.12s ease, filter 0.12s ease, background 0.12s ease;
+}
+button:hover:not(:disabled), .btn:hover { transform: translateY(-1px); }
+.btn-primary, button.primary { box-shadow: 0 6px 16px rgba(208, 90, 42, 0.24); }
+
+input, textarea { border-radius: 14px; }
+
+.pill, .chip { border-radius: var(--radius-pill); }
+
+/* The signed-in top bar becomes the same floating pill as the landing page's,
+   so signing in does not feel like arriving at a different product. */
+header.top {
+  position: sticky;
+  top: 10px;
+  z-index: 20;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: saturate(180%) blur(14px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  padding: 9px 9px 9px 18px;
+  box-shadow: 0 6px 24px rgba(18, 17, 17, 0.06);
+}
+
+.brand { font-weight: 600; }
+
+/* Section headings inside cards were shouty uppercase; a quiet grey line at
+   normal case reads as a label without demanding attention. */
+.card h2 {
+  font-size: 12.5px;
+  letter-spacing: 0.06em;
+}
+
+@media (max-width: 560px) {
+  header.top { border-radius: 22px; padding: 12px 12px 10px; }
+}

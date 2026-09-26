@@ -8,6 +8,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { BETA } from '@/lib/pricing'
+import HelpBot from './helpBot'
 
 const tabs = [
   { href: '/', label: 'Home' },
@@ -45,14 +46,21 @@ export default function Nav() {
       <button className="quiet" onClick={signOut}>
         Sign out
       </button>
+
     </header>
   )
 }
 
 /** The one line every page carries at the bottom. */
 export function Footer() {
+  // The help bubble rides with the footer rather than the top bar, because
+  // /help and /feedback have no top bar and they are precisely where somebody
+  // who is stuck ends up. The one page it would be silly on is the one that
+  // is already the assistant.
+  const pathname = usePathname()
   return (
     <footer className="foot">
+      {pathname !== '/ask' && <HelpBot />}
       <Link href="/ask">Ask a question</Link>
       {' · '}
       <Link href="/help">Help</Link>

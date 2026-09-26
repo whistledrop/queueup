@@ -22,6 +22,9 @@ export default function Landing() {
 
       <header className={s.hero}>
         <div>
+          <p className={s.heroBadge}>
+            <b>{BETA ? 'Free beta' : 'For Rust'}</b> Join a queue from your phone
+          </p>
           <h1>
             Load into Rust servers <em>from anywhere.</em>
           </h1>
