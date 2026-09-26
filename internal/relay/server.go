@@ -19,6 +19,7 @@ import (
 	"queueup/internal/servers"
 	"queueup/internal/store"
 	"queueup/internal/stripe"
+	"queueup/internal/support"
 	"queueup/internal/update"
 )
 
@@ -37,6 +38,10 @@ type Config struct {
 	// HeartbeatSeconds is how often we expect to hear from an agent. Missing
 	// three in a row is treated as the PC having gone away.
 	HeartbeatSeconds int
+
+	// Bot answers players' questions. Disabled (no key) means the help
+	// assistant says so rather than guessing.
+	Bot *support.Bot
 
 	// Mail sends the few emails QueueUp needs. A disabled sender (no key) is
 	// fine: the forgotten-password page then says nothing was sent.
@@ -75,6 +80,10 @@ type Server struct {
 	resets *throttle
 	// pcLinks counts "email me the PC link" presses per account.
 	pcLinks *throttle
+	// asks counts help-assistant questions per account.
+	asks *throttle
+
+	bot *support.Bot
 
 	mail *mail.Sender
 
@@ -102,12 +111,18 @@ func New(cfg Config) *Server {
 		signUps:   newThrottle(signUpLimit, signUpWindow, time.Now),
 		resets:    newThrottle(resetRequestLimit, resetRequestWindow, time.Now),
 		pcLinks:   newThrottle(pcLinkLimit, pcLinkWindow, time.Now),
+		asks:      newThrottle(askLimit, askWindow, time.Now),
 		debugLogs: map[string][]string{},
 	}
 	if cfg.Mail == nil {
 		s.mail = &mail.Sender{} // disabled
 	} else {
 		s.mail = cfg.Mail
+	}
+	if cfg.Bot == nil {
+		s.bot = &support.Bot{} // disabled
+	} else {
+		s.bot = cfg.Bot
 	}
 	if s.cfg.Stripe == nil {
 		s.cfg.Stripe = &stripe.Client{} // disabled
@@ -141,6 +156,8 @@ func (s *Server) routes() {
 	s.resetRoutes()
 	// Getting from "signed up on my phone" to "PC linked".
 	s.onboardingRoutes()
+	// The help assistant.
+	s.supportRoutes()
 	// Finding servers and starring them.
 	s.serverRoutes()
 	// Planned joins.

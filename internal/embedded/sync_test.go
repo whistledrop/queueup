@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"queueup/internal/support"
 )
 
 // The canonical copies live in configs/ and testdata/, where the docs point.
@@ -41,5 +43,17 @@ func TestEmbeddedCopiesMatchTheCanonicalFiles(t *testing.T) {
 		if !bytes.Equal(canonical, emb) {
 			t.Fatalf("embedded scenario %s is out of date. Run ./scripts/sync-embedded.sh", name)
 		}
+	}
+}
+
+// The support assistant answers only from the troubleshooting guide, so the
+// copy compiled into the relay must be the same one the humans edit.
+func TestTheSupportGuideMatchesTheCanonicalOne(t *testing.T) {
+	canonical, err := os.ReadFile("../../docs/troubleshooting.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(canonical) != support.Troubleshooting() {
+		t.Fatal("internal/support/troubleshooting.md is out of date with docs/troubleshooting.md. Run ./scripts/sync-embedded.sh")
 	}
 }

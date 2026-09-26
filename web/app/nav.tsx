@@ -53,7 +53,9 @@ export default function Nav() {
 export function Footer() {
   return (
     <footer className="foot">
-      <Link href="/help">Help and troubleshooting</Link>
+      <Link href="/ask">Ask a question</Link>
+      {' · '}
+      <Link href="/help">Help</Link>
       {' · '}
       <Link href="/feedback">Send feedback</Link>
       {' · '}

@@ -5,6 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 cp configs/patterns.json internal/embedded/patterns.json
+cp docs/troubleshooting.md internal/support/troubleshooting.md
 rm -f internal/embedded/scenarios/*.json
 cp testdata/scenarios/*.json internal/embedded/scenarios/
 echo "embedded data synced"

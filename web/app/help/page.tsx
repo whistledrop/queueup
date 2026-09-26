@@ -32,6 +32,10 @@ export default function HelpPage() {
       </header>
 
       <h1 className={s.h1}>Help</h1>
+      <p className="muted" style={{ marginBottom: 10 }}>
+        <Link href="/ask"><b>Ask a question</b></Link> and get an answer about
+        your own PC and your own joins. Or read on.
+      </p>
       <p className="muted">
         Find what you can see on your screen. If none of it fits, send a problem
         report (bottom of this page) and <Link href="/feedback">tell us</Link>{' '}

@@ -583,3 +583,7 @@ textarea { min-height: 120px; resize: vertical; line-height: 1.45; }
 /* The landing page paints itself white; the page behind it must match, or a
    dark strip shows above and below on overscroll. */
 body:has([data-landing]) { background: #ffffff; }
+
+/* The help assistant's back-and-forth. */
+.askQuestion { font-weight: 600; margin-bottom: 6px; }
+.askAnswer { color: var(--muted); white-space: pre-wrap; line-height: 1.6; }

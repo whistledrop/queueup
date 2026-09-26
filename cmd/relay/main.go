@@ -26,6 +26,7 @@ import (
 	"queueup/internal/servers"
 	"queueup/internal/store"
 	"queueup/internal/stripe"
+	"queueup/internal/support"
 )
 
 func main() {
@@ -49,7 +50,11 @@ QueueUp relay
   relay stripe-setup                 create the product, price, first-month
                                      offer, webhook and manage page in the
                                      Stripe account whose key is in
-                                     QUEUEUP_STRIPE_SECRET_KEY, and print the
+                                     QUEUEUP_ANTHROPIC_KEY  key from console.anthropic.com, for the help
+                         assistant. Without it the assistant says it is off.
+  QUEUEUP_SUPPORT_MODEL  which model answers (default claude-opus-5)
+
+  QUEUEUP_STRIPE_SECRET_KEY, and print the
                                      settings to store
   relay set-subscription <email> <active|none>
                                      open or close the gate for one account by
@@ -206,6 +211,13 @@ func serve(st *store.Store) error {
 	}
 	webURL := os.Getenv("QUEUEUP_WEB_URL")
 
+	bot := support.FromEnv()
+	if bot.Enabled() {
+		log.Info("the help assistant is on", "model", bot.Model)
+	} else {
+		log.Warn("QUEUEUP_ANTHROPIC_KEY is not set, so the help assistant is off")
+	}
+
 	pay := &stripe.Client{SecretKey: os.Getenv("QUEUEUP_STRIPE_SECRET_KEY")}
 	priceID := os.Getenv("QUEUEUP_STRIPE_PRICE_ID")
 	stripeReady := pay.Enabled() && priceID != ""
@@ -231,7 +243,7 @@ func serve(st *store.Store) error {
 
 	srv := relay.New(relay.Config{
 		Store: st, Log: log, AdminToken: adminToken, Servers: provider,
-		BillingEnabled: billing, Mail: mailer, WebURL: webURL,
+		BillingEnabled: billing, Mail: mailer, WebURL: webURL, Bot: bot,
 		Stripe:              pay,
 		StripePriceID:       priceID,
 		StripeIntroCouponID: os.Getenv("QUEUEUP_STRIPE_INTRO_COUPON_ID"),
