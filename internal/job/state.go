@@ -34,6 +34,14 @@ func (s State) Terminal() bool { return s == StateDone || s == StateFailed }
 
 // Config is the tuning for one job. Zero values get sensible defaults.
 type Config struct {
+	// FreshServerAge is how new a server has to be for us to accept that the
+	// wipe has already happened and join it without waiting for a restart.
+	//
+	// Rust tells us when the server started, so this is a measured fact rather
+	// than a guess. Half an hour is comfortably longer than a wipe restart and
+	// comfortably shorter than "it has been up since Tuesday".
+	FreshServerAge time.Duration
+
 	// WipeWaitFallback is how long a wipe-mode job will hold out for a restart
 	// that never comes before giving up and joining whatever is there.
 	//
@@ -89,16 +97,24 @@ func (c *Config) applyDefaults() {
 	if c.WipeWaitFallback == 0 {
 		c.WipeWaitFallback = 2 * time.Hour
 	}
+	if c.FreshServerAge == 0 {
+		c.FreshServerAge = 30 * time.Minute
+	}
 }
 
 // Inputs. Everything that can move a job along.
 type Input interface{ isInput() }
 
-type Start struct{}                                    // user pressed join, or a schedule fired
-type Cancel struct{ Reason string }                    // user pressed cancel
-type ServerUp struct{ Players, MaxPlayers, Queue int } // from relay-side polling
-type ServerDown struct{}                               // from relay-side polling
-type LaunchOK struct{}                                 // the Steam URI was handed off successfully
+type Start struct{}                 // user pressed join, or a schedule fired
+type Cancel struct{ Reason string } // user pressed cancel
+// ServerUp is the relay's report that the server answered. Age is how long it
+// has been up, from Rust's own born tag; zero means it did not say.
+type ServerUp struct {
+	Players, MaxPlayers, Queue int
+	Age                        time.Duration
+}
+type ServerDown struct{} // from relay-side polling
+type LaunchOK struct{}   // the Steam URI was handed off successfully
 type LaunchFailed struct{ Reason Reason }
 type LogEvent struct { // a parsed line from the Rust client log
 	Kind     string
@@ -239,6 +255,10 @@ type Machine struct {
 	// gaveUpWaiting means the fallback fired and we joined without ever seeing
 	// a restart.
 	gaveUpWaiting bool
+	// serverAge is how long the server has been up, last time it answered.
+	serverAge time.Duration
+	// notedFresh stops the "already wiped" explanation repeating every poll.
+	notedFresh bool
 }
 
 // Option customises a Machine, mostly for tests.
@@ -351,6 +371,7 @@ func (m *Machine) Handle(in Input) Result {
 	switch v := in.(type) {
 	case ServerUp:
 		m.serverUp, m.serverKnown = true, true
+		m.serverAge = v.Age
 	case ServerDown:
 		m.serverUp, m.serverKnown = false, true
 	case LogEvent:
@@ -419,10 +440,19 @@ func (m *Machine) handleIdle(in Input, res *Result) {
 func (m *Machine) handleWaiting(in Input, res *Result) {
 	switch in.(type) {
 	case ServerUp:
+		// The server itself says it started minutes ago, so the wipe has been
+		// and gone and this IS the new server. Somebody who scheduled for after
+		// the wipe should not be made to sit out the evening waiting for a
+		// restart that already happened.
+		if !m.sawServerDown && m.wipeAlreadyHappened() && !m.notedFresh {
+			m.notedFresh = true
+			res.Transitions = append(res.Transitions, m.moveTo(StateWaitingForServerUp,
+				"This server has already wiped: it came up "+plainAge(m.serverAge)+" ago. Connecting now.", nil))
+		}
 		// A server that is up but has never been seen to go down has not wiped
 		// yet. Connecting now would join the server that is about to restart,
 		// which is the whole thing this mode exists to avoid.
-		if !m.sawServerDown && !m.pastWipeWait() {
+		if !m.sawServerDown && !m.wipeAlreadyHappened() && !m.pastWipeWait() {
 			m.lastDetail = "Waiting for the wipe. The server is still up."
 			return
 		}
@@ -465,6 +495,18 @@ func (m *Machine) handleWaiting(in Input, res *Result) {
 			m.beginLaunch(res)
 		}
 	}
+}
+
+// wipeAlreadyHappened reports whether the server we are looking at is itself
+// the post-wipe server, because it started up minutes ago.
+//
+// This is the case that "wait for the restart" alone cannot see. Somebody who
+// schedules for 9pm when the wipe was at 7 is looking at a server that is up
+// and will never go down again tonight, and waiting for a restart that has
+// already been and gone would cost them the whole evening. An age of zero
+// means the server did not say, so we learn nothing and keep waiting.
+func (m *Machine) wipeAlreadyHappened() bool {
+	return m.serverAge > 0 && m.serverAge <= m.cfg.FreshServerAge
 }
 
 // pastWipeWait reports whether we have held out for a restart long enough.
@@ -751,4 +793,17 @@ func (m *Machine) moveTo(s State, detail string, r *Reason) Transition {
 	m.state = s
 	m.lastDetail = detail
 	return t
+}
+
+// plainAge says a short duration the way somebody would say it out loud, for
+// the one line on the timeline that explains why a wipe job did not wait.
+func plainAge(d time.Duration) string {
+	switch mins := int(d.Minutes()); {
+	case mins < 2:
+		return "a moment"
+	case mins < 60:
+		return fmt.Sprintf("%d minutes", mins)
+	default:
+		return fmt.Sprintf("%d hours", mins/60)
+	}
 }

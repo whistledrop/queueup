@@ -341,9 +341,21 @@ export default function HelpPage() {
           </p>
           <p>
             So QueueUp waits for the server to go down for its restart and goes
-            into the new one instead. If no restart happens at all, it stops
-            waiting after a couple of hours and joins anyway, and says so on the
-            join&apos;s timeline.
+            into the new one instead.
+          </p>
+        </Q>
+
+        <Q q="What if the server already wiped before my scheduled time?">
+          <p>
+            It joins straight away. Rust servers publish when they started, so
+            QueueUp can see that the server in front of it came up twenty
+            minutes ago and is already the new one. The timeline will say{' '}
+            <b>This server has already wiped</b> when that happens.
+          </p>
+          <p>
+            If a server does not publish its age, QueueUp waits for a restart as
+            usual, and after a couple of hours joins anyway rather than waiting
+            all night. That goes on the timeline too.
           </p>
         </Q>
 

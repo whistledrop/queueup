@@ -183,6 +183,15 @@ func (w *Watcher) applyStatus(j store.Job, info a2s.Info, online bool) {
 	st := protocol.ServerStatus{JobID: j.ID, Online: online}
 	if online {
 		st.Players, st.MaxPlayers, st.Queue = info.Players, info.MaxPlayers, info.Queue
+		// Rust publishes when the server started, so a server that came up four
+		// minutes ago can be told apart from one that has been up since Tuesday.
+		// That is the difference between a wipe that has already happened and a
+		// wipe that has not happened yet, which otherwise look identical.
+		if !info.BornAt.IsZero() {
+			if age := time.Since(info.BornAt); age > 0 {
+				st.AgeSeconds = int(age.Seconds())
+			}
+		}
 	}
 	if err := w.Hub.SendTo(j.DeviceID, protocol.TypeServerStatus, st); err != nil {
 		// Agent offline; it will hear the current state as soon as it returns.

@@ -91,3 +91,32 @@ func TestMalformedRepliesDoNotPanic(t *testing.T) {
 		}
 	}
 }
+
+// The born tag is what makes a freshly wiped server tell itself apart from one
+// that has been up since Tuesday. This is the real tag string from a live Rust
+// server, so the parsing is checked against what servers actually send.
+func TestBornFromKeywords(t *testing.T) {
+	const real = "mp200,cp54,ptrak,qp312,$r?,v2632,^m,^v,EU,^t,born1786038933,gmrust"
+	got := BornFromKeywords(real)
+	if want := time.Unix(1786038933, 0).UTC(); !got.Equal(want) {
+		t.Errorf("born = %v, want %v", got, want)
+	}
+
+	for _, keywords := range []string{
+		"mp200,cp199,qp312", // no born tag at all
+		"bornsoon,mp100",    // not a number
+		"born0",             // nonsense
+		"born-5",            // nonsense
+		"reborn1755856800",  // not our tag
+		"",                  // nothing
+	} {
+		if got := BornFromKeywords(keywords); !got.IsZero() {
+			t.Errorf("BornFromKeywords(%q) = %v, want zero", keywords, got)
+		}
+	}
+
+	// Spacing varies between hosts.
+	if got := BornFromKeywords(" born1755856800 ,mp100"); got.Unix() != 1755856800 {
+		t.Errorf("a spaced tag did not parse: %v", got)
+	}
+}

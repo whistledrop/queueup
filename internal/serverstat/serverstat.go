@@ -19,7 +19,9 @@ type Status struct {
 	Players    int
 	MaxPlayers int
 	Queue      int
-	At         time.Time
+	// Age is how long the server has been up. Zero means unknown.
+	Age time.Duration
+	At  time.Time
 }
 
 // Source is anything that can tell us the server's current state.

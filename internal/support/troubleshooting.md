@@ -180,9 +180,16 @@ download before you can get back in. Leave it ticked on wipe day.
 ### It says the server is still up and it has not joined
 That is it working. On wipe day the server that is up at your scheduled time is
 the OLD one, and joining it would only get you kicked when the wipe restarts it.
-QueueUp waits for the restart and goes into the new server instead. If no
-restart happens at all, it gives up waiting after a couple of hours and joins
-anyway, and says so on the join's timeline.
+QueueUp waits for the restart and goes into the new server instead.
+
+### What if the server already wiped before my scheduled time?
+It joins straight away. Rust servers publish when they started, so QueueUp can
+see that the server in front of it came up twenty minutes ago and is already the
+new one. The timeline says "This server has already wiped" when that happens.
+
+If a server does not publish its age, QueueUp waits for a restart as usual, and
+after a couple of hours joins anyway rather than waiting all night. That is
+also on the timeline.
 
 ### Will it beat everyone else?
 It queries the server directly every couple of seconds and connects the moment

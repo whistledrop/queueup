@@ -126,7 +126,7 @@ func (r *Runner) Run(ctx context.Context) job.State {
 
 		case st := <-statuses:
 			if st.Online {
-				r.feed(job.ServerUp{Players: st.Players, MaxPlayers: st.MaxPlayers, Queue: st.Queue}, launches, cancel)
+				r.feed(job.ServerUp{Players: st.Players, MaxPlayers: st.MaxPlayers, Queue: st.Queue, Age: st.Age}, launches, cancel)
 			} else {
 				r.feed(job.ServerDown{}, launches, cancel)
 			}

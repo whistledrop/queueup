@@ -30,6 +30,9 @@ type Info struct {
 	MaxPlayers int
 	Queue      int // from the qp keyword; 0 if the server does not report one
 	Keywords   string
+	// BornAt is when the server process started, from the born keyword. Zero
+	// when the server does not report one.
+	BornAt time.Time
 }
 
 var queryPayload = append([]byte{0xFF, 0xFF, 0xFF, 0xFF, 'T'},
@@ -128,6 +131,7 @@ func parseInfo(resp []byte, addr string) (Info, error) {
 		if edf&0x20 != 0 {
 			info.Keywords = r.cstring()
 			info.Queue = QueueFromKeywords(info.Keywords)
+			info.BornAt = BornFromKeywords(info.Keywords)
 		}
 	}
 	return info, nil
@@ -191,4 +195,31 @@ func (r *reader) cstring() string {
 	s := string(r.buf[:i])
 	r.buf = r.buf[i+1:]
 	return s
+}
+
+// BornFromKeywords reads the server's start time out of Rust's keyword tags.
+//
+// Rust publishes "born<unix seconds>" alongside the player and queue counts,
+// so the age of a server is free: no extra call, no paid data source, and it
+// comes back on both a direct query and Steam's own list.
+//
+// This is what tells a wipe apart from a server that simply has not wiped yet.
+// Both answer queries and look identical otherwise; only one of them started up
+// four minutes ago.
+//
+// Zero when there is no born tag, which means "no idea", never "brand new".
+func BornFromKeywords(keywords string) time.Time {
+	for _, tag := range strings.Split(keywords, ",") {
+		tag = strings.TrimSpace(tag)
+		rest, ok := strings.CutPrefix(tag, "born")
+		if !ok {
+			continue
+		}
+		secs, err := strconv.ParseInt(rest, 10, 64)
+		if err != nil || secs <= 0 {
+			continue
+		}
+		return time.Unix(secs, 0).UTC()
+	}
+	return time.Time{}
 }

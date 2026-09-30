@@ -154,3 +154,75 @@ func hasAction(acts []Action, want Action) bool {
 	}
 	return false
 }
+
+// Scheduling for AFTER the wipe has already happened.
+//
+// This is the case "wait for the restart" cannot see on its own: the server is
+// up and is never going down again tonight, so waiting for a restart would cost
+// the whole evening. Rust says when it started, so we can simply look.
+func TestAFreshlyWipedServerIsJoinedWithoutWaiting(t *testing.T) {
+	m, c := newTestMachine(Config{
+		WaitForServerUp: true, WipeWaitFallback: 2 * time.Hour,
+		FreshServerAge: 30 * time.Minute,
+	})
+	feed(m, Start{})
+
+	// The wipe was twenty minutes ago; this is the new server.
+	var said string
+	for _, tr := range m.Handle(ServerUp{Players: 40, MaxPlayers: 250, Age: 20 * time.Minute}).Transitions {
+		if strings.Contains(tr.Detail, "already wiped") {
+			said = tr.Detail
+		}
+	}
+	if said == "" {
+		t.Error("the timeline does not explain why it did not wait")
+	}
+	c.advance(time.Minute)
+	if acts := actionsFor(m, Tick{}); !hasAction(acts, ActionLaunchGame) {
+		t.Fatalf("did not join a server that had already wiped: %v", acts)
+	}
+	if !strings.Contains(said, "20 minutes") {
+		t.Errorf("the age is not in plain words: %q", said)
+	}
+}
+
+// The other side of the same coin: a server that has been up for hours has not
+// wiped yet, whatever the clock says, so we still wait.
+func TestAnOldServerIsStillWaitedOutEvenWithAnAge(t *testing.T) {
+	m, c := newTestMachine(Config{
+		WaitForServerUp: true, WipeWaitFallback: 2 * time.Hour,
+		FreshServerAge: 30 * time.Minute,
+	})
+	feed(m, Start{})
+	for i := 0; i < 10; i++ {
+		if acts := actionsFor(m, ServerUp{Players: 250, MaxPlayers: 250, Age: 9 * time.Hour}); len(acts) != 0 {
+			t.Fatalf("joined a server that has been up nine hours: %v", acts)
+		}
+		c.advance(time.Minute)
+		if acts := actionsFor(m, Tick{}); len(acts) != 0 {
+			t.Fatalf("a tick joined the pre-wipe server: %v", acts)
+		}
+	}
+}
+
+// A server that does not publish its age teaches us nothing, so we fall back to
+// the old, safe behaviour of waiting for the restart. Unknown must never be
+// read as "brand new", or every wipe job would join the server it is supposed
+// to be waiting on.
+func TestAnUnknownAgeIsNotTreatedAsFresh(t *testing.T) {
+	m, c := newTestMachine(Config{
+		WaitForServerUp: true, WipeWaitFallback: 2 * time.Hour,
+		FreshServerAge: 30 * time.Minute,
+	})
+	feed(m, Start{})
+	if acts := actionsFor(m, ServerUp{Players: 250, MaxPlayers: 250}); len(acts) != 0 {
+		t.Fatalf("an unknown age was treated as freshly wiped: %v", acts)
+	}
+	c.advance(time.Minute)
+	if acts := actionsFor(m, Tick{}); len(acts) != 0 {
+		t.Fatalf("an unknown age was treated as freshly wiped: %v", acts)
+	}
+	if m.State() != StateWaitingForServerUp {
+		t.Fatalf("state = %s", m.State())
+	}
+}

@@ -144,6 +144,10 @@ type ServerStatus struct {
 	Players    int    `json:"players,omitempty"`
 	MaxPlayers int    `json:"max_players,omitempty"`
 	Queue      int    `json:"queue,omitempty"`
+	// AgeSeconds is how long the server has been up, from Rust's born tag.
+	// Zero means the server did not say, which is not the same as "brand new":
+	// the agent treats an unknown age as "no help either way".
+	AgeSeconds int `json:"age_seconds,omitempty"`
 }
 
 // Error is the relay complaining about something the agent sent.

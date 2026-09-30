@@ -89,7 +89,9 @@ func (a *App) OnServerStatus(st protocol.ServerStatus) {
 	}
 	cur.feed.Push(serverstat.Status{
 		Online: st.Online, Players: st.Players,
-		MaxPlayers: st.MaxPlayers, Queue: st.Queue, At: time.Now(),
+		MaxPlayers: st.MaxPlayers, Queue: st.Queue,
+		Age: time.Duration(st.AgeSeconds) * time.Second,
+		At:  time.Now(),
 	})
 }
 
