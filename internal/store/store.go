@@ -251,6 +251,11 @@ func (s *Store) migrate() error {
 		{"accounts", "pc_reminder_at", "INTEGER NOT NULL DEFAULT 0"},
 		{"accounts", "erase_after", "INTEGER NOT NULL DEFAULT 0"},
 		{"accounts", "source_code", "TEXT NOT NULL DEFAULT ''"},
+		{"accounts", "referral_code", "TEXT NOT NULL DEFAULT ''"},
+		{"accounts", "referred_by", "TEXT NOT NULL DEFAULT ''"},
+		{"accounts", "referral_rewarded", "INTEGER NOT NULL DEFAULT 0"},
+		{"accounts", "referral_credits", "INTEGER NOT NULL DEFAULT 0"},
+		{"accounts", "referral_earned", "INTEGER NOT NULL DEFAULT 0"},
 	} {
 		has, err := s.hasColumn(m.table, m.column)
 		if err != nil {

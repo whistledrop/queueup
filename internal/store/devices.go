@@ -74,6 +74,21 @@ func (s *Store) ClaimPairingCode(accountID, code string) (Device, error) {
 	code = strings.ToUpper(strings.TrimSpace(code))
 	now := s.now().UTC()
 
+	// One PC per account, which the site has always said and nothing has ever
+	// enforced. It matters now: a referral month is earned by a mate bringing
+	// a PC of their own, so if one account could quietly collect several, the
+	// barrier that makes referring yourself not worth the bother would not be
+	// there at all. Unlinking the old one first is the way to move PCs.
+	var linked int
+	if err := s.db.QueryRow(
+		`SELECT COUNT(*) FROM devices WHERE account_id = ? AND claimed_at != 0 AND revoked_at = 0`,
+		accountID).Scan(&linked); err != nil {
+		return Device{}, err
+	}
+	if linked > 0 {
+		return Device{}, fmt.Errorf("your account already has a PC linked. Unlink it in Settings first, then pair this one")
+	}
+
 	var id string
 	var expires, claimed int64
 	err := s.db.QueryRow(

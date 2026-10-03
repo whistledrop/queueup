@@ -31,12 +31,17 @@ var watchAccounts int
 
 func waitingJobs(t *testing.T, st *store.Store, n int, addr string) {
 	t.Helper()
-	watchAccounts++
-	acct, _, err := st.CreateAccount(fmt.Sprintf("watch%d@example.com", watchAccounts))
-	if err != nil {
-		t.Fatal(err)
-	}
+	// One account per PC, because that is what the product is: a person, a
+	// subscription and the one machine they leave switched on. Twelve PCs
+	// under one account was a shortcut that stopped being possible when the
+	// one-PC rule started being enforced, and it was never the shape of the
+	// load this test is about anyway.
 	for i := 0; i < n; i++ {
+		watchAccounts++
+		acct, _, err := st.CreateAccount(fmt.Sprintf("watch%d@example.com", watchAccounts))
+		if err != nil {
+			t.Fatal(err)
+		}
 		p, err := st.StartPairing("PC")
 		if err != nil {
 			t.Fatal(err)

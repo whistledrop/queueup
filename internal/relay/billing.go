@@ -156,6 +156,14 @@ func (s *Server) handleCheckout(w http.ResponseWriter, r *http.Request, acct sto
 		if err := s.st.RememberSourceCode(acct.ID, promo.Code); err != nil {
 			s.log.Error("remembering a source code", "account", acct.ID, "err", err)
 		}
+		// Some codes belong to a channel and some belong to a person. A
+		// person's code owes them something, so it is written down here, once,
+		// and never moved afterwards.
+		if referrer, err := s.st.AccountForReferralCode(promo.Code); err == nil {
+			if err := s.st.RecordReferredBy(acct.ID, referrer); err != nil {
+				s.log.Error("recording a referrer", "account", acct.ID, "err", err)
+			}
+		}
 	}
 
 	web := strings.TrimSuffix(s.cfg.WebURL, "/")
@@ -297,8 +305,18 @@ func (s *Server) syncSubscription(ctx context.Context, accountID, subID string) 
 		}
 		if !current.Active() || current.SubID != live.ID {
 			s.log.Info("subscription active", "account", accountID, "status", live.Status)
-			return s.st.SetSubscription(accountID, "active", live.ID)
+			if err := s.st.SetSubscription(accountID, "active", live.ID); err != nil {
+				return err
+			}
+			// They have paid. If their PC is already on, whoever sent them has
+			// just earned a month.
+			s.maybeAwardReferral(ctx, accountID)
+			return nil
 		}
+		// An update on a subscription already active is usually a renewal,
+		// which is the moment last month's reward finished being spent and the
+		// next one can take its place.
+		s.applyReferralCredits(ctx, accountID)
 		return nil
 	}
 	// An old subscription ending must not switch off a newer one. Only the

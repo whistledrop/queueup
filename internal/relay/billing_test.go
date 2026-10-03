@@ -99,6 +99,7 @@ func (f *fakeStripe) lastCheckout(t *testing.T) url.Values {
 type billingRig struct {
 	st      *store.Store
 	ts      *httptest.Server
+	srv     *Server
 	stripe  *fakeStripe
 	acct    store.Account
 	session string
@@ -130,7 +131,7 @@ func newBillingRig(t *testing.T, gateOn bool) *billingRig {
 	})
 	ts := httptest.NewServer(srv)
 	t.Cleanup(ts.Close)
-	return &billingRig{st: st, ts: ts, stripe: fs, acct: acct, session: session}
+	return &billingRig{st: st, ts: ts, srv: srv, stripe: fs, acct: acct, session: session}
 }
 
 func (b *billingRig) call(t *testing.T, method, path string) (int, map[string]any) {

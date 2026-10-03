@@ -32,8 +32,11 @@ type Created struct {
 	ProductID     string
 	PriceID       string
 	IntroCouponID string
-	WebhookSecret string
-	PortalConfig  string
+	// ReferralCouponID brings one month down to the intro price, as thanks for
+	// bringing somebody who actually turned up and paid.
+	ReferralCouponID string
+	WebhookSecret    string
+	PortalConfig     string
 }
 
 // WebhookEvents are the only events QueueUp listens to.
@@ -86,6 +89,19 @@ func (c *Client) Setup(ctx context.Context, p Plan) (Created, error) {
 			return out, fmt.Errorf("creating the first-month discount: %w", err)
 		}
 		out.IntroCouponID = obj.ID
+
+		// The same money off, for a different reason. A separate coupon so the
+		// books can tell "first month offer" apart from "referred a mate",
+		// which is the difference between a marketing cost and a growth one.
+		f = url.Values{}
+		f.Set("amount_off", strconv.FormatInt(off, 10))
+		f.Set("currency", p.Currency)
+		f.Set("duration", "once")
+		f.Set("name", "Referral month")
+		if err := c.call(ctx, http.MethodPost, "/v1/coupons", f, &obj); err != nil {
+			return out, fmt.Errorf("creating the referral discount: %w", err)
+		}
+		out.ReferralCouponID = obj.ID
 	}
 
 	f = url.Values{}

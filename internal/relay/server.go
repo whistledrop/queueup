@@ -57,7 +57,10 @@ type Config struct {
 	// discount; StripeWebhookSecret checks that webhooks came from Stripe.
 	StripePriceID       string
 	StripeIntroCouponID string
-	StripeWebhookSecret string
+	// StripeReferralCouponID is the same money off, given for bringing
+	// somebody who stayed.
+	StripeReferralCouponID string
+	StripeWebhookSecret    string
 
 	// BillingEnabled turns the subscription gate on. Off (the default), every
 	// account runs free, which is the state until Stripe is connected.
@@ -168,6 +171,8 @@ func (s *Server) routes() {
 	s.feedbackRoutes()
 	// Changing your password, and leaving.
 	s.accountRoutes()
+	// Bringing your mates.
+	s.referralRoutes()
 
 	// Account-facing.
 	s.mux.HandleFunc("POST /api/pair", s.withAccount(s.handleClaimCode))
@@ -287,6 +292,10 @@ func (s *Server) handleClaimCode(w http.ResponseWriter, r *http.Request, acct st
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	// A PC of their own is the other half of earning somebody their referral
+	// month. Most people pay before they ever sit at the PC, so this is
+	// usually the half that lands second.
+	s.maybeAwardReferral(r.Context(), acct.ID)
 	writeJSON(w, http.StatusOK, s.deviceJSON(d))
 }
 

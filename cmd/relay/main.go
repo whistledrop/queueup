@@ -257,10 +257,11 @@ func serve(st *store.Store) error {
 	srv := relay.New(relay.Config{
 		Store: st, Log: log, AdminToken: adminToken, Servers: provider,
 		BillingEnabled: billing, Mail: mailer, WebURL: webURL, Bot: bot,
-		Stripe:              pay,
-		StripePriceID:       priceID,
-		StripeIntroCouponID: os.Getenv("QUEUEUP_STRIPE_INTRO_COUPON_ID"),
-		StripeWebhookSecret: os.Getenv("QUEUEUP_STRIPE_WEBHOOK_SECRET"),
+		Stripe:                 pay,
+		StripePriceID:          priceID,
+		StripeIntroCouponID:    os.Getenv("QUEUEUP_STRIPE_INTRO_COUPON_ID"),
+		StripeReferralCouponID: os.Getenv("QUEUEUP_STRIPE_REFERRAL_COUPON_ID"),
+		StripeWebhookSecret:    os.Getenv("QUEUEUP_STRIPE_WEBHOOK_SECRET"),
 	})
 	httpSrv := &http.Server{
 		Addr:    addr,

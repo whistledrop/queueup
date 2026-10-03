@@ -135,3 +135,17 @@ export function outcome(job: { state: string; reason_code: string }): {
   }
   return { label: stateLabel(job.state), tone: 'warn' }
 }
+
+/** What this account can earn by bringing their mates in. */
+export type Referral = {
+  code: string
+  link: string
+  earned: number
+  remaining: number
+  max: number
+  banked: number
+}
+
+export function getReferral(): Promise<Referral> {
+  return api<Referral>('/api/referral')
+}

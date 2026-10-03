@@ -198,7 +198,21 @@ type Subscription struct {
 	Status   string            `json:"status"`
 	Customer string            `json:"customer"`
 	Metadata map[string]string `json:"metadata"`
+	// Discount is whatever discount is sitting on the subscription right now.
+	// A once-only coupon disappears from here as soon as the invoice it paid
+	// for is settled, which is how a banked referral month knows its turn has
+	// come round.
+	Discount *struct {
+		Coupon struct {
+			ID string `json:"id"`
+		} `json:"coupon"`
+	} `json:"discount"`
 }
+
+// HasDiscount reports whether a discount is already waiting on this
+// subscription. Stripe applies one at a time, so a second referral month has
+// to wait for the first to be spent.
+func (s Subscription) HasDiscount() bool { return s.Discount != nil }
 
 // GetSubscription reads a subscription as Stripe has it now. Webhooks can
 // arrive late and out of order; asking for the current state instead of
@@ -377,4 +391,19 @@ func (c *Client) LookupPromotionCode(ctx context.Context, code string, fullPrice
 		ID: d.ID, Code: d.Code, FirstMonthPence: first,
 		Forever: d.Coupon.Duration == "forever",
 	}, nil
+}
+
+// ApplyCoupon puts a discount on an existing subscription, which is how a
+// referral month is actually given: the next invoice comes out lower and
+// nothing is refunded for a month already paid for.
+func (c *Client) ApplyCoupon(ctx context.Context, subID, couponID string) error {
+	if subID == "" || couponID == "" {
+		return errors.New("a subscription and a coupon are both needed")
+	}
+	f := url.Values{}
+	f.Set("coupon", couponID)
+	var out struct {
+		ID string `json:"id"`
+	}
+	return c.call(ctx, http.MethodPost, "/v1/subscriptions/"+url.PathEscape(subID), f, &out)
 }
