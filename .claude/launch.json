@@ -4,7 +4,10 @@
     {
       "name": "queueup-web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 3000,
       "autoPort": true
     },
@@ -17,8 +20,46 @@
     {
       "name": "queueup-web-dev-relay",
       "runtimeExecutable": "env",
-      "runtimeArgs": ["RELAY_URL=http://127.0.0.1:8090", "npm", "--prefix", "web", "run", "dev", "--", "--port", "3100"],
+      "runtimeArgs": [
+        "RELAY_URL=http://127.0.0.1:8090",
+        "npm",
+        "--prefix",
+        "web",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "3100"
+      ],
       "port": 3100
+    },
+    {
+      "name": "queueup-relay-paid",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "QUEUEUP_BILLING=on",
+        "QUEUEUP_ADDR=:8091",
+        "QUEUEUP_STRIPE_SECRET_KEY=sk_test_placeholder_not_a_real_key",
+        "QUEUEUP_STRIPE_PRICE_ID=price_placeholder",
+        "./scripts/dev-relay.sh"
+      ],
+      "port": 8091
+    },
+    {
+      "name": "queueup-web-paid",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "RELAY_URL=http://127.0.0.1:8091",
+        "npm",
+        "--prefix",
+        "web",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "3200"
+      ],
+      "port": 3200
     }
   ]
 }

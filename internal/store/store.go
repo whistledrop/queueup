@@ -250,6 +250,7 @@ func (s *Store) migrate() error {
 		{"accounts", "intro_used", "INTEGER NOT NULL DEFAULT 0"},
 		{"accounts", "pc_reminder_at", "INTEGER NOT NULL DEFAULT 0"},
 		{"accounts", "erase_after", "INTEGER NOT NULL DEFAULT 0"},
+		{"accounts", "source_code", "TEXT NOT NULL DEFAULT ''"},
 	} {
 		has, err := s.hasColumn(m.table, m.column)
 		if err != nil {

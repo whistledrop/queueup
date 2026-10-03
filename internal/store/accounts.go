@@ -232,3 +232,35 @@ func (s *Store) AccountsDueForErasure(now time.Time) ([]Account, error) {
 	}
 	return out, rows.Err()
 }
+
+// RememberSourceCode records the promo code this account last arrived with.
+//
+// Last click wins. Somebody who sees a TikTok, forgets, and then comes back
+// through a server's Discord link belongs to the Discord link: it is the one
+// that actually moved them, and arguing otherwise means paying two partners
+// for one customer.
+//
+// It is kept on the account as well as on the Stripe subscription because
+// people create an account and pay days later, and the code has to survive
+// that gap.
+func (s *Store) RememberSourceCode(accountID, code string) error {
+	code = strings.ToUpper(strings.TrimSpace(code))
+	if code == "" {
+		return nil
+	}
+	if len(code) > 64 {
+		code = code[:64]
+	}
+	_, err := s.db.Exec(`UPDATE accounts SET source_code = ? WHERE id = ?`, code, accountID)
+	return err
+}
+
+// SourceCode is the code this account last arrived with, if any.
+func (s *Store) SourceCode(accountID string) (string, error) {
+	var code string
+	err := s.db.QueryRow(`SELECT source_code FROM accounts WHERE id = ?`, accountID).Scan(&code)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", ErrNotFound
+	}
+	return code, err
+}

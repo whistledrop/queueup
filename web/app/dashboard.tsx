@@ -57,6 +57,16 @@ export default function Dashboard({ email }: { email: string }) {
   // The gate, stated up front so the paywall is never a surprise later.
   const needsSub = billing !== null && billing.enabled && !billing.subscribed
 
+  // Nothing about the PC before payment.
+  //
+  // Most arrivals come from a video, on a phone, nowhere near their gaming PC.
+  // Showing somebody in that position a Windows download and a pairing code is
+  // asking them to close the tab and forget, so the setup steps wait until
+  // there is a subscription to set up.
+  useEffect(() => {
+    if (needsSub) router.replace('/subscribe')
+  }, [needsSub, router])
+
   // Back from Stripe's checkout. The webhook can take a moment to land, so the
   // thank-you is shown from the address rather than waiting for it.
   const [justPaid, setJustPaid] = useState(false)
@@ -309,7 +319,7 @@ export default function Dashboard({ email }: { email: string }) {
         )}
         {needsSub && (
           <p className="muted small" style={{ marginBottom: 0 }}>
-            Setting up is free. Joining needs the subscription:{' '}
+            Joining needs the subscription:{' '}
             <Link href="/subscribe">{billing?.price_line}</Link>.
           </p>
         )}

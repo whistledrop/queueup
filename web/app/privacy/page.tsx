@@ -24,9 +24,9 @@ export default function PrivacyPage() {
         <p className="muted">Last updated 18 September 2026.</p>
 
         <p>
-          QueueUp is a small, independent tool, currently a free beta. It is an
-          unofficial third-party tool and has nothing to do with Facepunch
-          Studios. This page says exactly what it keeps about you and why.
+          QueueUp is a small, independent tool. It is an unofficial
+          third-party tool and has nothing to do with Facepunch Studios. This
+          page says exactly what it keeps about you and why.
         </p>
 
         <h2>What we never have</h2>

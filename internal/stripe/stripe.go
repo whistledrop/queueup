@@ -127,9 +127,16 @@ type CheckoutParams struct {
 	Email      string
 	CustomerID string // reuse the Stripe customer if this account already has one
 	PriceID    string
-	CouponID   string // the first-month discount; empty when not eligible
 	SuccessURL string
 	CancelURL  string
+	// PromotionCodeID is the discount this person actually earned, from a code
+	// they arrived with or typed. Empty means they pay the standard price.
+	PromotionCodeID string
+	// SourceCode is the code as a person would say it ("TIKTOK"), written onto
+	// the subscription so that months later we can still say where this
+	// customer came from. This is the whole attribution system: no code, no
+	// idea, and every channel therefore gets its own code.
+	SourceCode string
 }
 
 // CreateCheckoutSession returns the address of Stripe's payment page.
@@ -149,12 +156,14 @@ func (c *Client) CreateCheckoutSession(ctx context.Context, p CheckoutParams) (s
 	} else if p.Email != "" {
 		f.Set("customer_email", p.Email)
 	}
-	if p.CouponID != "" {
-		f.Set("discounts[0][coupon]", p.CouponID)
-	} else {
-		// Without the intro discount applied, people may still have a code
-		// from a creator or a giveaway.
-		f.Set("allow_promotion_codes", "true")
+	// Codes are resolved by us before we get here, never by Stripe's own box on
+	// the checkout page. If Stripe collected them we would never see which code
+	// was used, and the code IS the attribution.
+	if p.PromotionCodeID != "" {
+		f.Set("discounts[0][promotion_code]", p.PromotionCodeID)
+	}
+	if p.SourceCode != "" {
+		f.Set("subscription_data[metadata][source]", p.SourceCode)
 	}
 	var out struct {
 		URL string `json:"url"`
@@ -301,4 +310,71 @@ func SignForTests(payload []byte, secret string, at time.Time) string {
 	mac.Write([]byte(ts + "."))
 	mac.Write(payload)
 	return "t=" + ts + ",v1=" + hex.EncodeToString(mac.Sum(nil))
+}
+
+// PromotionCode is one of Stripe's customer-facing codes, resolved to the
+// discount it actually carries.
+type PromotionCode struct {
+	ID   string // the promo_... id to pass at checkout
+	Code string // as a person types it
+	// FirstMonthPence is what the first payment comes to with this code
+	// applied, so the paywall can show the real number rather than a promise.
+	FirstMonthPence int
+	// Forever is true when the discount never stops, which would be a pricing
+	// mistake rather than a promotion, so the caller can refuse it.
+	Forever bool
+}
+
+// ErrNoSuchCode means the code does not exist, has expired, or has been used up.
+var ErrNoSuchCode = errors.New("that code is not valid")
+
+// LookupPromotionCode resolves a typed code to the discount behind it.
+//
+// Codes are how every channel is told apart, so this runs on our side rather
+// than letting Stripe's checkout page collect them: we need to know which code
+// was used even when the discount itself is zero.
+func (c *Client) LookupPromotionCode(ctx context.Context, code string, fullPricePence int) (PromotionCode, error) {
+	code = strings.ToUpper(strings.TrimSpace(code))
+	if code == "" {
+		return PromotionCode{}, ErrNoSuchCode
+	}
+	f := url.Values{}
+	f.Set("code", code)
+	f.Set("active", "true")
+	f.Set("limit", "1")
+	var out struct {
+		Data []struct {
+			ID     string `json:"id"`
+			Code   string `json:"code"`
+			Active bool   `json:"active"`
+			Coupon struct {
+				PercentOff float64 `json:"percent_off"`
+				AmountOff  int     `json:"amount_off"`
+				Duration   string  `json:"duration"`
+				Valid      bool    `json:"valid"`
+			} `json:"coupon"`
+		} `json:"data"`
+	}
+	if err := c.call(ctx, http.MethodGet, "/v1/promotion_codes", f, &out); err != nil {
+		return PromotionCode{}, err
+	}
+	if len(out.Data) == 0 || !out.Data[0].Active || !out.Data[0].Coupon.Valid {
+		return PromotionCode{}, ErrNoSuchCode
+	}
+	d := out.Data[0]
+
+	first := fullPricePence
+	switch {
+	case d.Coupon.PercentOff > 0:
+		first = fullPricePence - int(float64(fullPricePence)*d.Coupon.PercentOff/100.0)
+	case d.Coupon.AmountOff > 0:
+		first = fullPricePence - d.Coupon.AmountOff
+	}
+	if first < 0 {
+		first = 0
+	}
+	return PromotionCode{
+		ID: d.ID, Code: d.Code, FirstMonthPence: first,
+		Forever: d.Coupon.Duration == "forever",
+	}, nil
 }

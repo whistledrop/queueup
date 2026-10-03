@@ -91,6 +91,13 @@ Settings come from environment variables, never from files in the repo:
   QUEUEUP_BILLING=on     turn the subscription gate on. Off by default, which
                          means every account runs free. Flip it when Stripe is
                          connected.
+
+Commands:
+  relay stripe-setup        create the product, price, discount and webhook
+  relay stripe-code TIKTOK  mint one channel's promo code for the discount
+
+Every channel gets its own code. The code is the only thing that says where a
+paying customer came from, so a sale with no code is a sale we cannot trace.
 `)
 }
 
@@ -103,6 +110,12 @@ func run(args []string) error {
 	// Setting up Stripe touches no database, so it runs before one is opened.
 	if args[0] == "stripe-setup" {
 		return stripeSetup()
+	}
+	if args[0] == "stripe-code" {
+		if len(args) < 2 {
+			return errors.New("usage: relay stripe-code <CODE>   (e.g. TIKTOK)")
+		}
+		return stripeCode(args[1])
 	}
 
 	dbPath := envOr("QUEUEUP_DB", "queueup.db")
@@ -337,5 +350,41 @@ func stripeSetup() error {
 	fmt.Printf("  QUEUEUP_STRIPE_INTRO_COUPON_ID=%s\n", made.IntroCouponID)
 	fmt.Printf("  QUEUEUP_STRIPE_WEBHOOK_SECRET=%s\n", made.WebhookSecret)
 	fmt.Printf("\n(product %s, manage page %s)\n", made.ProductID, made.PortalConfig)
+	return nil
+}
+
+// stripeCode mints one channel's promo code against the first-month discount.
+//
+// The discounted first month is not a standing offer: it exists only behind a
+// code, so that every paying customer carries the name of whatever actually
+// brought them. One code per channel, minted here, handed out in a link.
+func stripeCode(code string) error {
+	pay := &stripe.Client{SecretKey: os.Getenv("QUEUEUP_STRIPE_SECRET_KEY")}
+	if !pay.Enabled() {
+		return errors.New("set QUEUEUP_STRIPE_SECRET_KEY first")
+	}
+	coupon := os.Getenv("QUEUEUP_STRIPE_INTRO_COUPON_ID")
+	if coupon == "" {
+		return errors.New("set QUEUEUP_STRIPE_INTRO_COUPON_ID first (relay stripe-setup prints it)")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	made, err := pay.CreatePromotionCode(ctx, coupon, code)
+	if err != nil {
+		return fmt.Errorf("creating the code: %w", err)
+	}
+	mode := "LIVE"
+	if pay.TestMode() {
+		mode = "TEST"
+	}
+	fmt.Printf(`
+Code %s created (%s mode).
+
+Share it as a link so nobody has to type it:
+
+  %s/?promo=%s
+
+Typed codes work too, on the payment screen, for Discord and voice chat.
+`, made, mode, strings.TrimSuffix(envOr("QUEUEUP_WEB_URL", "https://queueuprust.com"), "/"), made)
 	return nil
 }

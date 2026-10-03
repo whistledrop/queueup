@@ -82,8 +82,8 @@ function FeedbackForm() {
         <form className="card" onSubmit={send}>
           <h2>How did it go?</h2>
           <p className="muted" style={{ marginTop: 0 }}>
-            QueueUp is a free beta, and this is the price: tell us what worked,
-            what did not, and what confused you. A sentence is plenty.
+            Tell us what worked, what did not, and what confused you. A
+            sentence is plenty, and a person reads every one.
           </p>
           {jobId && (
             <p className="muted small">

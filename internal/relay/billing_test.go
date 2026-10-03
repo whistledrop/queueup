@@ -48,6 +48,17 @@ func newFakeStripe(t *testing.T) *fakeStripe {
 			f.checkouts = append(f.checkouts, r.PostForm)
 			f.mu.Unlock()
 			_, _ = w.Write([]byte(`{"url":"https://checkout.stripe.com/c/pay/cs_test_1"}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/v1/promotion_codes":
+			switch r.URL.Query().Get("code") {
+			case "TIKTOK":
+				_, _ = w.Write([]byte(`{"data":[{"id":"promo_tiktok","code":"TIKTOK","active":true,
+					"coupon":{"amount_off":300,"duration":"once","valid":true}}]}`))
+			case "FOREVER":
+				_, _ = w.Write([]byte(`{"data":[{"id":"promo_forever","code":"FOREVER","active":true,
+					"coupon":{"percent_off":50,"duration":"forever","valid":true}}]}`))
+			default:
+				_, _ = w.Write([]byte(`{"data":[]}`))
+			}
 		case r.Method == http.MethodPost && r.URL.Path == "/v1/billing_portal/sessions":
 			_, _ = w.Write([]byte(`{"url":"https://billing.stripe.com/p/session/test_1"}`))
 		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v1/subscriptions/"):
@@ -123,7 +134,17 @@ func newBillingRig(t *testing.T, gateOn bool) *billingRig {
 
 func (b *billingRig) call(t *testing.T, method, path string) (int, map[string]any) {
 	t.Helper()
-	req, _ := http.NewRequest(method, b.ts.URL+path, nil)
+	return b.callBody(t, method, path, "")
+}
+
+func (b *billingRig) callBody(t *testing.T, method, path, body string) (int, map[string]any) {
+	t.Helper()
+	var r io.Reader
+	if body != "" {
+		r = strings.NewReader(body)
+	}
+	req, _ := http.NewRequest(method, b.ts.URL+path, r)
+	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+b.session)
 	resp, err := b.ts.Client().Do(req)
 	if err != nil {
@@ -162,31 +183,100 @@ func (b *billingRig) subscribe(t *testing.T, subID string) {
 	}
 }
 
-// First checkout: the £1.99 month is applied, and the account id travels with
-// it so the webhook can find the right person.
-func TestTheFirstCheckoutGetsTheFirstMonthOffer(t *testing.T) {
+// There is one public price. The lower first month lives behind a code,
+// because the code is the only thing that says which channel a customer came
+// from, and a discount everybody gets automatically answers nothing.
+func TestWithoutACodeThereIsNoDiscount(t *testing.T) {
 	b := newBillingRig(t, true)
 
 	code, out := b.call(t, "GET", "/api/billing")
-	if code != 200 || out["intro_available"] != true || !strings.Contains(fmt.Sprint(out["price_line"]), "£1.99") {
+	if code != 200 || !strings.Contains(fmt.Sprint(out["price_line"]), "£4.99") {
 		t.Fatalf("billing = %d %v", code, out)
 	}
+	if strings.Contains(fmt.Sprint(out["price_line"]), "£1.99") {
+		t.Error("the discount is being advertised to somebody with no code")
+	}
+
 	code, out = b.call(t, "POST", "/api/billing/checkout")
 	if code != 200 || !strings.HasPrefix(fmt.Sprint(out["url"]), "https://checkout.stripe.com/") {
 		t.Fatalf("checkout = %d %v", code, out)
 	}
 	sent := b.stripe.lastCheckout(t)
-	if sent.Get("discounts[0][coupon]") != testCouponID {
-		t.Errorf("first checkout did not apply the first-month offer: %v", sent)
+	if sent.Get("discounts[0][promotion_code]") != "" {
+		t.Errorf("a discount was applied with no code: %v", sent)
 	}
-	if sent.Get("line_items[0][price]") != testPriceID || sent.Get("mode") != "subscription" {
-		t.Errorf("wrong price or mode: %v", sent)
+	if sent.Get("subscription_data[metadata][source]") != "" {
+		t.Errorf("a source was invented from nowhere: %v", sent)
 	}
-	if sent.Get("client_reference_id") != b.acct.ID || sent.Get("subscription_data[metadata][account_id]") != b.acct.ID {
-		t.Errorf("the account id did not travel with the checkout: %v", sent)
+	// Stripe must never collect a code on its own page: a code we did not
+	// resolve is a sale we cannot attribute.
+	if sent.Get("allow_promotion_codes") == "true" {
+		t.Error("Stripe was left to collect codes, so the channel would be lost")
 	}
-	if sent.Get("customer_email") != "payer@example.com" {
-		t.Errorf("email not prefilled: %v", sent)
+}
+
+// A code both discounts the first month and says where this customer came
+// from, permanently, on the subscription itself.
+func TestACodeDiscountsAndAttributes(t *testing.T) {
+	b := newBillingRig(t, true)
+
+	code, out := b.callBody(t, "POST", "/api/billing/code", `{"code":"tiktok"}`)
+	if code != 200 || out["valid"] != true {
+		t.Fatalf("checking a good code = %d %v", code, out)
+	}
+	if got := fmt.Sprint(out["first_month_pence"]); got != "199" {
+		t.Errorf("first month = %s pence, want 199", got)
+	}
+
+	if code, out := b.callBody(t, "POST", "/api/billing/checkout", `{"code":"TIKTOK"}`); code != 200 {
+		t.Fatalf("checkout with a code = %d %v", code, out)
+	}
+	sent := b.stripe.lastCheckout(t)
+	if sent.Get("discounts[0][promotion_code]") != "promo_tiktok" {
+		t.Errorf("the code was not applied: %v", sent)
+	}
+	if sent.Get("subscription_data[metadata][source]") != "TIKTOK" {
+		t.Errorf("the source did not reach the subscription: %v", sent)
+	}
+
+	// And it survives the gap between arriving and paying.
+	if got, _ := b.st.SourceCode(b.acct.ID); got != "TIKTOK" {
+		t.Errorf("source code on the account = %q", got)
+	}
+}
+
+// Last click wins, so one customer is never owed to two partners.
+func TestTheLastCodeWins(t *testing.T) {
+	b := newBillingRig(t, true)
+	if err := b.st.RememberSourceCode(b.acct.ID, "OLDCODE"); err != nil {
+		t.Fatal(err)
+	}
+	if code, _ := b.callBody(t, "POST", "/api/billing/code", `{"code":"TIKTOK"}`); code != 200 {
+		t.Fatal("the newer code was refused")
+	}
+	if got, _ := b.st.SourceCode(b.acct.ID); got != "TIKTOK" {
+		t.Errorf("source code = %q, want the newer one", got)
+	}
+}
+
+// A code that never expires is a pricing mistake wearing a code's clothes.
+func TestAForeverDiscountIsRefused(t *testing.T) {
+	b := newBillingRig(t, true)
+	_, out := b.callBody(t, "POST", "/api/billing/code", `{"code":"FOREVER"}`)
+	if out["valid"] != false {
+		t.Errorf("a forever discount was accepted: %v", out)
+	}
+	if code, _ := b.callBody(t, "POST", "/api/billing/checkout", `{"code":"FOREVER"}`); code != http.StatusBadRequest {
+		t.Errorf("checkout accepted a forever discount: %d", code)
+	}
+}
+
+// A code nobody has heard of is refused clearly rather than silently ignored.
+func TestANonsenseCodeIsRefusedKindly(t *testing.T) {
+	b := newBillingRig(t, true)
+	_, out := b.callBody(t, "POST", "/api/billing/code", `{"code":"NOPE"}`)
+	if out["valid"] != false || !strings.Contains(fmt.Sprint(out["line"]), "without one") {
+		t.Errorf("unhelpful refusal: %v", out)
 	}
 }
 
@@ -228,14 +318,14 @@ func TestPayingOpensTheGateAndCancellingClosesIt(t *testing.T) {
 		t.Fatal("the gate stayed open after the subscription ended")
 	}
 
-	// Back again: full price, no second £1.99 month.
+	// Back again: the standard price, and no discount they did not earn.
 	code, out := b.call(t, "GET", "/api/billing")
-	if code != 200 || out["intro_available"] != false || strings.Contains(fmt.Sprint(out["price_line"]), "£1.99") {
-		t.Fatalf("returning customer offered the intro again: %v", out)
+	if code != 200 || strings.Contains(fmt.Sprint(out["price_line"]), "£1.99") {
+		t.Fatalf("returning customer offered a discount: %v", out)
 	}
 	b.call(t, "POST", "/api/billing/checkout")
-	if got := b.stripe.lastCheckout(t).Get("discounts[0][coupon]"); got != "" {
-		t.Errorf("returning customer got the first-month offer again (%q)", got)
+	if got := b.stripe.lastCheckout(t).Get("discounts[0][promotion_code]"); got != "" {
+		t.Errorf("returning customer got a discount they did not ask for (%q)", got)
 	}
 	if b.stripe.lastCheckout(t).Get("customer") != "cus_1" {
 		t.Error("returning customer was not reunited with their Stripe customer")

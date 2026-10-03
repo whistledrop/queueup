@@ -25,7 +25,8 @@ export type Billing = {
   subscribed: boolean
   paying: boolean
   price_line: string
-  intro_available: boolean
+  /** The promo code this account last arrived with, if any. */
+  source_code: string
   can_manage: boolean
   checkout_ready: boolean
   test_mode: boolean

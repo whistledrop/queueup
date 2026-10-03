@@ -2,10 +2,12 @@ package stripe
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 // Setup creates everything QueueUp needs inside a Stripe account, so nobody has
@@ -117,4 +119,29 @@ func (c *Client) Setup(ctx context.Context, p Plan) (Created, error) {
 	}
 	out.PortalConfig = obj.ID
 	return out, nil
+}
+
+// CreatePromotionCode mints one customer-facing code for a channel.
+//
+// Under the pricing we actually run, the discounted first month exists ONLY
+// behind a code, and every channel gets its own: TIKTOK, YOUTUBE, a server's
+// own name. That is not merely a discount mechanism, it is the only way we
+// ever find out where a paying customer came from, which is what decides
+// where the next month's effort goes.
+func (c *Client) CreatePromotionCode(ctx context.Context, couponID, code string) (string, error) {
+	code = strings.ToUpper(strings.TrimSpace(code))
+	if couponID == "" || code == "" {
+		return "", errors.New("a coupon and a code are both needed")
+	}
+	f := url.Values{}
+	f.Set("coupon", couponID)
+	f.Set("code", code)
+	var obj struct {
+		ID   string `json:"id"`
+		Code string `json:"code"`
+	}
+	if err := c.call(ctx, http.MethodPost, "/v1/promotion_codes", f, &obj); err != nil {
+		return "", err
+	}
+	return obj.Code, nil
 }

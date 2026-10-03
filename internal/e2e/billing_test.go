@@ -48,7 +48,7 @@ func (h *harness) account(t *testing.T) store.Account {
 }
 
 // Everything up to and including pairing is free. The Join button is not.
-func TestSetupIsFreeButJoiningIsGated(t *testing.T) {
+func TestJoiningIsGatedOnASubscription(t *testing.T) {
 	h := billingHarness(t)
 
 	// Pairing works with no subscription: that is the whole point of the flow.
@@ -67,8 +67,8 @@ func TestSetupIsFreeButJoiningIsGated(t *testing.T) {
 		t.Fatalf("join without subscribing returned %d, want 402: %v", status, out)
 	}
 	msg, _ := out["error"].(string)
-	if len(msg) < 30 || !contains(msg, "free") {
-		t.Errorf("the refusal %q should say the price and that setup was free", msg)
+	if len(msg) < 30 || !contains(msg, "4.99") || !contains(msg, "cancel") {
+		t.Errorf("the refusal %q should say the price and that it can be cancelled", msg)
 	}
 
 	// Nothing was created.

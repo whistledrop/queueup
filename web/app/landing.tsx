@@ -134,7 +134,7 @@ export default function Landing() {
 
       <section className={s.section} id="pricing">
         <p className={s.kicker}>Price</p>
-        <h2>{BETA ? 'Free while it is in beta' : 'Try it for £1.99'}</h2>
+        <h2>{BETA ? 'Free while it is in beta' : 'One price, cancel anytime'}</h2>
         <div className={s.priceCard}>
           <div className={s.priceAmount}>
             {BETA ? (
@@ -160,7 +160,7 @@ export default function Landing() {
           <p className={s.priceNote}>
             {BETA
               ? `All we ask is that you say how it went. After the beta it is ${PLAN.symbol}${PLAN.intro.toFixed(2)} for your first month, then ${PLAN.symbol}${PLAN.monthly.toFixed(2)}, and nobody is charged without choosing to subscribe.`
-              : 'Setting up is free. You only pay when you first join a server. Cancel in two taps, any time.'}
+              : `${PLAN.symbol}${PLAN.monthly.toFixed(2)} a month, cancel in two taps any time. Doesn't work on your setup? One-click refund, no questions.`}
           </p>
         </div>
       </section>
