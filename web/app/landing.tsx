@@ -232,12 +232,14 @@ function HeroShot() {
   return (
     <div className={s.shot}>
       <div className={s.shotSide}>
-        <div className={s.shotPhone}>
-          <div className={s.shotPhoneScreen}>
+        <div className={s.iphone}>
+          <div className={s.island} />
+          <div className={s.iphoneScreen}>
             <div className={s.shotServer}>Rustopia EU Main</div>
             <div className={s.shotPop}>198 / 200</div>
             <div className={s.shotJoin}>Join</div>
           </div>
+          <div className={s.homeBar} />
         </div>
         <p className={s.shotLabel}>Your phone</p>
       </div>
@@ -248,22 +250,30 @@ function HeroShot() {
       </svg>
 
       <div className={s.shotSide}>
-        <div className={s.pcWindow}>
-          <div className={s.pcTitlebar}>
-            <span className={s.pcDot} />
-            <span className={s.pcDot} />
-            <span className={s.pcDot} />
-            <span style={{ marginLeft: 6 }}>QueueUp</span>
+        <div className={s.monitorWrap}>
+          <div className={s.monitor}>
+            <div className={s.monitorScreen}>
+              <div className={s.pcTitlebar}>
+                <span className={s.pcDot} />
+                <span className={s.pcDot} />
+                <span className={s.pcDot} />
+                <span style={{ marginLeft: 6 }}>QueueUp</span>
+              </div>
+              <div className={s.pcBody}>
+                <span className={s.pcDim}>steam ready</span>
+                <br />
+                launching Rust
+                <br />
+                connecting
+                <br />
+                <strong>in the queue, 212 ahead</strong>
+                <br />
+                <span className={s.pcDim}>holding your slot</span>
+              </div>
+            </div>
           </div>
-          <div className={s.pcBody}>
-            launching Rust
-            <br />
-            connecting
-            <br />
-            <strong>in the queue, 212 ahead</strong>
-            <br />
-            <span className={s.pcDim}>holding your slot</span>
-          </div>
+          <div className={s.stand} />
+          <div className={s.base} />
         </div>
         <p className={s.shotLabel}>Your PC, at home</p>
       </div>

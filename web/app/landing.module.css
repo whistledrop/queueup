@@ -26,7 +26,8 @@
 
 /* The mockups keep the app's real colours: they are pictures of a dark app. */
 .light .phone,
-.light .shotPhone,
+.light .iphone,
+.light .monitor,
 .light .pcWindow {
   --bg: #0f1113;
   --card: #191c1f;
@@ -725,19 +726,21 @@
 
 /* ------------------------------------------------------ the hero picture
 
-   Two machines and an arrow, because the product is not either device, it is
-   the fact that pressing one makes the other work while you are somewhere
-   else. A single screenshot cannot say that; it only shows what the app looks
-   like, which was never the thing in question. */
+   A phone and a monitor, drawn to the same overall height so they read as a
+   matched pair rather than one thing dwarfing the other. A real monitor
+   dwarfs a real phone, but the picture is about the relationship between
+   them, and a true-to-life scale would make the phone a thumbnail.
+
+   --shot-h is the height of both. Everything else is derived from it, so the
+   phone sitting level with the monitor's base survives any size change. */
 
 .shot {
+  --shot-h: 186px;
+  --stand-h: 30px;
   display: flex;
-  /* Bottom aligned, so the two captions sit on one line. Centring the boxes
-     put the labels at slightly different heights, which reads as a mistake
-     from across the room even when nobody can say why. */
   align-items: flex-end;
   justify-content: center;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
 }
 
@@ -745,7 +748,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   min-width: 0;
 }
 
@@ -759,57 +762,129 @@
   margin-bottom: 14px;
 }
 
-.shotPhone {
-  flex: none;
-  width: 112px;
-  background: #06070a;
-  border: 1px solid #2e343b;
-  border-radius: 18px;
-  padding: 7px 6px;
-  box-shadow: 0 12px 28px rgba(11, 14, 18, 0.22);
+/* The phone. 19.5:9, which is what every iPhone since the X has been. */
+.iphone {
+  position: relative;
+  height: var(--shot-h);
+  width: calc(var(--shot-h) * 0.462);
+  background: #0a0b0d;
+  border: 1px solid #343a42;
+  border-radius: calc(var(--shot-h) * 0.1);
+  padding: 5px;
+  box-shadow: 0 14px 30px rgba(11, 14, 18, 0.26);
+  display: flex;
+  flex-direction: column;
 }
 
-.shotPhoneScreen {
+/* The dynamic island, which is most of what makes a black rectangle read as
+   a phone rather than as a black rectangle. */
+.island {
+  position: absolute;
+  top: 9px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32%;
+  height: calc(var(--shot-h) * 0.034);
+  border-radius: 999px;
+  background: #000;
+  z-index: 2;
+}
+
+.iphoneScreen {
+  flex: 1;
+  min-height: 0;
   background: #0f1113;
-  border-radius: 13px;
-  padding: 12px 9px 13px;
+  border-radius: calc(var(--shot-h) * 0.072);
+  padding: calc(var(--shot-h) * 0.1) 7px 8px;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+}
+
+.homeBar {
+  width: 34%;
+  height: 2.5px;
+  border-radius: 999px;
+  background: #3b4149;
+  margin: 5px auto 1px;
 }
 
 .shotServer {
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 500;
   color: #eef1f4;
-  line-height: 1.3;
+  line-height: 1.25;
 }
 
 .shotPop {
-  font-size: 9.5px;
+  font-size: 9px;
   color: #8b9199;
-  margin-top: 3px;
 }
 
 /* The only orange in the picture, so the eye lands on the thing you press
    rather than on the hardware. */
 .shotJoin {
-  margin-top: 10px;
+  margin-top: 6px;
   background: var(--accent);
   color: #fff;
   border-radius: 999px;
-  padding: 7px 0;
-  font-size: 12px;
+  padding: 6px 0;
+  font-size: 11px;
   font-weight: 500;
 }
 
-.shot .pcWindow {
-  width: 212px;
+/* The monitor. 16:9 screen, then a neck and a foot, adding up to the same
+   height as the phone. */
+.monitorWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: var(--shot-h);
+}
+
+.monitor {
+  height: calc(var(--shot-h) - var(--stand-h));
+  width: calc((var(--shot-h) - var(--stand-h)) * 1.778);
   max-width: 100%;
+  background: #15181c;
+  border: 1px solid #343a42;
+  border-radius: 9px;
+  padding: 6px 6px 8px;
+  box-shadow: 0 14px 30px rgba(11, 14, 18, 0.22);
+}
+
+.monitorScreen {
+  height: 100%;
+  background: #06070a;
+  border-radius: 4px;
+  overflow: hidden;
+  text-align: left;
+}
+
+.stand {
+  width: 13%;
+  height: calc(var(--stand-h) - 7px);
+  background: #22262b;
+}
+
+.base {
+  width: 36%;
+  height: 5px;
+  border-radius: 0 0 4px 4px;
+  background: #2b3036;
+}
+
+.shot .pcTitlebar {
+  padding: 5px 8px;
+  font-size: 8.5px;
 }
 
 .shot .pcBody {
-  padding: 13px 14px 15px;
-  font-size: 10.5px;
-  line-height: 1.95;
+  padding: 8px 11px;
+  font-size: 10px;
+  line-height: 1.9;
 }
 
 .pcDim { opacity: 0.5; }
@@ -824,10 +899,12 @@
 }
 
 @media (max-width: 420px) {
-  .shot { gap: 6px; }
-  .shotPhone { width: 96px; }
-  .shot .pcWindow { width: 186px; }
-  .shot .pcBody { font-size: 9.5px; padding: 11px 11px 13px; }
-  .shotArrow { width: 22px; }
-  .shotLabel { font-size: 9.5px; letter-spacing: 0.05em; }
+  .shot { --shot-h: 150px; --stand-h: 24px; gap: 6px; }
+  .shotArrow { width: 20px; }
+  .shotServer { font-size: 8.5px; }
+  .shotPop { font-size: 7.5px; }
+  .shotJoin { font-size: 9.5px; padding: 5px 0; margin-top: 4px; }
+  .shot .pcBody { font-size: 8px; padding: 6px 8px; line-height: 1.85; }
+  .shot .pcTitlebar { font-size: 7px; padding: 4px 6px; }
+  .shotLabel { font-size: 9px; letter-spacing: 0.04em; }
 }
