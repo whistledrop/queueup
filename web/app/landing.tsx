@@ -36,7 +36,7 @@ export default function Landing() {
           </div>
         </div>
         <div>
-          <LivePhone />
+          <HeroShot />
         </div>
       </header>
 
@@ -217,6 +217,59 @@ export default function Landing() {
 }
 
 /* ------------------------------------------------------------ visuals */
+
+// The hero picture.
+//
+// A phone showing one status card said what the app looks like, not what it
+// does, and what it does is the entire pitch: the tap happens on the thing in
+// your hand, and the work happens on a machine that is somewhere else. One
+// screen cannot show that, because the whole point is that there are two of
+// them and they are in different buildings.
+//
+// So: your thumb on Join, in front of your PC getting on with it. Cause on the
+// left, effect behind it, and a label on each saying where it is.
+function HeroShot() {
+  return (
+    <div className={s.shot}>
+      <div className={s.shotSide}>
+        <div className={s.shotPhone}>
+          <div className={s.shotPhoneScreen}>
+            <div className={s.shotServer}>Rustopia EU Main</div>
+            <div className={s.shotPop}>198 / 200</div>
+            <div className={s.shotJoin}>Join</div>
+          </div>
+        </div>
+        <p className={s.shotLabel}>Your phone</p>
+      </div>
+
+      <svg className={s.shotArrow} viewBox="0 0 34 12" fill="none" aria-hidden="true">
+        <path d="M0 6h26" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 3" />
+        <path d="M25 1.5 32 6l-7 4.5z" fill="currentColor" />
+      </svg>
+
+      <div className={s.shotSide}>
+        <div className={s.pcWindow}>
+          <div className={s.pcTitlebar}>
+            <span className={s.pcDot} />
+            <span className={s.pcDot} />
+            <span className={s.pcDot} />
+            <span style={{ marginLeft: 6 }}>QueueUp</span>
+          </div>
+          <div className={s.pcBody}>
+            launching Rust
+            <br />
+            connecting
+            <br />
+            <strong>in the queue, 212 ahead</strong>
+            <br />
+            <span className={s.pcDim}>holding your slot</span>
+          </div>
+        </div>
+        <p className={s.shotLabel}>Your PC, at home</p>
+      </div>
+    </div>
+  )
+}
 
 function LivePhone() {
   return (

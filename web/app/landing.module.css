@@ -26,6 +26,7 @@
 
 /* The mockups keep the app's real colours: they are pictures of a dark app. */
 .light .phone,
+.light .shotPhone,
 .light .pcWindow {
   --bg: #0f1113;
   --card: #191c1f;
@@ -720,4 +721,113 @@
   .lede { margin-bottom: 14px; font-size: 16px; }
   .hero h1 { font-size: 32px; margin-bottom: 10px; }
   .phone { width: min(240px, 40vh); }
+}
+
+/* ------------------------------------------------------ the hero picture
+
+   Two machines and an arrow, because the product is not either device, it is
+   the fact that pressing one makes the other work while you are somewhere
+   else. A single screenshot cannot say that; it only shows what the app looks
+   like, which was never the thing in question. */
+
+.shot {
+  display: flex;
+  /* Bottom aligned, so the two captions sit on one line. Centring the boxes
+     put the labels at slightly different heights, which reads as a mistake
+     from across the room even when nobody can say why. */
+  align-items: flex-end;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.shotSide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.shotArrow {
+  flex: none;
+  align-self: center;
+  width: 34px;
+  height: 12px;
+  color: var(--muted);
+  opacity: 0.85;
+  margin-bottom: 14px;
+}
+
+.shotPhone {
+  flex: none;
+  width: 112px;
+  background: #06070a;
+  border: 1px solid #2e343b;
+  border-radius: 18px;
+  padding: 7px 6px;
+  box-shadow: 0 12px 28px rgba(11, 14, 18, 0.22);
+}
+
+.shotPhoneScreen {
+  background: #0f1113;
+  border-radius: 13px;
+  padding: 12px 9px 13px;
+  text-align: center;
+}
+
+.shotServer {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: #eef1f4;
+  line-height: 1.3;
+}
+
+.shotPop {
+  font-size: 9.5px;
+  color: #8b9199;
+  margin-top: 3px;
+}
+
+/* The only orange in the picture, so the eye lands on the thing you press
+   rather than on the hardware. */
+.shotJoin {
+  margin-top: 10px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 999px;
+  padding: 7px 0;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.shot .pcWindow {
+  width: 212px;
+  max-width: 100%;
+}
+
+.shot .pcBody {
+  padding: 13px 14px 15px;
+  font-size: 10.5px;
+  line-height: 1.95;
+}
+
+.pcDim { opacity: 0.5; }
+
+.shotLabel {
+  margin: 0;
+  font-size: 10.5px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+@media (max-width: 420px) {
+  .shot { gap: 6px; }
+  .shotPhone { width: 96px; }
+  .shot .pcWindow { width: 186px; }
+  .shot .pcBody { font-size: 9.5px; padding: 11px 11px 13px; }
+  .shotArrow { width: 22px; }
+  .shotLabel { font-size: 9.5px; letter-spacing: 0.05em; }
 }
