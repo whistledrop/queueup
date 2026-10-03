@@ -6,17 +6,19 @@ import { useSearchParams } from 'next/navigation'
 import { api, getBilling, type Billing } from '@/lib/api'
 import { PLAN, priceLine } from '@/lib/pricing'
 import { capturePromoFromURL, storedPromo, storePromo } from '@/lib/promo'
+import s from './subscribe.module.css'
 
-// The paywall, and now the second screen of signing up rather than a gate
-// somebody hits later.
+// The paywall, and the second screen of signing up rather than a gate somebody
+// hits later.
 //
 // Nothing about the PC appears before this page. Most arrivals come from a
 // video, on a phone, nowhere near their gaming PC: showing them a Windows
 // download first is asking them to leave. So the order is account, price, pay,
 // and only then the setup they need to be sitting at the PC for.
 //
-// Because they pay before trying it, the refund promise is load-bearing and is
-// said plainly, not buried.
+// Which also means they are paying for something they have not seen work. Two
+// things carry that: the three steps that follow, so paying does not feel like
+// the edge of a cliff, and the refund, said plainly rather than in small print.
 
 export default function SubscribePage() {
   return (
@@ -27,8 +29,8 @@ export default function SubscribePage() {
 }
 
 function Subscribe() {
-  // ?preview=1 shows the page even while billing is off, so the whole
-  // checkout can be tried in Stripe's test mode.
+  // ?preview=1 shows the page even while billing is off, so the whole checkout
+  // can be tried without switching the gate on for everybody.
   const params = useSearchParams()
   const preview = params.get('preview') === '1'
   const [billing, setBilling] = useState<Billing | null>(null)
@@ -38,25 +40,40 @@ function Subscribe() {
   // The code, and what it is actually worth. Checked against Stripe rather
   // than assumed, so the number on this page is the number they get charged.
   const [code, setCode] = useState('')
-  const [codeLine, setCodeLine] = useState('')
+  const [codeOpen, setCodeOpen] = useState(false)
+  const [codeBad, setCodeBad] = useState('')
+  const [applied, setApplied] = useState('')
   const [firstMonth, setFirstMonth] = useState<number | null>(null)
   const [checking, setChecking] = useState(false)
 
-  const check = useCallback(async (raw: string) => {
+  // quiet is for the code we found saved from a ?promo= link rather than one
+  // they typed. If that one fails there is nothing for them to fix and nothing
+  // they asked for, so complaining at somebody who has not touched the box is
+  // just noise on the screen where they are deciding whether to pay.
+  const check = useCallback(async (raw: string, quiet = false) => {
     const c = raw.trim().toUpperCase()
     if (!c) return
     setChecking(true)
+    setCodeBad('')
     try {
       const res = await api<{ valid: boolean; line: string; first_month_pence?: number }>(
         '/api/billing/code',
         { method: 'POST', body: JSON.stringify({ code: c }) },
       )
-      setCodeLine(res.line)
-      setFirstMonth(res.valid ? (res.first_month_pence ?? null) : null)
-      if (res.valid) storePromo(c)
+      if (res.valid) {
+        setApplied(c)
+        setFirstMonth(res.first_month_pence ?? null)
+        setCodeOpen(false)
+        storePromo(c)
+      } else {
+        setApplied('')
+        setFirstMonth(null)
+        if (!quiet) setCodeBad(res.line)
+      }
     } catch (e) {
-      setCodeLine((e as Error).message)
+      setApplied('')
       setFirstMonth(null)
+      if (!quiet) setCodeBad((e as Error).message)
     } finally {
       setChecking(false)
     }
@@ -67,7 +84,7 @@ function Subscribe() {
     const saved = storedPromo()
     if (saved) {
       setCode(saved)
-      check(saved)
+      check(saved, true)
     }
     getBilling()
       .then((b) => {
@@ -84,7 +101,7 @@ function Subscribe() {
     try {
       const res = await api<{ url?: string }>('/api/billing/checkout', {
         method: 'POST',
-        body: JSON.stringify({ code: code.trim().toUpperCase() }),
+        body: JSON.stringify({ code: applied }),
       })
       if (res.url) window.location.href = res.url
     } catch (e) {
@@ -93,14 +110,16 @@ function Subscribe() {
     }
   }
 
-  const discounted = firstMonth !== null && firstMonth < PLAN.monthly * 100
-  const nowPence = discounted ? firstMonth! : Math.round(PLAN.monthly * 100)
+  const full = Math.round(PLAN.monthly * 100)
+  const discounted = firstMonth !== null && firstMonth < full
+  const nowPence = discounted ? firstMonth! : full
+  const money = (pence: number) => `${PLAN.symbol}${(pence / 100).toFixed(2)}`
 
   return (
     <div className="shell">
       <header className="top">
         <Link href="/" className="brand">Queue<span>Up</span></Link>
-        <Link href="/settings" className="btn quiet">Sign out</Link>
+        <Link href="/settings" className="tab">Sign out</Link>
       </header>
 
       {billing?.test_mode && (
@@ -110,67 +129,95 @@ function Subscribe() {
         </div>
       )}
 
-      <div className="card" style={{ textAlign: 'center' }}>
-        <p style={{ margin: '4px 0 0', fontSize: 15 }} className="muted">
-          {discounted ? 'Your first month' : 'Every month'}
+      {note && <div className="error">{note}</div>}
+
+      <div className={s.panel}>
+        <p className={s.kicker}>{discounted ? 'Your first month' : 'QueueUp'}</p>
+        <div className={s.priceRow}>
+          {discounted && <span className={s.was}>{money(full)}</span>}
+          <span className={s.price}>{money(nowPence)}</span>
+        </div>
+        <p className={s.after}>
+          {discounted ? `then ${priceLine()}. Cancel anytime.` : 'a month. Cancel anytime.'}
         </p>
-        <p style={{ margin: '2px 0 0', fontSize: 52, fontWeight: 500, letterSpacing: '-0.04em' }}>
-          {PLAN.symbol}
-          {(nowPence / 100).toFixed(2)}
-        </p>
-        <p className="muted" style={{ margin: '0 0 18px' }}>
-          {discounted ? `then ${priceLine()}. Cancel anytime.` : 'Cancel anytime.'}
-        </p>
-        <ul className="ticks">
+
+        {applied && discounted && (
+          <p className={s.codeApplied}>
+            <Tick /> Code {applied} applied
+          </p>
+        )}
+
+        <ul className={s.features}>
           {PLAN.includes.map((line) => (
             <li key={line}>{line}</li>
           ))}
         </ul>
-      </div>
 
-      <div className="card">
-        <h2>Got a code?</h2>
-        <form
-          className="row"
-          style={{ gap: 8, marginBottom: 0 }}
-          onSubmit={(e) => {
-            e.preventDefault()
-            check(code)
-          }}
-        >
-          <input
-            value={code}
-            onChange={(e) => setCode(e.target.value.toUpperCase())}
-            placeholder="TIKTOK"
-            maxLength={64}
-            autoCapitalize="characters"
-            autoCorrect="off"
-            spellCheck={false}
-            aria-label="Promo code"
-            style={{ flex: 1 }}
-          />
-          <button type="submit" disabled={checking || !code.trim()} style={{ minHeight: 44 }}>
-            {checking ? '...' : 'Apply'}
-          </button>
-        </form>
-        {codeLine && (
-          <p className={discounted ? 'small' : 'muted small'} style={{ margin: '10px 0 0' }}>
-            {codeLine}
-          </p>
-        )}
-      </div>
+        <button className={s.cta} onClick={checkout} disabled={busy}>
+          {busy ? 'One moment' : `Subscribe for ${money(nowPence)}`}
+        </button>
 
-      {note && <div className="error">{note}</div>}
-
-      <button className="primary btn-wide" onClick={checkout} disabled={busy} style={{ fontSize: 17 }}>
-        {busy ? 'One moment' : `Subscribe for ${PLAN.symbol}${(nowPence / 100).toFixed(2)}`}
-      </button>
-
-      <div className="card" style={{ marginTop: 14 }}>
-        <p style={{ margin: 0, fontWeight: 500 }}>
-          Doesn&apos;t work on your setup? One-click refund, no questions.
+        <p className={s.trust}>
+          <Lock /> Secure payment by Stripe
         </p>
-        <p className="muted small" style={{ margin: '6px 0 0' }}>
+
+        {!applied && !codeOpen && (
+          <button className={s.codeToggle} onClick={() => setCodeOpen(true)}>
+            Have a code?
+          </button>
+        )}
+
+        {codeOpen && (
+          <form
+            className={s.codeRow}
+            onSubmit={(e) => {
+              e.preventDefault()
+              check(code)
+            }}
+          >
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              placeholder="CODE"
+              maxLength={64}
+              autoFocus
+              // The box may already hold a code that arrived in the link and
+              // failed. Typing over it should replace it, not append to it.
+              onFocus={(e) => e.currentTarget.select()}
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
+              aria-label="Promo code"
+            />
+            <button type="submit" disabled={checking || !code.trim()}>
+              {checking ? '...' : 'Apply'}
+            </button>
+          </form>
+        )}
+        {codeBad && <p className={s.codeBad}>{codeBad}</p>}
+      </div>
+
+      <div className={s.next}>
+        <h3>What happens next</h3>
+        <ol className={s.steps}>
+          <li>
+            <b>Link your PC.</b> One file, one six character code. About two
+            minutes, and only ever once.
+          </li>
+          <li>
+            <b>Save the servers you play.</b> So wipe day is one tap, not a
+            search.
+          </li>
+          <li>
+            <b>Join from anywhere.</b> Your PC queues while you are at work, at
+            school, or on the bus.
+          </li>
+        </ol>
+      </div>
+
+      <div className={s.refund}>
+        <p>Doesn&apos;t work on your setup? One-click refund, no questions.</p>
+        <p>
           QueueUp needs a Windows gaming PC you can leave switched on, with
           Steam and Rust installed. If that is not you, or it simply does not
           work, say so on the <Link href="/feedback">feedback page</Link> and
@@ -178,12 +225,27 @@ function Subscribe() {
         </p>
       </div>
 
-      <p className="muted small" style={{ textAlign: 'center', lineHeight: 1.5 }}>
-        Payment by Stripe. We never see your card.
-        <br />
-        Cancel in two taps from Settings, any time. By subscribing you agree to
-        the <Link href="/terms">terms</Link>.
+      <p className={s.smallprint}>
+        We never see your card. Cancel in two taps from Settings, any time. By
+        subscribing you agree to the <Link href="/terms">terms</Link>.
       </p>
     </div>
+  )
+}
+
+function Lock() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="4" y="10" width="16" height="11" rx="2.5" stroke="currentColor" strokeWidth="2" />
+      <path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  )
+}
+
+function Tick() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M4 12.5l5.5 5.5L20 7" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   )
 }
