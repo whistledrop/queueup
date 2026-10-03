@@ -1,0 +1,125 @@
+/* Rewards.
+   One reward today, a list of them later, so everything here is drawn as a
+   row in a list rather than as a page about referrals. Adding the second
+   deal should be adding an entry, not rebuilding the screen. */
+
+.intro {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.reward {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  margin-bottom: 14px;
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+}
+
+.badge {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gold-soft);
+  color: var(--gold-ink);
+}
+
+.title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+}
+
+.what {
+  margin: 3px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* One slot per month, so "how many have I got left" is a thing you count
+   rather than a sentence you parse. */
+.slots {
+  display: flex;
+  gap: 8px;
+  margin: 18px 0 0;
+}
+
+.slot {
+  flex: 1;
+  min-width: 0;
+  border-radius: 14px;
+  padding: 11px 8px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.3;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+}
+
+.slot b {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 2px;
+  color: var(--muted);
+}
+
+.used {
+  border: 1px solid var(--line);
+  background: var(--card-2);
+}
+.used b { color: var(--text); }
+
+.waiting {
+  border: 1.5px solid var(--gold-ink);
+  background: var(--gold-soft);
+  color: var(--gold-ink);
+}
+.waiting b { color: var(--gold-ink); }
+
+.linkRow {
+  display: flex;
+  gap: 8px;
+  margin: 18px 0 0;
+}
+
+.linkRow input {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+}
+
+.linkRow button {
+  flex: none;
+  min-height: 46px;
+  padding: 0 18px;
+}
+
+.terms {
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.soon {
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+}

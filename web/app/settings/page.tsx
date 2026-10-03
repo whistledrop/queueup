@@ -17,7 +17,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Nav, { Footer } from '../nav'
 import { api, getBilling, openManageSubscription, type Billing, type Device } from '@/lib/api'
-import ReferAFriend from './referral'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -153,8 +152,6 @@ export default function SettingsPage() {
           </Link>
         )}
       </div>
-
-      <ReferAFriend />
 
       <DeleteAccount
         canManage={!!billing?.can_manage}

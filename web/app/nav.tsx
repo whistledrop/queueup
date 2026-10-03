@@ -6,10 +6,13 @@
 // destinations, always in the same place.
 
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { BETA } from '@/lib/pricing'
 import HelpBot from './helpBot'
 import LeavingBanner from './leavingBanner'
+import Gift from './gift'
+import { getReferral } from '@/lib/api'
 
 const tabs = [
   { href: '/', label: 'Home' },
@@ -19,6 +22,15 @@ const tabs = [
 
 export default function Nav() {
   const pathname = usePathname()
+
+  // A dot on the gift when something is actually waiting. A badge that is
+  // always there stops being a badge.
+  const [waiting, setWaiting] = useState(0)
+  useEffect(() => {
+    getReferral()
+      .then((r) => setWaiting(r.banked))
+      .catch(() => {})
+  }, [])
 
   return (
     <>
@@ -38,6 +50,15 @@ export default function Nav() {
             </Link>
           ))}
         </nav>
+        {/* Gold, in the corner, and the only gold in the app. */}
+        <Link
+          href="/rewards"
+          className={`giftTab ${pathname === '/rewards' ? 'active' : ''}`}
+          aria-label={waiting > 0 ? `Rewards, ${waiting} waiting` : 'Rewards'}
+        >
+          <Gift />
+          {waiting > 0 && <span className="giftDot" />}
+        </Link>
         {/* Sign out used to own this corner, which is an odd thing to make the
             easiest button in the app to reach. Settings takes it, and signing
             out is the first thing on that page. */}

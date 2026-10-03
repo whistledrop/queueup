@@ -19,6 +19,11 @@
   --good: #1a7f52;
   --warn: #8a6410;
   --bad: #c0392f;
+  /* Gold, for rewards and nothing else. One colour the app uses in exactly
+     one place stays meaningful; used twice it becomes decoration. */
+  --gold: #c08a1e;
+  --gold-ink: #8a6410;
+  --gold-soft: rgba(192, 138, 30, 0.12);
   --radius: 16px;
   /* Big, soft corners on anything card-shaped. */
   --radius-lg: 22px;
@@ -683,4 +688,37 @@ header.top {
   background: var(--text);
   color: #fff;
   border: none;
+}
+
+/* The rewards gift sits in the top corner of every signed-in screen. It is
+   an icon rather than a word because it has to survive next to three tabs
+   and Settings at 375px, and because gold reads faster than text does. */
+.giftTab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-pill);
+  text-decoration: none;
+  flex: none;
+}
+
+.giftTab:hover,
+.giftTab.active {
+  background: var(--gold-soft);
+}
+
+/* Only when something is actually waiting. A badge that is always there
+   stops being a badge. */
+.giftDot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gold);
+  border: 1.5px solid var(--card);
 }

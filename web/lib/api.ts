@@ -140,10 +140,15 @@ export function outcome(job: { state: string; reason_code: string }): {
 export type Referral = {
   code: string
   link: string
+  /** Months unlocked so far, out of max. */
   earned: number
+  /** Of those, how many have already come off a bill. */
+  used: number
+  /** Of those, how many are still waiting to. */
+  banked: number
+  /** How many more could still be earned. */
   remaining: number
   max: number
-  banked: number
 }
 
 export function getReferral(): Promise<Referral> {

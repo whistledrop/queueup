@@ -50,13 +50,18 @@ func (s *Server) handleReferral(w http.ResponseWriter, r *http.Request, acct sto
 	if ref.Code != "" {
 		link = strings.TrimSuffix(s.cfg.WebURL, "/") + "/?promo=" + ref.Code
 	}
+	// Three numbers, because the rewards screen draws a slot per month and
+	// each slot is in one of three states: spent, waiting, or not earned yet.
+	// "How many have I got left" means both of the first two to different
+	// people, so the screen shows both rather than picking one.
 	writeJSON(w, http.StatusOK, map[string]any{
 		"code":      ref.Code,
 		"link":      link,
 		"earned":    ref.Earned,
+		"used":      max(0, ref.Earned-ref.Credits),
+		"banked":    ref.Credits,
 		"remaining": max(0, store.MaxReferralRewards-ref.Earned),
 		"max":       store.MaxReferralRewards,
-		"banked":    ref.Credits,
 	})
 }
 
