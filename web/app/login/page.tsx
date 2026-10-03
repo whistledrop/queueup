@@ -58,7 +58,10 @@ function LoginForm() {
   return (
     <div className="shell">
       <header className="top">
-        <span className="brand">Queue<span>Up</span></span>
+        {/* The way back out. Somebody who clicked through from a video and
+            wants another look at what this actually is should not have to
+            reach for the browser's back button. */}
+        <Link href="/" className="brand">Queue<span>Up</span></Link>
       </header>
 
       <div className="card">
