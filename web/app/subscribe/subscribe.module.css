@@ -20,14 +20,14 @@
 .was_ {
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  padding: 13px 16px;
+  padding: 15px 18px;
 }
 
 .now_ {
-  margin-top: 9px;
+  margin-top: 10px;
   border: 1.5px solid var(--accent);
   border-radius: var(--radius-lg);
-  padding: 13px 16px;
+  padding: 15px 18px;
   background: rgba(208, 90, 42, 0.045);
 }
 
@@ -44,10 +44,13 @@
   color: var(--accent);
 }
 
+/* Short lines earn more size. Three of them at 17px read as a rhythm; the
+   same words at 14px read as a paragraph somebody has to get through. */
 .compareBody {
-  margin: 6px 0 0;
-  font-size: 14.5px;
-  line-height: 1.55;
+  margin: 8px 0 0;
+  font-size: 17px;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
   color: var(--text);
 }
 

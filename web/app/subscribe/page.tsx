@@ -133,25 +133,25 @@ function Subscribe() {
 
       <div className={s.panel}>
         <p className={s.headline}>Wipe day, two ways</p>
-        <p className={s.sub}>
-          The difference is whether your PC was queueing while you were busy.
-        </p>
 
+        {/* Three beats each, the same three beats, so the difference is the
+            only thing that moves. Anything longer gets skimmed: this is read
+            on a phone, by somebody deciding in about four seconds. */}
         <div className={s.compare}>
           <div className={s.was_}>
             <p className={s.compareLabel}>Without QueueUp</p>
             <p className={s.compareBody}>
-              Wipe hits at seven. You get home at eight, the server is full,
-              and there are 212 people in front of you. You start playing at
-              half ten, on a map everyone else has already learned.
+              Home at eight.<br />
+              212 in the queue.<br />
+              Playing at half ten.
             </p>
           </div>
           <div className={s.now_}>
             <p className={s.compareLabel}>With QueueUp</p>
             <p className={s.compareBody}>
-              You tap join from wherever you are. Your PC launches Rust and
-              waits in the queue while you finish your day. You walk in, sit
-              down, and you are already on the beach.
+              Tap join at two.<br />
+              Walk in at eight.<br />
+              Already in.
             </p>
           </div>
         </div>
