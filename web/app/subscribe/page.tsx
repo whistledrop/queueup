@@ -18,7 +18,7 @@ import s from './subscribe.module.css'
 //
 // Which also means they are paying for something they have not seen work. Two
 // things carry that: the three steps that follow, so paying does not feel like
-// the edge of a cliff, and the refund, said plainly rather than in small print.
+// the edge of a cliff, and how plainly it can be cancelled.
 
 export default function SubscribePage() {
   return (
@@ -132,69 +132,98 @@ function Subscribe() {
       {note && <div className="error">{note}</div>}
 
       <div className={s.panel}>
-        <p className={s.kicker}>{discounted ? 'Your first month' : 'QueueUp'}</p>
-        <div className={s.priceRow}>
-          {discounted && <span className={s.was}>{money(full)}</span>}
-          <span className={s.price}>{money(nowPence)}</span>
-        </div>
-        <p className={s.after}>
-          {discounted ? `then ${priceLine()}. Cancel anytime.` : 'a month. Cancel anytime.'}
+        <p className={s.headline}>Wipe day, two ways</p>
+        <p className={s.sub}>
+          The difference is whether your PC was queueing while you were busy.
         </p>
 
-        {applied && discounted && (
-          <p className={s.codeApplied}>
-            <Tick /> Code {applied} applied
-          </p>
-        )}
+        <div className={s.compare}>
+          <div className={s.was_}>
+            <p className={s.compareLabel}>Without QueueUp</p>
+            <p className={s.compareBody}>
+              Wipe hits at seven. You get home at eight, the server is full,
+              and there are 212 people in front of you. You start playing at
+              half ten, on a map everyone else has already learned.
+            </p>
+          </div>
+          <div className={s.now_}>
+            <p className={s.compareLabel}>With QueueUp</p>
+            <p className={s.compareBody}>
+              You tap join from wherever you are. Your PC launches Rust and
+              waits in the queue while you finish your day. You walk in, sit
+              down, and you are already on the beach.
+            </p>
+          </div>
+        </div>
 
+        <div className={s.priceBlock}>
+          <p className={s.kicker}>{discounted ? 'Your first month' : 'QueueUp'}</p>
+          <div className={s.priceRow}>
+            {discounted && <span className={s.was}>{money(full)}</span>}
+            <span className={s.price}>{money(nowPence)}</span>
+          </div>
+          <p className={s.after}>
+            {discounted ? `then ${priceLine()}. Cancel anytime.` : 'a month. Cancel anytime.'}
+          </p>
+
+          {applied && discounted && (
+            <p className={s.codeApplied}>
+              <Tick /> Code {applied} applied
+            </p>
+          )}
+
+          <button className={s.cta} onClick={checkout} disabled={busy}>
+            {busy ? 'One moment' : `Subscribe for ${money(nowPence)}`}
+          </button>
+
+          <p className={s.trust}>
+            <Lock /> Secure payment by Stripe
+          </p>
+
+          {!applied && !codeOpen && (
+            <button className={s.codeToggle} onClick={() => setCodeOpen(true)}>
+              Have a code?
+            </button>
+          )}
+
+          {codeOpen && (
+            <form
+              className={s.codeRow}
+              onSubmit={(e) => {
+                e.preventDefault()
+                check(code)
+              }}
+            >
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                placeholder="CODE"
+                maxLength={64}
+                autoFocus
+                // The box may already hold a code that arrived in the link and
+                // failed. Typing over it should replace it, not append to it.
+                onFocus={(e) => e.currentTarget.select()}
+                autoCapitalize="characters"
+                autoCorrect="off"
+                spellCheck={false}
+                aria-label="Promo code"
+              />
+              <button type="submit" disabled={checking || !code.trim()}>
+                {checking ? '...' : 'Apply'}
+              </button>
+            </form>
+          )}
+          {codeBad && <p className={s.codeBad}>{codeBad}</p>}
+        </div>
+      </div>
+
+      <div className={s.included}>
+        <h3>What you get</h3>
         <ul className={s.features}>
           {PLAN.includes.map((line) => (
             <li key={line}>{line}</li>
           ))}
         </ul>
-
-        <button className={s.cta} onClick={checkout} disabled={busy}>
-          {busy ? 'One moment' : `Subscribe for ${money(nowPence)}`}
-        </button>
-
-        <p className={s.trust}>
-          <Lock /> Secure payment by Stripe
-        </p>
-
-        {!applied && !codeOpen && (
-          <button className={s.codeToggle} onClick={() => setCodeOpen(true)}>
-            Have a code?
-          </button>
-        )}
-
-        {codeOpen && (
-          <form
-            className={s.codeRow}
-            onSubmit={(e) => {
-              e.preventDefault()
-              check(code)
-            }}
-          >
-            <input
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              placeholder="CODE"
-              maxLength={64}
-              autoFocus
-              // The box may already hold a code that arrived in the link and
-              // failed. Typing over it should replace it, not append to it.
-              onFocus={(e) => e.currentTarget.select()}
-              autoCapitalize="characters"
-              autoCorrect="off"
-              spellCheck={false}
-              aria-label="Promo code"
-            />
-            <button type="submit" disabled={checking || !code.trim()}>
-              {checking ? '...' : 'Apply'}
-            </button>
-          </form>
-        )}
-        {codeBad && <p className={s.codeBad}>{codeBad}</p>}
       </div>
 
       <div className={s.next}>
@@ -216,18 +245,18 @@ function Subscribe() {
       </div>
 
       <div className={s.refund}>
-        <p>Doesn&apos;t work on your setup? One-click refund, no questions.</p>
+        <p>Cancel whenever you like, in two taps.</p>
         <p>
-          QueueUp needs a Windows gaming PC you can leave switched on, with
-          Steam and Rust installed. If that is not you, or it simply does not
-          work, say so on the <Link href="/feedback">feedback page</Link> and
-          you get your money back.
+          It is one button in Settings, you keep the days you have paid for,
+          and nothing is taken after that. QueueUp needs a Windows gaming PC
+          you can leave switched on, with Steam and Rust installed, so check
+          that is you before you start.
         </p>
       </div>
 
       <p className={s.smallprint}>
-        We never see your card. Cancel in two taps from Settings, any time. By
-        subscribing you agree to the <Link href="/terms">terms</Link>.
+        We never see your card. By subscribing you agree to the{' '}
+        <Link href="/terms">terms</Link>.
       </p>
     </div>
   )

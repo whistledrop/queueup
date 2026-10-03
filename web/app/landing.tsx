@@ -156,7 +156,7 @@ export default function Landing() {
           <p className={s.priceNote}>
             {BETA
               ? `All we ask is that you say how it went. After the beta it is ${PLAN.symbol}${PLAN.intro.toFixed(2)} for your first month, then ${PLAN.symbol}${PLAN.monthly.toFixed(2)}, and nobody is charged without choosing to subscribe.`
-              : `${PLAN.symbol}${PLAN.monthly.toFixed(2)} a month, cancel in two taps any time. Doesn't work on your setup? One-click refund, no questions.`}
+              : `${PLAN.symbol}${PLAN.monthly.toFixed(2)} a month. Cancel in two taps, any time, and keep the days you have paid for.`}
           </p>
         </div>
       </section>

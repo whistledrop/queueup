@@ -28,7 +28,7 @@ export const BETA = false
 export function costLine(): string {
   return BETA
     ? `Free while QueueUp is in beta. Try it and tell us how it went.`
-    : `${priceLine()}. Cancel anytime, one-click refund if it doesn't work on your setup.`
+    : `${priceLine()}. Cancel anytime, in two taps.`
 }
 
 /** The first-month offer, spelled out in full: what it costs now AND after. */
