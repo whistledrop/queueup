@@ -198,6 +198,28 @@ export default function AdminPage() {
     setNotice(`Temporary password for ${a.email}: ${body.password}  (send it to them privately; it is not shown again)`)
   }
 
+  // Free access: the friend who tested it, a partner, somebody owed an
+  // apology. It is a state of its own rather than a fake payment, so the
+  // account is never shown a billing portal with nothing in it.
+  async function comp(a: Account) {
+    const giving = a.subscription !== 'comped'
+    const ask = giving
+      ? `Give ${a.email} free access? They can use QueueUp without paying, and are never asked for a card.`
+      : `Remove free access from ${a.email}? They will need to subscribe to join servers.`
+    if (!confirm(ask)) return
+    const res = await call(`/admin/accounts/${a.id}/comp`, {
+      method: 'POST',
+      body: JSON.stringify({ free: giving }),
+    })
+    const body = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      setNotice(body.error ?? 'That did not work.')
+      return
+    }
+    setNotice(body.status)
+    load()
+  }
+
   async function erase(a: Account) {
     const typed = prompt(
       `This deletes ${a.email} and EVERYTHING about them: PC, joins, feedback, reports. It cannot be undone.\n\nType their email address to confirm:`,
@@ -344,8 +366,12 @@ export default function AdminPage() {
                     </div>
                   </div>
                   {a.subscription === 'active' && <span className="pill good">paying</span>}
+                  {a.subscription === 'comped' && <span className="pill">free access</span>}
                 </div>
-                <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+                  <button style={{ minHeight: 34, padding: '4px 10px' }} onClick={() => comp(a)}>
+                    {a.subscription === 'comped' ? 'Remove free access' : 'Give free access'}
+                  </button>
                   <button style={{ minHeight: 34, padding: '4px 10px' }} onClick={() => tempPassword(a)}>
                     Temporary password
                   </button>

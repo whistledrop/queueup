@@ -132,6 +132,8 @@ export default function SettingsPage() {
             ? 'Loading'
             : !billing.enabled
               ? 'QueueUp is a free beta. Nobody is being charged.'
+              : billing.comped
+              ? 'You have free access to QueueUp. There is nothing to pay.'
               : billing.subscribed
                 ? `Subscribed. ${billing.price_line}`
                 : 'Not subscribed, so joining is locked.'}

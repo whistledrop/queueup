@@ -126,6 +126,7 @@ func newBillingRig(t *testing.T, gateOn bool) *billingRig {
 		StripePriceID:       testPriceID,
 		StripeIntroCouponID: testCouponID,
 		StripeWebhookSecret: testWebhookSecret,
+		AdminToken:          testAdminToken,
 	})
 	ts := httptest.NewServer(srv)
 	t.Cleanup(ts.Close)
@@ -135,6 +136,26 @@ func newBillingRig(t *testing.T, gateOn bool) *billingRig {
 func (b *billingRig) call(t *testing.T, method, path string) (int, map[string]any) {
 	t.Helper()
 	return b.callBody(t, method, path, "")
+}
+
+// admin calls an operator-only endpoint, the way the admin screen does.
+func (b *billingRig) admin(t *testing.T, method, path, body string) (int, map[string]any) {
+	t.Helper()
+	var r io.Reader
+	if body != "" {
+		r = strings.NewReader(body)
+	}
+	req, _ := http.NewRequest(method, b.ts.URL+path, r)
+	req.Header.Set("Authorization", "Bearer "+testAdminToken)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := b.ts.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var out map[string]any
+	_ = json.NewDecoder(resp.Body).Decode(&out)
+	return resp.StatusCode, out
 }
 
 func (b *billingRig) callBody(t *testing.T, method, path, body string) (int, map[string]any) {
@@ -433,5 +454,71 @@ func TestCheckoutWorksWhileTheBetaGateIsOff(t *testing.T) {
 	}
 	if code, _ := b.call(t, "POST", "/api/billing/checkout"); code != 200 {
 		t.Fatalf("checkout with gate off = %d", code)
+	}
+}
+
+// Free access given by hand: the friend who tested it, the partner, the
+// apology. It must open the gate, must not pretend to be a Stripe
+// subscription, and must not be undone by a stray Stripe event.
+func TestFreeAccessGivenByHand(t *testing.T) {
+	b := newBillingRig(t, true)
+
+	// Locked out to begin with.
+	if code, _ := b.call(t, "GET", "/api/billing"); code != 200 {
+		t.Fatal("billing unreadable")
+	}
+	if sub, _ := b.st.SubscriptionFor(b.acct.ID); sub.Active() {
+		t.Fatal("the gate was open before anything was given")
+	}
+
+	code, out := b.admin(t, "POST", "/admin/accounts/"+b.acct.ID+"/comp", `{"free":true}`)
+	if code != 200 {
+		t.Fatalf("giving free access = %d %v", code, out)
+	}
+	if !strings.Contains(fmt.Sprint(out["status"]), b.acct.Email) {
+		t.Errorf("the confirmation does not name the account: %v", out)
+	}
+
+	sub, _ := b.st.SubscriptionFor(b.acct.ID)
+	if !sub.Active() || !sub.Comped() {
+		t.Fatalf("free access did not open the gate: %+v", sub)
+	}
+
+	_, bill := b.call(t, "GET", "/api/billing")
+	if bill["subscribed"] != true || bill["comped"] != true {
+		t.Errorf("billing does not report free access: %v", bill)
+	}
+	// They have no Stripe customer, so offering to manage a subscription would
+	// send them to a page about nothing.
+	if bill["can_manage"] != false {
+		t.Error("a comped account was offered the billing portal")
+	}
+	// And they must never be sent to checkout.
+	if code, _ := b.call(t, "POST", "/api/billing/checkout"); code != http.StatusConflict {
+		t.Errorf("a comped account was sent to checkout: %d", code)
+	}
+
+	// Taking it back puts them on the normal price.
+	if code, _ := b.admin(t, "POST", "/admin/accounts/"+b.acct.ID+"/comp", `{"free":false}`); code != 200 {
+		t.Fatal("could not take free access back")
+	}
+	if sub, _ := b.st.SubscriptionFor(b.acct.ID); sub.Active() {
+		t.Error("the gate stayed open after free access was taken back")
+	}
+}
+
+// The button must never quietly stop charging somebody who is paying. That
+// belongs in Stripe, where the money is.
+func TestFreeAccessRefusesToTouchAPayingCustomer(t *testing.T) {
+	b := newBillingRig(t, true)
+	if err := b.st.SetSubscription(b.acct.ID, "active", "sub_real"); err != nil {
+		t.Fatal(err)
+	}
+	code, out := b.admin(t, "POST", "/admin/accounts/"+b.acct.ID+"/comp", `{"free":true}`)
+	if code != http.StatusConflict {
+		t.Fatalf("comping a paying customer = %d %v", code, out)
+	}
+	if sub, _ := b.st.SubscriptionFor(b.acct.ID); sub.Comped() {
+		t.Error("a paying customer was switched to free access")
 	}
 }

@@ -37,6 +37,7 @@ func (s *Server) feedbackRoutes() {
 	s.mux.HandleFunc("DELETE /admin/feedback/{id}", s.withAdmin(s.handleAdminDeleteFeedback))
 	s.mux.HandleFunc("POST /admin/accounts/{id}/temp-password", s.withAdmin(s.handleAdminTempPassword))
 	s.mux.HandleFunc("POST /admin/accounts/{id}/erase", s.withAdmin(s.handleAdminEraseAccount))
+	s.mux.HandleFunc("POST /admin/accounts/{id}/comp", s.withAdmin(s.handleAdminComp))
 }
 
 // withAdmin lets a request through only with the operator's token.
@@ -233,4 +234,63 @@ func capitalise(s string) string {
 		b[0] -= 'a' - 'A'
 	}
 	return string(b)
+}
+
+// handleAdminComp gives an account free access, or takes it back.
+//
+// Friends, partners, somebody owed an apology after a bad wipe night: every
+// business needs a way to say "this one is on us" that is not a fake payment.
+// Doing it as a distinct state rather than by writing "active" into the
+// database keeps it honest, because the account genuinely has no subscription:
+// the billing portal would have nothing to show it, and a stray Stripe event
+// has no business switching it off.
+func (s *Server) handleAdminComp(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var body struct {
+		Free bool `json:"free"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4*1024)).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "Couldn't read that.")
+		return
+	}
+	acct, err := s.st.AccountByID(id)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "No such account.")
+		return
+	}
+	sub, err := s.st.SubscriptionFor(id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Couldn't read that account's subscription.")
+		return
+	}
+	// Never touch a paying customer by accident: cancelling that belongs in
+	// Stripe, where the money is, not in a button here.
+	if body.Free && sub.Active() && !sub.Comped() {
+		writeError(w, http.StatusConflict,
+			"That account is a paying customer. Cancel in Stripe if you mean to stop charging them.")
+		return
+	}
+	if !body.Free && !sub.Comped() {
+		writeError(w, http.StatusConflict, "That account does not have free access.")
+		return
+	}
+
+	status := store.StatusComped
+	if !body.Free {
+		status = "none"
+	}
+	if err := s.st.SetSubscription(id, status, ""); err != nil {
+		s.log.Error("setting free access", "account", id, "err", err)
+		writeError(w, http.StatusInternalServerError, "Couldn't change that.")
+		return
+	}
+	s.log.Info("free access changed by hand", "account", id, "email", acct.Email, "free", body.Free)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"email": acct.Email,
+		"free":  body.Free,
+		"status": map[bool]string{
+			true:  acct.Email + " now has free access. Nothing to pay, no card needed.",
+			false: acct.Email + " is back to the normal price.",
+		}[body.Free],
+	})
 }

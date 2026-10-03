@@ -12,8 +12,9 @@ import (
 // the checkout flow and the webhook when they exist, or by the relay's
 // set-subscription command until then.
 type Subscription struct {
-	// Status is "none" or "active". Stripe adds nuance later (past_due and so
-	// on); anything that is not "active" simply means the gate is closed.
+	// Status is "none", "active" or "comped". Stripe adds nuance later
+	// (past_due and so on); anything that is not one of the open states simply
+	// means the gate is closed.
 	Status       string
 	SubID        string // Stripe's subscription id, once there is one
 	SubscribedAt time.Time
@@ -27,7 +28,17 @@ type Subscription struct {
 }
 
 // Active reports whether the gate is open for this account.
-func (s Subscription) Active() bool { return s.Status == "active" }
+func (s Subscription) Active() bool { return s.Status == "active" || s.Status == StatusComped }
+
+// StatusComped is free access given by hand: friends, partners, somebody owed
+// an apology. It is deliberately NOT "active", because an account that never
+// paid has no Stripe subscription behind it, and calling it active would mean
+// the billing portal offering to manage something that does not exist and the
+// webhooks free to switch it off.
+const StatusComped = "comped"
+
+// Comped reports whether this account was given free access rather than paying.
+func (s Subscription) Comped() bool { return s.Status == StatusComped }
 
 // SubscriptionFor reads an account's payment state.
 func (s *Store) SubscriptionFor(accountID string) (Subscription, error) {
@@ -51,11 +62,11 @@ func (s *Store) SubscriptionFor(accountID string) (Subscription, error) {
 // SetSubscription records a payment state change. status must be "active" or
 // "none".
 func (s *Store) SetSubscription(accountID, status, subID string) error {
-	if status != "active" && status != "none" {
-		return fmt.Errorf("subscription status must be active or none, not %q", status)
+	if status != "active" && status != "none" && status != StatusComped {
+		return fmt.Errorf("subscription status must be active, comped or none, not %q", status)
 	}
 	at := int64(0)
-	if status == "active" {
+	if status != "none" {
 		at = ms(s.now().UTC())
 	}
 	res, err := s.db.Exec(

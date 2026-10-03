@@ -24,6 +24,8 @@ export type Billing = {
   enabled: boolean
   subscribed: boolean
   paying: boolean
+  /** Free access given by hand, rather than a paid subscription. */
+  comped: boolean
   price_line: string
   /** The promo code this account last arrived with, if any. */
   source_code: string
