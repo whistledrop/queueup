@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { BETA, PLAN, costLine } from '@/lib/pricing'
+import { BETA, PLAN } from '@/lib/pricing'
 import s from './landing.module.css'
 
 // The landing page. Everything on it is a picture of the real app: the phone
@@ -22,9 +22,6 @@ export default function Landing() {
 
       <header className={s.hero}>
         <div>
-          <p className={s.heroBadge}>
-            <b>{BETA ? 'Free beta' : 'For Rust'}</b> Join a queue from your phone
-          </p>
           <h1>
             Load into Rust servers <em>from anywhere.</em>
           </h1>
@@ -36,7 +33,6 @@ export default function Landing() {
             <Link href="/login?mode=create" className={s.cta}>
               {BETA ? 'Get QueueUp free' : 'Get QueueUp'}
             </Link>
-            <span className={s.ctaNote}>{costLine()}</span>
           </div>
         </div>
         <div>
@@ -235,7 +231,10 @@ function LivePhone() {
           <div className={s.mockState}>In the queue</div>
           <div className={s.mockSub}>your PC is waiting to get in</div>
         </div>
-        <div className={s.mockCard}>
+        {/* The timeline is the nice-to-have half of the shot. On a short
+            screen it is the difference between the button being visible and
+            not, and a button below the fold costs more than a detail. */}
+        <div className={`${s.mockCard} ${s.whenTall}`}>
           <div className={s.mockLabel}>What happened</div>
           <ul className={s.mockTimeline}>
             <li>Launching Rust</li>

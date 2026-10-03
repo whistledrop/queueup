@@ -646,3 +646,78 @@
   .hero h1 { font-size: 38px; }
   .section h2 { font-size: 30px; }
 }
+
+/* ------------------------------------------------- the first screen fits
+
+   A landing page whose call to action sits below the fold is asking a
+   stranger to work for it. Everything above is sized so the badge, the
+   headline, the one line of copy, the button and the proof-shot of the real
+   app all land inside one screen, on a laptop and on a phone, with nothing to
+   scroll past before the thing you are meant to press. */
+
+.hero {
+  padding: 22px 0 34px;
+  gap: 22px;
+}
+
+.heroBadge {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.hero h1 {
+  margin-bottom: 14px;
+}
+
+.lede {
+  margin-bottom: 22px;
+}
+
+/* The phone is the proof, so it stays; it just stops being the reason the
+   button is off the screen. It shrinks with the viewport rather than being
+   one fixed size that happens to suit a big monitor. */
+.phone {
+  width: min(300px, 62vh);
+  padding: 12px 10px 16px;
+}
+
+@media (max-width: 560px) {
+  .hero { padding: 16px 0 28px; gap: 18px; }
+  .heroBadge { margin-bottom: 12px; }
+  .lede { margin-bottom: 18px; font-size: 17px; }
+  .phone { width: min(280px, 52vh); }
+}
+
+/* Shown only when the screen is tall enough to afford it. Short phones and
+   short laptop windows get the status card alone, which is the part that
+   actually explains the product, and keep the button on screen. */
+.whenTall {
+  display: none;
+}
+
+@media (min-height: 860px) {
+  .whenTall {
+    display: block;
+  }
+}
+
+/* The screen is sized by what is on it. A floor of 300px was fine when the
+   timeline was always there; with it hidden on short screens it just leaves a
+   black gap under the status card. */
+@media (max-height: 859px) {
+  .screen {
+    min-height: 0;
+  }
+  .phone {
+    width: min(260px, 46vh);
+  }
+}
+
+/* The smallest phones still in use. Everything gives up a few pixels so the
+   button stays above the fold rather than almost staying above it. */
+@media (max-height: 640px) {
+  .hero { padding: 12px 0 20px; gap: 14px; }
+  .lede { margin-bottom: 14px; font-size: 16px; }
+  .hero h1 { font-size: 32px; margin-bottom: 10px; }
+  .phone { width: min(240px, 40vh); }
+}
