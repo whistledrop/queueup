@@ -132,98 +132,69 @@ function Subscribe() {
       {note && <div className="error">{note}</div>}
 
       <div className={s.panel}>
-        <p className={s.headline}>Wipe day, two ways</p>
-
-        {/* Three beats each, the same three beats, so the difference is the
-            only thing that moves. Anything longer gets skimmed: this is read
-            on a phone, by somebody deciding in about four seconds. */}
-        <div className={s.compare}>
-          <div className={s.was_}>
-            <p className={s.compareLabel}>Without QueueUp</p>
-            <p className={s.compareBody}>
-              Home at eight.<br />
-              212 in the queue.<br />
-              Playing at half ten.
-            </p>
-          </div>
-          <div className={s.now_}>
-            <p className={s.compareLabel}>With QueueUp</p>
-            <p className={s.compareBody}>
-              Tap join at two.<br />
-              Walk in at eight.<br />
-              Already in.
-            </p>
-          </div>
+        <p className={s.kicker}>{discounted ? 'Your first month' : 'QueueUp'}</p>
+        <div className={s.priceRow}>
+          {discounted && <span className={s.was}>{money(full)}</span>}
+          <span className={s.price}>{money(nowPence)}</span>
         </div>
+        <p className={s.after}>
+          {discounted ? `then ${priceLine()}. Cancel anytime.` : 'a month. Cancel anytime.'}
+        </p>
 
-        <div className={s.priceBlock}>
-          <p className={s.kicker}>{discounted ? 'Your first month' : 'QueueUp'}</p>
-          <div className={s.priceRow}>
-            {discounted && <span className={s.was}>{money(full)}</span>}
-            <span className={s.price}>{money(nowPence)}</span>
-          </div>
-          <p className={s.after}>
-            {discounted ? `then ${priceLine()}. Cancel anytime.` : 'a month. Cancel anytime.'}
+        {applied && discounted && (
+          <p className={s.codeApplied}>
+            <Tick /> Code {applied} applied
           </p>
+        )}
 
-          {applied && discounted && (
-            <p className={s.codeApplied}>
-              <Tick /> Code {applied} applied
-            </p>
-          )}
-
-          <button className={s.cta} onClick={checkout} disabled={busy}>
-            {busy ? 'One moment' : `Subscribe for ${money(nowPence)}`}
-          </button>
-
-          <p className={s.trust}>
-            <Lock /> Secure payment by Stripe
-          </p>
-
-          {!applied && !codeOpen && (
-            <button className={s.codeToggle} onClick={() => setCodeOpen(true)}>
-              Have a code?
-            </button>
-          )}
-
-          {codeOpen && (
-            <form
-              className={s.codeRow}
-              onSubmit={(e) => {
-                e.preventDefault()
-                check(code)
-              }}
-            >
-              <input
-                value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
-                placeholder="CODE"
-                maxLength={64}
-                autoFocus
-                // The box may already hold a code that arrived in the link and
-                // failed. Typing over it should replace it, not append to it.
-                onFocus={(e) => e.currentTarget.select()}
-                autoCapitalize="characters"
-                autoCorrect="off"
-                spellCheck={false}
-                aria-label="Promo code"
-              />
-              <button type="submit" disabled={checking || !code.trim()}>
-                {checking ? '...' : 'Apply'}
-              </button>
-            </form>
-          )}
-          {codeBad && <p className={s.codeBad}>{codeBad}</p>}
-        </div>
-      </div>
-
-      <div className={s.included}>
-        <h3>What you get</h3>
         <ul className={s.features}>
           {PLAN.includes.map((line) => (
             <li key={line}>{line}</li>
           ))}
         </ul>
+
+        <button className={s.cta} onClick={checkout} disabled={busy}>
+          {busy ? 'One moment' : `Subscribe for ${money(nowPence)}`}
+        </button>
+
+        <p className={s.trust}>
+          <Lock /> Secure payment by Stripe
+        </p>
+
+        {!applied && !codeOpen && (
+          <button className={s.codeToggle} onClick={() => setCodeOpen(true)}>
+            Have a code?
+          </button>
+        )}
+
+        {codeOpen && (
+          <form
+            className={s.codeRow}
+            onSubmit={(e) => {
+              e.preventDefault()
+              check(code)
+            }}
+          >
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              placeholder="CODE"
+              maxLength={64}
+              autoFocus
+              // The box may already hold a code that arrived in the link and
+              // failed. Typing over it should replace it, not append to it.
+              onFocus={(e) => e.currentTarget.select()}
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
+              aria-label="Promo code"
+            />
+            <button type="submit" disabled={checking || !code.trim()}>
+              {checking ? '...' : 'Apply'}
+            </button>
+          </form>
+        )}
+        {codeBad && <p className={s.codeBad}>{codeBad}</p>}
       </div>
 
       <div className={s.next}>

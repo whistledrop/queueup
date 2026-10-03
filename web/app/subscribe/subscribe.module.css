@@ -1,97 +1,14 @@
 /* The paywall.
 
-   It opens on the gap rather than on the price. Somebody who has just watched
-   a video knows what wipe day feels like, and two short paragraphs putting
-   their evening next to the one they could have had do more work than any
-   feature list: the price only looks small once the thing it buys looks big.
+   One card holds the whole decision: the price, what it buys, and the button,
+   in that order, so the eye never leaves the thing it is weighing up. Before
+   this it was four identical grey cards in a column, which gave the promo code
+   box the same weight as the price and put the button out on its own in the
+   gap between two of them.
 
-   So the order is the gap, the price, the button, and then, for anybody still
-   scrolling, what they get and what happens after they pay. Most arrivals come
-   from a phone, nowhere near their gaming PC, and are being asked to pay
-   before they have seen the product work, which is why the refund promise and
-   the steps that follow are on the page rather than implied. */
-
-/* The two evenings, side by side. The second one is the product. */
-.compare {
-  margin: 18px 0 0;
-  text-align: left;
-}
-
-.was_ {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  padding: 15px 18px;
-}
-
-.now_ {
-  margin-top: 10px;
-  border: 1.5px solid var(--accent);
-  border-radius: var(--radius-lg);
-  padding: 15px 18px;
-  background: rgba(208, 90, 42, 0.045);
-}
-
-.compareLabel {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.now_ .compareLabel {
-  color: var(--accent);
-}
-
-/* Short lines earn more size. Three of them at 17px read as a rhythm; the
-   same words at 14px read as a paragraph somebody has to get through. */
-.compareBody {
-  margin: 8px 0 0;
-  font-size: 17px;
-  line-height: 1.45;
-  letter-spacing: -0.01em;
-  color: var(--text);
-}
-
-.headline {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 500;
-  letter-spacing: -0.03em;
-  line-height: 1.2;
-}
-
-.sub {
-  margin: 8px 0 0;
-  font-size: 14.5px;
-  line-height: 1.5;
-  color: var(--muted);
-}
-
-/* The price sits below the gap, where it has something to be small next to. */
-.priceBlock {
-  margin: 22px 0 0;
-  padding-top: 20px;
-  border-top: 1px solid var(--line);
-}
-
-.included {
-  margin: 20px 0 0;
-  padding: 20px 22px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-}
-
-.included h3 {
-  margin: 0 0 4px;
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
+   Below the card, for anybody still scrolling: what happens after they pay,
+   since they are buying something they have not seen work, and how plainly it
+   can be cancelled. */
 
 .panel {
   background: var(--card);
