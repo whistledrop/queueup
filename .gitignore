@@ -22,6 +22,9 @@ next-env.d.ts
 # Secrets: never commit these. Config comes from environment variables.
 .env
 .env.*
+# Written by hand when a secret is rotated, so it can be copied into a
+# password manager and deleted. It must never reach a commit.
+/admin-token.txt
 
 # Build artifacts
 /dist/
