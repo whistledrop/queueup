@@ -49,7 +49,7 @@ func TestJudgeLaunchWait(t *testing.T) {
 		{"unknown manifest, out of patience", unknown, true, verdictGiveUp},
 	}
 	for _, c := range cases {
-		if got := judgeLaunchWait(c.update, c.pastDeadline); got != c.want {
+		if got := judgeLaunchWait(c.update, true, c.pastDeadline); got != c.want {
 			t.Errorf("%s: verdict = %v, want %v", c.name, got, c.want)
 		}
 	}
@@ -65,7 +65,7 @@ func TestForceWipeSequenceStaysPatientUntilTheDownloadEnds(t *testing.T) {
 	// single check must extend patience, never give up.
 	for i := 0; i < 600; i++ {
 		u.BytesDownloaded += 7 << 20
-		if v := judgeLaunchWait(u, true); v != verdictExtendGrace {
+		if v := judgeLaunchWait(u, true, true); v != verdictExtendGrace {
 			t.Fatalf("gave up %d checks into a healthy download (verdict %v)", i, v)
 		}
 	}
@@ -73,7 +73,7 @@ func TestForceWipeSequenceStaysPatientUntilTheDownloadEnds(t *testing.T) {
 	// Download done, game installed, and Rust takes a normal minute to appear:
 	// keep waiting within the refreshed grace.
 	done := UpdateState{Known: true, Installed: true}
-	if v := judgeLaunchWait(done, false); v != verdictKeepWaiting {
+	if v := judgeLaunchWait(done, true, false); v != verdictKeepWaiting {
 		t.Fatalf("after the update finished, verdict = %v, want keep waiting", v)
 	}
 }
@@ -84,7 +84,7 @@ func TestForceWipeSequenceStaysPatientUntilTheDownloadEnds(t *testing.T) {
 // Anti-Cheat. Nobody is at the PC on wipe day to click Yes.
 func TestAGameThatNeverStartedIsNotReportedAsACrash(t *testing.T) {
 	idle := UpdateState{Known: true, Installed: true}
-	msg := launchFailureReason(idle, false)
+	msg := launchFailureReason(idle, false, true)
 	if msg == "" {
 		t.Fatal("a game that never started got the generic crash wording")
 	}
@@ -96,14 +96,14 @@ func TestAGameThatNeverStartedIsNotReportedAsACrash(t *testing.T) {
 
 	// It did start, then stopped: that IS a crash, and the ordinary wording is
 	// better than guessing at permission boxes.
-	if got := launchFailureReason(idle, true); got != "" {
+	if got := launchFailureReason(idle, true, true); got != "" {
 		t.Errorf("a real crash was given the never-started wording: %q", got)
 	}
 
 	// A wedged Steam explains itself, and that explanation wins.
 	stuck := UpdateState{Known: true, Updating: true, Paused: true,
 		BytesDownloaded: 1 << 30, BytesToDownload: 4 << 30}
-	if got := launchFailureReason(stuck, false); !strings.Contains(got, "paused") {
+	if got := launchFailureReason(stuck, false, true); !strings.Contains(got, "paused") {
 		t.Errorf("a paused download was not explained: %q", got)
 	}
 }
@@ -142,5 +142,49 @@ func TestAPendingUpdateThatNeverStartsGetsNudged(t *testing.T) {
 	// Nothing known about Steam: leave it alone.
 	if shouldNudgeLaunch(UpdateState{}, false, 0) {
 		t.Error("nudged with no idea what Steam was doing")
+	}
+}
+
+// The wipe-day cold start, and the reason Preflight stopped refusing.
+//
+// A Rust patch usually brings a Steam client update with it, and Steam
+// restarts itself to apply that. Add a PC that rebooted overnight and Steam
+// may not be running at all when the join fires. Opening the steam:// link is
+// what starts it, so refusing to open the link because Steam was not already
+// running meant failing at the one thing that would have worked.
+func TestSteamNotRunningIsNotAReasonToGiveUpEarly(t *testing.T) {
+	idle := UpdateState{Known: true, Updating: false}
+
+	// Steam is not up yet. Inside the deadline we keep waiting, exactly as we
+	// would if it were up: Steam coming and going mid-launch is the system
+	// working, not failing.
+	if got := judgeLaunchWait(idle, false, false); got != verdictKeepWaiting {
+		t.Errorf("gave up while Steam was still starting: %v", got)
+	}
+
+	// And a download that is moving still buys unlimited patience even while
+	// steam.exe is momentarily absent, which is what its own update looks like.
+	moving := UpdateState{Known: true, Updating: true, BytesDownloaded: 1 << 28, BytesToDownload: 4 << 30}
+	if got := judgeLaunchWait(moving, false, true); got != verdictExtendGrace {
+		t.Errorf("a moving download lost its patience because Steam blinked: %v", got)
+	}
+}
+
+// When it really does not arrive, the two failures send somebody to two
+// different places on the PC, so they are worded separately.
+func TestNoSteamAndNoRustAreDifferentProblems(t *testing.T) {
+	idle := UpdateState{Known: true, Updating: false}
+
+	never := launchFailureReason(idle, false, false)
+	if !strings.Contains(never, "Steam didn't start") || !strings.Contains(never, "sign in") {
+		t.Errorf("a Steam that never started is not explained: %q", never)
+	}
+
+	started := launchFailureReason(idle, false, true)
+	if strings.Contains(started, "Steam didn't start") {
+		t.Errorf("Steam was running, so this is the wrong complaint: %q", started)
+	}
+	if !strings.Contains(started, "Rust didn't start") {
+		t.Errorf("a Rust that never started is not explained: %q", started)
 	}
 }

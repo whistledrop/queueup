@@ -77,12 +77,17 @@ func shouldNudgeLaunch(u UpdateState, appeared bool, nudges int) bool {
 // Easy Anti-Cheat, which can happen when a patch ships a new one. Naming that
 // possibility is the difference between a player checking their PC and a
 // player shrugging.
-func launchFailureReason(update UpdateState, appeared bool) string {
+func launchFailureReason(update UpdateState, appeared, steamUp bool) string {
 	if update.NeedsPlayer() {
 		return update.Describe()
 	}
 	if appeared {
 		return "" // it ran and then stopped: the ordinary crash wording fits
+	}
+	if !steamUp {
+		return "Steam didn't start on your PC. Opening Rust normally starts it, so " +
+			"something stopped it: usually Steam is signed out and waiting at its " +
+			"login box. Open Steam on the PC, sign in, and leave it running."
 	}
 	return "Rust didn't start on your PC. Something there may be waiting for a click, " +
 		"such as a Windows permission box from Steam, or Steam may need attention."
@@ -95,7 +100,13 @@ func launchFailureReason(update UpdateState, appeared bool) string {
 // buys unlimited patience, an update that needs the player does not (waiting
 // cannot fix a paused Steam or a full disk), and only then does the ordinary
 // deadline apply.
-func judgeLaunchWait(update UpdateState, pastDeadline bool) launchVerdict {
+//
+// steamUp only changes what we SAY when we give up, never how long we wait.
+// Steam coming and going is normal during this: a Rust patch usually drags a
+// Steam client update with it, and Steam restarts itself to apply that, so
+// steam.exe disappearing mid-launch is the system working rather than
+// failing.
+func judgeLaunchWait(update UpdateState, steamUp, pastDeadline bool) launchVerdict {
 	if update.Known && update.Updating && !update.NeedsPlayer() {
 		return verdictExtendGrace
 	}
@@ -105,5 +116,9 @@ func judgeLaunchWait(update UpdateState, pastDeadline bool) launchVerdict {
 	if update.NeedsPlayer() {
 		return verdictGiveUpBlaming
 	}
+	// Out of patience with no Steam to blame it on. Said separately because
+	// "Steam never started" and "Steam started and Rust did not" send somebody
+	// to two different places on the PC.
+	_ = steamUp
 	return verdictGiveUp
 }

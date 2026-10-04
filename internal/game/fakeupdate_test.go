@@ -53,7 +53,7 @@ func TestEachPretendUpdateReadsLikeTheRealThing(t *testing.T) {
 			}
 			// Past the deadline is the interesting moment: the game has not
 			// appeared, and what happens next depends entirely on this state.
-			if got := judgeLaunchWait(u, true); got != c.verdict {
+			if got := judgeLaunchWait(u, true, true); got != c.verdict {
 				t.Errorf("verdict = %v, want %v", got, c.verdict)
 			}
 			// And it must reach callers through the ordinary entry point.
@@ -69,10 +69,10 @@ func TestEachPretendUpdateReadsLikeTheRealThing(t *testing.T) {
 func TestAMovingDownloadIsNeverGivenUpOn(t *testing.T) {
 	t.Setenv(FakeUpdateEnv, "moving")
 	u, _ := FakeUpdate()
-	if got := judgeLaunchWait(u, false); got != verdictExtendGrace {
+	if got := judgeLaunchWait(u, true, false); got != verdictExtendGrace {
 		t.Errorf("verdict before the deadline = %v, want extend grace", got)
 	}
-	if got := judgeLaunchWait(u, true); got != verdictExtendGrace {
+	if got := judgeLaunchWait(u, true, true); got != verdictExtendGrace {
 		t.Errorf("verdict past the deadline = %v, want extend grace: a download that is "+
 			"working must never be given up on, however long it takes", got)
 	}

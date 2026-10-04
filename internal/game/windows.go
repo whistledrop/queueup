@@ -3,7 +3,6 @@
 package game
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -78,17 +77,21 @@ func (w *WindowsLauncher) LogPath() string {
 // because it is absent is refusing to do the very thing that would fix it.
 // That check used to live here and it deadlocked a freshly installed PC.
 func (w *WindowsLauncher) Preflight() error {
-	if processRunning(steamProcess) {
-		return nil
-	}
-	// Steam restarts itself when it updates, and force wipe day is when it is
-	// most likely to. Give it a moment to come back rather than telling somebody
-	// in another country to go and start a Steam that is already starting.
-	if awaitProcess(func() bool { return processRunning(steamProcess) },
-		SteamRestartGrace, time.Now, time.Sleep) {
-		return nil
-	}
-	return errors.New("Steam isn't running on your PC. Start Steam and sign in, then try again.")
+	// Steam not running is NOT a blocker, and refusing on it was wrong.
+	//
+	// Opening a steam:// link is how a person starts Rust from a web page, and
+	// Windows starts Steam to handle it, signing in on its own for anybody who
+	// ticked "remember me", which is nearly everybody. Refusing here meant
+	// never handing the link over, so we failed at the one thing that would
+	// have worked.
+	//
+	// It matters most on the day this product exists for. A Rust patch usually
+	// brings a Steam client update with it, Steam restarts itself to apply
+	// that, and a PC that rebooted overnight may not have Steam up at all. In
+	// every one of those cases the right move is to open the link and wait,
+	// which is what the launch watcher does, patiently, and with better words
+	// if it really never arrives.
+	return nil
 }
 
 // LogFolderExists reports whether Rust has ever run on this machine. Used only
@@ -158,6 +161,7 @@ func (w *WindowsLauncher) watchProcess(ch chan Exit, stop chan struct{}) {
 	const startupGrace = 3 * time.Minute
 	deadline := time.Now().Add(startupGrace)
 	appeared := false
+	steamSeen := false
 	nudges := 0
 
 	for {
@@ -191,6 +195,16 @@ func (w *WindowsLauncher) watchProcess(ch chan Exit, stop chan struct{}) {
 		update := w.freshUpdate()
 		w.setUpdate(update)
 
+		// Steam arriving is progress worth paying for. It may have been off,
+		// or restarting to apply its own update, and either way the clock on
+		// the game appearing should start from when Steam was actually ready
+		// rather than from when we asked.
+		steamUp := processRunning(steamProcess)
+		if steamUp && !steamSeen {
+			steamSeen = true
+			deadline = time.Now().Add(startupGrace)
+		}
+
 		// Steam knows an update is needed but has not started it. Ask it to
 		// launch the game again: that is what makes Steam deal with the update.
 		if shouldNudgeLaunch(update, appeared, nudges) {
@@ -203,7 +217,7 @@ func (w *WindowsLauncher) watchProcess(ch chan Exit, stop chan struct{}) {
 			}
 		}
 
-		switch judgeLaunchWait(update, time.Now().After(deadline)) {
+		switch judgeLaunchWait(update, steamUp, time.Now().After(deadline)) {
 		case verdictExtendGrace:
 			deadline = time.Now().Add(startupGrace)
 		case verdictKeepWaiting:
@@ -211,7 +225,7 @@ func (w *WindowsLauncher) watchProcess(ch chan Exit, stop chan struct{}) {
 		case verdictGiveUp, verdictGiveUpBlaming:
 			// A wedged download is worth explaining. Waiting longer will not fix
 			// a paused Steam or a full disk, and the player needs to know that.
-			ex := Exit{Code: -1, Reason: launchFailureReason(update, appeared)}
+			ex := Exit{Code: -1, Reason: launchFailureReason(update, appeared, steamSeen)}
 			select {
 			case ch <- ex:
 			default:
