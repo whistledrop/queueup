@@ -149,8 +149,14 @@ func (c *Client) CreatePromotionCode(ctx context.Context, couponID, code string)
 	if couponID == "" || code == "" {
 		return "", errors.New("a coupon and a code are both needed")
 	}
+	// Stripe restructured this: a promotion code used to take a coupon id
+	// directly, and on API version 2026-08-26 it takes a promotion object with
+	// a type on it. The old shape is not deprecated, it is rejected outright
+	// with "unknown parameter: coupon", which is how this was found: every
+	// referral code minted since the feature shipped had silently failed.
 	f := url.Values{}
-	f.Set("coupon", couponID)
+	f.Set("promotion[type]", "coupon")
+	f.Set("promotion[coupon]", couponID)
 	f.Set("code", code)
 	var obj struct {
 		ID   string `json:"id"`
