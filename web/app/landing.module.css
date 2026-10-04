@@ -770,7 +770,7 @@
   background: #0a0b0d;
   border: 1px solid #343a42;
   border-radius: calc(var(--shot-h) * 0.1);
-  padding: 5px;
+  padding: calc(var(--shot-h) * 0.025);
   box-shadow: 0 14px 30px rgba(11, 14, 18, 0.26);
   display: flex;
   flex-direction: column;
@@ -790,12 +790,15 @@
   z-index: 2;
 }
 
+/* The screen's side padding was 7px on a phone 86px wide, and 7px again on
+   the same phone at 69px: a quarter of the picture spent on nothing, and the
+   quarter the words needed. It is small and proportional now. */
 .iphoneScreen {
   flex: 1;
   min-height: 0;
   background: #0f1113;
   border-radius: calc(var(--shot-h) * 0.072);
-  padding: calc(var(--shot-h) * 0.1) 7px 8px;
+  padding: calc(var(--shot-h) * 0.1) calc(var(--shot-h) * 0.016) 8px;
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -811,15 +814,24 @@
   margin: 5px auto 1px;
 }
 
+/* Every line on the phone is sized from the phone, so the two cannot drift
+   apart. They had: a mobile size was written for the server name, the sub-line
+   and the button, and the state line was forgotten, so it stayed at its full
+   size on a screen two-thirds as wide. "Connecting" is one word with nothing
+   to wrap at, and it ran out over the bezel.
+
+   The ratios are set so the longest unbreakable word still fits at the
+   smallest size the phone is ever drawn, which is the only constraint that
+   actually matters here. */
 .shotServer {
-  font-size: 10px;
+  font-size: calc(var(--shot-h) * 0.054);
   font-weight: 500;
   color: #eef1f4;
   line-height: 1.25;
 }
 
 .shotPop {
-  font-size: 9px;
+  font-size: calc(var(--shot-h) * 0.048);
   color: #8b9199;
 }
 
@@ -831,7 +843,7 @@
   color: #fff;
   border-radius: 999px;
   padding: 6px 0;
-  font-size: 11px;
+  font-size: calc(var(--shot-h) * 0.059);
   font-weight: 500;
 }
 
@@ -901,9 +913,7 @@
 @media (max-width: 420px) {
   .shot { --shot-h: 150px; --stand-h: 24px; gap: 6px; }
   .shotArrow { width: 20px; }
-  .shotServer { font-size: 8.5px; }
-  .shotPop { font-size: 7.5px; }
-  .shotJoin { font-size: 9.5px; padding: 5px 0; margin-top: 4px; }
+  .shotJoin { padding: 5px 0; margin-top: 4px; }
   .shot .pcBody { font-size: 8px; padding: 6px 8px; line-height: 1.85; }
   .shot .pcTitlebar { font-size: 7px; padding: 4px 6px; }
   .shotLabel { font-size: 9px; letter-spacing: 0.04em; }
@@ -1180,7 +1190,7 @@
 
 /* The phone, mirroring it. */
 .shotState {
-  font-size: 12px;
+  font-size: calc(var(--shot-h) * 0.060);
   font-weight: 500;
   color: #eef1f4;
   line-height: 1.25;
