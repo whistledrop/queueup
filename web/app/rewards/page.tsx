@@ -48,7 +48,7 @@ export default function RewardsPage() {
   })
 
   return (
-    <div className="shell">
+    <div className="shell narrow">
       <Nav />
 
       <div className="card">

@@ -722,3 +722,48 @@ header.top {
   background: var(--gold);
   border: 1.5px solid var(--card);
 }
+
+/* ------------------------------------------------- the app on a big screen
+
+   The app was one 560px column whatever it was shown on, which on a monitor
+   reads as a phone app somebody stretched a browser around. The phone layout
+   is right for a phone and stays exactly as it is; above 900px the column
+   widens and the cards sit side by side, which is what all that empty space
+   on either side was for.
+
+   Cards keep their own order and nothing moves between breakpoints except how
+   many fit on a row. */
+@media (min-width: 900px) {
+  .shell {
+    max-width: 1020px;
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+
+  /* Columns rather than a grid, because grid rows line up and these cards
+     are wildly different heights: one tall card would leave a hole beside it
+     the size of itself. Columns pack, so a short card sits under a short one
+     and nothing waits for its neighbour. */
+  .cols {
+    columns: 2;
+    column-gap: 16px;
+  }
+
+  .cols > * {
+    break-inside: avoid;
+    margin-bottom: 14px;
+  }
+
+  /* Things about the whole page rather than one part of it: a notice, a
+     banner, the thing happening right now. */
+  .cols > .wide {
+    column-span: all;
+  }
+}
+
+/* A page whose job is one decision or one form stays narrow at every size.
+   Width is not a reward for having a big screen; a sign-up form stretched to
+   a thousand pixels is harder to fill in, not easier. */
+.shell.narrow {
+  max-width: 560px;
+}

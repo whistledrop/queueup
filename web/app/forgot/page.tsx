@@ -39,7 +39,7 @@ export default function ForgotPage() {
   }
 
   return (
-    <div className="shell">
+    <div className="shell narrow">
       <header className="top">
         <Link href="/" className="brand">Queue<span>Up</span></Link>
         <Link href="/login" className="btn quiet">Sign in</Link>

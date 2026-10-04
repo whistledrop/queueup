@@ -48,7 +48,7 @@ export default function AskPage() {
   }
 
   return (
-    <div className="shell">
+    <div className="shell narrow">
       <Nav />
 
       {error && <div className="error">{error}</div>}

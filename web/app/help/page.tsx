@@ -25,7 +25,7 @@ function Q({ q, children }: { q: string; children: React.ReactNode }) {
 
 export default function HelpPage() {
   return (
-    <div className="shell">
+    <div className="shell narrow">
       <header className="top">
         <Link href="/" className="brand">Queue<span>Up</span></Link>
         <Link href="/" className="btn quiet">Back</Link>

@@ -11,7 +11,7 @@ export const metadata = {
 
 export default function TermsPage() {
   return (
-    <div className="shell">
+    <div className="shell narrow">
       <header className="top">
         <Link href="/" className="brand">Queue<span>Up</span></Link>
         <Link href="/" className="btn quiet">Back</Link>

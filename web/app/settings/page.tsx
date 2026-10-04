@@ -78,7 +78,9 @@ export default function SettingsPage() {
       {error && <div className="error">{error}</div>}
       {done && <div className="notice">{done}</div>}
 
-      <div className="card">
+      <div className="cols">
+
+      <div className="card wide">
         <h2>Account</h2>
         <div className="row">
           <div style={{ minWidth: 0 }}>
@@ -159,6 +161,8 @@ export default function SettingsPage() {
         onError={setError}
         onChanged={load}
       />
+
+      </div>
 
       <Footer />
     </div>

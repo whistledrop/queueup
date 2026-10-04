@@ -45,7 +45,7 @@ function ResetForm() {
   }
 
   return (
-    <div className="shell">
+    <div className="shell narrow">
       <header className="top">
         <Link href="/" className="brand">Queue<span>Up</span></Link>
       </header>

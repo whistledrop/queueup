@@ -76,7 +76,7 @@ export default function LiveStatus({ jobId }: { jobId: string }) {
       : ''
 
   return (
-    <div className="shell">
+    <div className="shell narrow">
       <Nav />
 
       {error && <div className="error">{error}</div>}

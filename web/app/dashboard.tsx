@@ -159,8 +159,10 @@ export default function Dashboard({ email }: { email: string }) {
 
       {error && <div className="error">{error}</div>}
 
+      <div className="cols">
+
       {active && (
-        <Link href={`/jobs/${active.id}`} className="card" style={{ display: 'block', textDecoration: 'none' }}>
+        <Link href={`/jobs/${active.id}`} className="card wide" style={{ display: 'block', textDecoration: 'none' }}>
           <h2>Happening now</h2>
           <div className="row">
             <div>
@@ -172,14 +174,14 @@ export default function Dashboard({ email }: { email: string }) {
       )}
 
       {justPaid && (
-        <div className="notice">
+        <div className="notice wide">
           <b>You&apos;re subscribed. Thank you.</b> Joining is unlocked. Your
           receipt is on its way from Stripe.
         </div>
       )}
 
       {BETA && !justPaid && (
-        <div className="notice">
+        <div className="notice wide">
           <b>QueueUp is a free beta.</b> Tell us how your joins go on the{' '}
           <Link href="/feedback">feedback page</Link>. If something breaks on
           the PC, right-click the QueueUp icon and choose{' '}
@@ -389,6 +391,8 @@ export default function Dashboard({ email }: { email: string }) {
           ))}
         </div>
       )}
+
+      </div>
 
       <p className="muted small" style={{ textAlign: 'center' }}>
         Signed in as {email}. <Link href="/settings">Settings</Link>

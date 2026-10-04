@@ -116,7 +116,7 @@ function Subscribe() {
   const money = (pence: number) => `${PLAN.symbol}${(pence / 100).toFixed(2)}`
 
   return (
-    <div className="shell">
+    <div className="shell narrow">
       <header className="top">
         <Link href="/" className="brand">Queue<span>Up</span></Link>
         <Link href="/settings" className="tab">Sign out</Link>

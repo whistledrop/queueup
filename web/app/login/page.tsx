@@ -59,7 +59,7 @@ function LoginForm() {
   }
 
   return (
-    <div className="shell">
+    <div className="shell narrow">
       <header className="top">
         {/* The way back out. Somebody who clicked through from a video and
             wants another look at what this actually is should not have to
