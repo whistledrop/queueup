@@ -23,11 +23,51 @@ read -rs QUEUEUP_STRIPE_SECRET_KEY
 export QUEUEUP_STRIPE_SECRET_KEY
 echo
 
+# rk_live_ is a restricted key, which Stripe's newer dashboard creates by
+# default when you ask for a secret key. It works exactly as well as sk_live_
+# provided the permissions it was given cover what we do; if one is missing it
+# fails later, at a checkout, which is why the step below checks before
+# anything is switched on.
 case "$QUEUEUP_STRIPE_SECRET_KEY" in
-  sk_live_*) ;;
-  sk_test_*) echo "That is a TEST key. This script is for going live."; exit 1 ;;
-  *)         echo "That does not look like a Stripe secret key."; exit 1 ;;
+  sk_live_*|rk_live_*) ;;
+  sk_test_*|rk_test_*) echo "That is a TEST key. This script is for going live."; exit 1 ;;
+  *)                   echo "That does not look like a Stripe key."; exit 1 ;;
 esac
+
+echo "==> Checking the key can do everything QueueUp needs"
+probe() {
+  code=$(curl -s -o /tmp/qu-probe.json -w "%{http_code}" -u "$QUEUEUP_STRIPE_SECRET_KEY:" "$@")
+  if [ "$code" = "403" ]; then
+    echo "    MISSING PERMISSION: $(python3 -c "import json;print(json.load(open('/tmp/qu-probe.json'))['error']['message'])" 2>/dev/null)"
+    return 1
+  fi
+  return 0
+}
+missing=0
+probe https://api.stripe.com/v1/products?limit=1          || missing=1
+probe https://api.stripe.com/v1/prices?limit=1            || missing=1
+probe https://api.stripe.com/v1/coupons?limit=1           || missing=1
+probe https://api.stripe.com/v1/promotion_codes?limit=1   || missing=1
+probe https://api.stripe.com/v1/subscriptions?limit=1     || missing=1
+probe https://api.stripe.com/v1/customers?limit=1         || missing=1
+probe https://api.stripe.com/v1/webhook_endpoints?limit=1 || missing=1
+rm -f /tmp/qu-probe.json
+if [ "$missing" = "1" ]; then
+  cat <<'NEEDS'
+
+That key cannot do everything QueueUp needs, and a key that is short a
+permission does not fail now, it fails later at somebody's checkout.
+
+In Stripe: Developers, API keys, click the key, and give it full access, or
+Write on Products, Prices, Coupons, Promotion codes, Checkout Sessions,
+Subscriptions, Customers, Webhook Endpoints and the Customer portal.
+
+Nothing has been changed. Run this again when it is sorted.
+NEEDS
+  exit 1
+fi
+echo "    the key can do everything"
+
 
 echo "==> Creating the product, price, discounts and webhook in Stripe"
 out="$(go run ./cmd/relay stripe-setup)"
