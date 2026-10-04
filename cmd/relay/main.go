@@ -371,6 +371,7 @@ func stripeSetup() error {
 	fmt.Printf("\nDone. Store these on the relay:\n\n")
 	fmt.Printf("  QUEUEUP_STRIPE_PRICE_ID=%s\n", made.PriceID)
 	fmt.Printf("  QUEUEUP_STRIPE_INTRO_COUPON_ID=%s\n", made.IntroCouponID)
+	fmt.Printf("  QUEUEUP_STRIPE_REFERRAL_COUPON_ID=%s\n", made.ReferralCouponID)
 	fmt.Printf("  QUEUEUP_STRIPE_WEBHOOK_SECRET=%s\n", made.WebhookSecret)
 	fmt.Printf("\n(product %s, manage page %s)\n", made.ProductID, made.PortalConfig)
 	return nil
