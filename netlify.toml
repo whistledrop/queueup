@@ -15,5 +15,15 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-# RELAY_URL is set in the Netlify dashboard (Site configuration, Environment
-# variables), not here, so this file carries nothing environment-specific.
+# Analytics. Both of these reach the browser, which is the point: PostHog runs
+# in the page. A phc_ project key is public by design — it ships inside the
+# JavaScript every visitor downloads, so writing it here reveals nothing that
+# opening the site would not. It is a write-only key: it can send events to
+# this project and cannot read anything back.
+#
+# The secrets stay out. RELAY_URL is set in the Netlify dashboard (Site
+# configuration, Environment variables), and the Stripe and admin keys live on
+# Fly as secrets. Nothing in this file is worth stealing.
+[build.environment]
+  NEXT_PUBLIC_POSTHOG_KEY  = "phc_uiyViY3BWd4LjV6eiwi5fKtgDsmrJZok4C7Ec4QLtcAm"
+  NEXT_PUBLIC_POSTHOG_HOST = "https://eu.i.posthog.com"
