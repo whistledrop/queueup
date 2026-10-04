@@ -16,10 +16,11 @@ export default function Landing() {
           Queue<span>Up</span>
           {BETA && <span className="beta">beta</span>}
         </span>
-        <span style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <Link href="/help" className={`${s.signin} ${s.navHide}`}>Help</Link>
-          <Link href="/login" className={s.signin}>Sign in</Link>
-        </span>
+        {/* Only Sign in. Help belonged to somebody already using QueueUp and
+            stuck; on the front door it offered a stranger a manual for a thing
+            they have not bought, and took the eye off the one thing this page
+            is for. It is still in the app, where being stuck happens. */}
+        <Link href="/login" className={s.signin}>Sign in</Link>
       </nav>
 
       <header className={s.hero}>

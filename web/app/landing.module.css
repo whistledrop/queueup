@@ -527,10 +527,9 @@
 }
 
 /* The top bar has to hold the orange button on a 375px phone, which is where
-   nearly every visitor arrives from a video. Help steps aside first. */
+   nearly every visitor arrives from a video. */
 @media (max-width: 560px) {
   .nav { padding: 16px 0; }
-  .navHide { display: none; }
   .signin { padding: 8px 12px; font-size: 14px; }
 }
 
