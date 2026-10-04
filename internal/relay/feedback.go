@@ -1,9 +1,11 @@
 package relay
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
+	"queueup/internal/stripe"
 	"strings"
 	"time"
 
@@ -38,6 +40,7 @@ func (s *Server) feedbackRoutes() {
 	s.mux.HandleFunc("POST /admin/accounts/{id}/temp-password", s.withAdmin(s.handleAdminTempPassword))
 	s.mux.HandleFunc("POST /admin/accounts/{id}/erase", s.withAdmin(s.handleAdminEraseAccount))
 	s.mux.HandleFunc("POST /admin/accounts/{id}/comp", s.withAdmin(s.handleAdminComp))
+	s.mux.HandleFunc("POST /admin/accounts/{id}/clear-subscription", s.withAdmin(s.handleAdminClearSubscription))
 }
 
 // withAdmin lets a request through only with the operator's token.
@@ -292,5 +295,67 @@ func (s *Server) handleAdminComp(w http.ResponseWriter, r *http.Request) {
 			true:  acct.Email + " now has free access. Nothing to pay, no card needed.",
 			false: acct.Email + " is back to the normal price.",
 		}[body.Free],
+	})
+}
+
+// handleAdminClearSubscription corrects an account that our database calls
+// paying when Stripe does not.
+//
+// It exists because of the move from test money to real money. A subscription
+// made in test mode leaves a row here pointing at an id the live Stripe has
+// never heard of, so no webhook will ever arrive to correct it and the account
+// stays "active" forever: free access by accident, and a paying count that
+// starts at three when it should start at nought.
+//
+// Deliberately separate from the free-access button, which refuses to touch a
+// paying customer and should keep refusing. This is the other thing: not "stop
+// charging this person" but "we were never charging them". It takes the email
+// typed out, because the two are one click apart and only one of them is
+// recoverable.
+func (s *Server) handleAdminClearSubscription(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var body struct {
+		ConfirmEmail string `json:"confirm_email"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4*1024)).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "Couldn't read that.")
+		return
+	}
+	acct, err := s.st.AccountByID(id)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "No such account.")
+		return
+	}
+	if !strings.EqualFold(strings.TrimSpace(body.ConfirmEmail), acct.Email) {
+		writeError(w, http.StatusBadRequest, "Type the account's email address to confirm.")
+		return
+	}
+
+	sub, err := s.st.SubscriptionFor(id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Couldn't read that account's subscription.")
+		return
+	}
+	// If Stripe does know this subscription, this is the wrong tool: cancelling
+	// a real one belongs in Stripe, where the money is.
+	if sub.SubID != "" && s.stripeReady() {
+		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+		live, err := s.cfg.Stripe.GetSubscription(ctx, sub.SubID)
+		cancel()
+		if err == nil && stripe.GrantsAccess(live.Status) {
+			writeError(w, http.StatusConflict,
+				"Stripe says that subscription is live, so this is not a stale record. Cancel it in Stripe instead.")
+			return
+		}
+	}
+
+	if err := s.st.SetSubscription(id, "none", ""); err != nil {
+		s.log.Error("clearing a stale subscription", "account", id, "err", err)
+		writeError(w, http.StatusInternalServerError, "Couldn't change that.")
+		return
+	}
+	s.log.Info("stale subscription cleared", "account", id, "email", acct.Email)
+	writeJSON(w, http.StatusOK, map[string]string{
+		"status": acct.Email + " no longer counts as paying. Nothing was charged or refunded.",
 	})
 }

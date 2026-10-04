@@ -523,3 +523,56 @@ func TestFreeAccessRefusesToTouchAPayingCustomer(t *testing.T) {
 		t.Error("a paying customer was switched to free access")
 	}
 }
+
+// Moving from test money to real money leaves rows here pointing at
+// subscriptions the live Stripe has never heard of. No webhook will ever
+// arrive to correct them, so they stay "active" forever: free access by
+// accident, and a paying count that starts wrong.
+func TestAStaleSubscriptionCanBeCleared(t *testing.T) {
+	b := newBillingRig(t, true)
+	if err := b.st.SetSubscription(b.acct.ID, "active", "sub_from_test_mode"); err != nil {
+		t.Fatal(err)
+	}
+
+	// The email has to be typed out: this and the free-access button are one
+	// click apart and only one of them is recoverable.
+	if code, _ := b.admin(t, "POST", "/admin/accounts/"+b.acct.ID+"/clear-subscription",
+		`{"confirm_email":"wrong@example.com"}`); code != http.StatusBadRequest {
+		t.Error("cleared without the email being confirmed")
+	}
+	if sub, _ := b.st.SubscriptionFor(b.acct.ID); !sub.Active() {
+		t.Fatal("a refused clear changed something anyway")
+	}
+
+	code, out := b.admin(t, "POST", "/admin/accounts/"+b.acct.ID+"/clear-subscription",
+		`{"confirm_email":"`+b.acct.Email+`"}`)
+	if code != http.StatusOK {
+		t.Fatalf("clear = %d %v", code, out)
+	}
+	if sub, _ := b.st.SubscriptionFor(b.acct.ID); sub.Active() {
+		t.Error("the account still counts as paying")
+	}
+	// The money story must stay honest: they did once pay, in test mode, and
+	// first_paid_at is deliberately never cleared.
+	if !strings.Contains(fmt.Sprint(out["status"]), "Nothing was charged or refunded") {
+		t.Errorf("the confirmation does not say what did and did not happen: %v", out)
+	}
+}
+
+// And it refuses to be used on a subscription Stripe actually knows about,
+// because cancelling a real one belongs in Stripe, where the money is.
+func TestClearingRefusesALiveSubscription(t *testing.T) {
+	b := newBillingRig(t, true)
+	b.stripe.set(stripe.Subscription{ID: "sub_real", Status: "active", Customer: "cus_1"})
+	if err := b.st.SetSubscription(b.acct.ID, "active", "sub_real"); err != nil {
+		t.Fatal(err)
+	}
+	code, out := b.admin(t, "POST", "/admin/accounts/"+b.acct.ID+"/clear-subscription",
+		`{"confirm_email":"`+b.acct.Email+`"}`)
+	if code != http.StatusConflict {
+		t.Fatalf("clearing a live subscription = %d %v", code, out)
+	}
+	if sub, _ := b.st.SubscriptionFor(b.acct.ID); !sub.Active() {
+		t.Error("a live paying customer was cleared")
+	}
+}
