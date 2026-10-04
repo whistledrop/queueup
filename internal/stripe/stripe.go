@@ -198,21 +198,33 @@ type Subscription struct {
 	Status   string            `json:"status"`
 	Customer string            `json:"customer"`
 	Metadata map[string]string `json:"metadata"`
-	// Discount is whatever discount is sitting on the subscription right now.
+	// Discounts is whatever discount is sitting on the subscription right now.
 	// A once-only coupon disappears from here as soon as the invoice it paid
 	// for is settled, which is how a banked referral month knows its turn has
 	// come round.
-	Discount *struct {
-		Coupon struct {
-			ID string `json:"id"`
-		} `json:"coupon"`
-	} `json:"discount"`
+	//
+	// Stripe turned the single "discount" into a "discounts" list. Only the
+	// presence of one is ever asked about, so each is kept raw: that holds
+	// whether Stripe sends discount ids or whole discount objects.
+	Discounts []json.RawMessage `json:"discounts"`
+	// Discount is the same thing, before the field became a list.
+	Discount json.RawMessage `json:"discount"`
 }
 
 // HasDiscount reports whether a discount is already waiting on this
 // subscription. Stripe applies one at a time, so a second referral month has
 // to wait for the first to be spent.
-func (s Subscription) HasDiscount() bool { return s.Discount != nil }
+//
+// Getting this wrong is not harmless: it is the only thing standing between a
+// banked month and overwriting the month that is already there, which would
+// spend two credits and give one cheap month.
+func (s Subscription) HasDiscount() bool {
+	if len(s.Discounts) > 0 {
+		return true
+	}
+	d := strings.TrimSpace(string(s.Discount))
+	return d != "" && d != "null"
+}
 
 // GetSubscription reads a subscription as Stripe has it now. Webhooks can
 // arrive late and out of order; asking for the current state instead of
@@ -342,11 +354,64 @@ type PromotionCode struct {
 // ErrNoSuchCode means the code does not exist, has expired, or has been used up.
 var ErrNoSuchCode = errors.New("that code is not valid")
 
+// couponTerms is the discount itself: what comes off, and for how long. A
+// promotion code is only a name that points at one of these.
+type couponTerms struct {
+	ID         string  `json:"id"`
+	PercentOff float64 `json:"percent_off"`
+	AmountOff  int     `json:"amount_off"`
+	Duration   string  `json:"duration"`
+	Valid      bool    `json:"valid"`
+}
+
+// couponFrom reads a field Stripe sends either as a coupon id or, when it has
+// been expanded, as the whole coupon. It reports which arrived, so the caller
+// can go and fetch the coupon when all it got was a name.
+func couponFrom(raw json.RawMessage) (terms couponTerms, id string, expanded bool) {
+	s := strings.TrimSpace(string(raw))
+	if s == "" || s == "null" {
+		return couponTerms{}, "", false
+	}
+	if s[0] == '"' {
+		var only string
+		if err := json.Unmarshal(raw, &only); err != nil {
+			return couponTerms{}, "", false
+		}
+		return couponTerms{}, only, false
+	}
+	if err := json.Unmarshal(raw, &terms); err != nil {
+		return couponTerms{}, "", false
+	}
+	return terms, terms.ID, true
+}
+
+// coupon reads one coupon, which is where the actual money off lives.
+func (c *Client) coupon(ctx context.Context, id string) (couponTerms, error) {
+	if id == "" {
+		return couponTerms{}, ErrNoSuchCode
+	}
+	var out couponTerms
+	if err := c.call(ctx, http.MethodGet, "/v1/coupons/"+url.PathEscape(id), nil, &out); err != nil {
+		return couponTerms{}, err
+	}
+	return out, nil
+}
+
 // LookupPromotionCode resolves a typed code to the discount behind it.
 //
 // Codes are how every channel is told apart, so this runs on our side rather
 // than letting Stripe's checkout page collect them: we need to know which code
 // was used even when the discount itself is zero.
+//
+// The coupon is fetched separately rather than expanded in the list call. A
+// promotion code reports its coupon as an id, and WHERE it reports it moved in
+// API version 2026-08-26: from a top-level coupon field to promotion.coupon.
+// Asking for an expansion of a field that does not exist on an account's
+// pinned version is a 400, whereas reading both shapes and then fetching by id
+// works on either. This is the same restructuring that silently broke minting
+// codes, found later and from the other end: every code looked invalid,
+// because the coupon was being read from a field that is no longer there, so a
+// perfectly good code failed the validity check that followed.
 func (c *Client) LookupPromotionCode(ctx context.Context, code string, fullPricePence int) (PromotionCode, error) {
 	code = strings.ToUpper(strings.TrimSpace(code))
 	if code == "" {
@@ -358,50 +423,74 @@ func (c *Client) LookupPromotionCode(ctx context.Context, code string, fullPrice
 	f.Set("limit", "1")
 	var out struct {
 		Data []struct {
-			ID     string `json:"id"`
-			Code   string `json:"code"`
-			Active bool   `json:"active"`
-			Coupon struct {
-				PercentOff float64 `json:"percent_off"`
-				AmountOff  int     `json:"amount_off"`
-				Duration   string  `json:"duration"`
-				Valid      bool    `json:"valid"`
-			} `json:"coupon"`
+			ID        string          `json:"id"`
+			Code      string          `json:"code"`
+			Active    bool            `json:"active"`
+			Coupon    json.RawMessage `json:"coupon"` // before 2026-08-26
+			Promotion struct {
+				Type   string          `json:"type"`
+				Coupon json.RawMessage `json:"coupon"`
+			} `json:"promotion"`
 		} `json:"data"`
 	}
 	if err := c.call(ctx, http.MethodGet, "/v1/promotion_codes", f, &out); err != nil {
 		return PromotionCode{}, err
 	}
-	if len(out.Data) == 0 || !out.Data[0].Active || !out.Data[0].Coupon.Valid {
+	if len(out.Data) == 0 || !out.Data[0].Active {
 		return PromotionCode{}, ErrNoSuchCode
 	}
 	d := out.Data[0]
 
+	terms, couponID, expanded := couponFrom(d.Promotion.Coupon)
+	if !expanded && couponID == "" {
+		terms, couponID, expanded = couponFrom(d.Coupon)
+	}
+	if !expanded {
+		if couponID == "" {
+			return PromotionCode{}, ErrNoSuchCode
+		}
+		fetched, err := c.coupon(ctx, couponID)
+		if err != nil {
+			return PromotionCode{}, err
+		}
+		terms = fetched
+	}
+	if !terms.Valid {
+		return PromotionCode{}, ErrNoSuchCode
+	}
+
 	first := fullPricePence
 	switch {
-	case d.Coupon.PercentOff > 0:
-		first = fullPricePence - int(float64(fullPricePence)*d.Coupon.PercentOff/100.0)
-	case d.Coupon.AmountOff > 0:
-		first = fullPricePence - d.Coupon.AmountOff
+	case terms.PercentOff > 0:
+		first = fullPricePence - int(float64(fullPricePence)*terms.PercentOff/100.0)
+	case terms.AmountOff > 0:
+		first = fullPricePence - terms.AmountOff
 	}
 	if first < 0 {
 		first = 0
 	}
 	return PromotionCode{
 		ID: d.ID, Code: d.Code, FirstMonthPence: first,
-		Forever: d.Coupon.Duration == "forever",
+		Forever: terms.Duration == "forever",
 	}, nil
 }
 
 // ApplyCoupon puts a discount on an existing subscription, which is how a
 // referral month is actually given: the next invoice comes out lower and
 // nothing is refunded for a month already paid for.
+//
+// The parameter is discounts[0][coupon]. The top-level "coupon" this used to
+// send no longer exists on this endpoint, and Stripe rejects a parameter it
+// does not know rather than ignoring it, so every referral month would have
+// failed to apply. A populated discounts array REPLACES whatever discount is
+// on the subscription, which is only safe because the caller checks
+// HasDiscount first and leaves an unspent month alone.
 func (c *Client) ApplyCoupon(ctx context.Context, subID, couponID string) error {
 	if subID == "" || couponID == "" {
 		return errors.New("a subscription and a coupon are both needed")
 	}
 	f := url.Values{}
-	f.Set("coupon", couponID)
+	f.Set("discounts[0][coupon]", couponID)
 	var out struct {
 		ID string `json:"id"`
 	}
