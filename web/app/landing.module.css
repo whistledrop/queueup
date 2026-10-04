@@ -1001,10 +1001,176 @@
 
 /* ------------------------------------------------- the picture, playing
 
-   The state the phone is in, which is the same wording the real app uses.
-   Sized so the tallest state does not make the screen taller than the
-   shortest one: a picture that resizes itself every two seconds reads as
-   broken rather than as alive. */
+   The monitor shows a PC, not a log: a desktop with a taskbar, Rust opening
+   in a window, going fullscreen, loading and landing in the world.
+
+   The game's own look is not copied anywhere here. No logo, no menu art, no
+   interface of theirs. A window with its name on it and a loading bar is a
+   true picture of what happens on that machine and is ours to draw. */
+
+.winDesktop {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  background: linear-gradient(160deg, #1d2a3a 0%, #16202c 55%, #10161f 100%);
+}
+
+/* Two shortcuts in the corner, which is most of what makes a rectangle read
+   as somebody's desktop. */
+.winIcon {
+  position: absolute;
+  left: 7px;
+  width: 11px;
+  height: 9px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.16);
+}
+.winIcon:nth-of-type(1) { top: 7px; }
+.winIcon:nth-of-type(2) { top: 22px; }
+
+.winTaskbar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 13px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 5px;
+  background: rgba(10, 14, 20, 0.86);
+  z-index: 3;
+}
+
+.winStart {
+  width: 7px;
+  height: 7px;
+  border-radius: 1px;
+  background: #5b9bd5;
+}
+
+.winTask {
+  width: 7px;
+  height: 7px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.18);
+  transition: background 0.2s ease;
+}
+
+/* The game's taskbar button lights up when it is running, the way it does. */
+.winTaskOn { background: var(--accent); }
+
+.winClock {
+  margin-left: auto;
+  font-size: 6.5px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Rust, opening. A window with a title bar and a progress bar: what you
+   actually see for the few seconds before it takes the screen. */
+.winApp {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%);
+  width: 62%;
+  background: #1b2430;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+  animation: appIn 0.25s ease;
+  z-index: 2;
+}
+
+@keyframes appIn {
+  from { opacity: 0; transform: translate(-50%, -46%) scale(0.96); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.winAppBar {
+  background: #222c38;
+  color: #d8dee6;
+  font-size: 7.5px;
+  padding: 4px 7px;
+}
+
+.winAppBody {
+  background: #161d26;
+  padding: 8px 8px 9px;
+}
+
+.winAppNote {
+  margin-top: 5px;
+  font-size: 6.5px;
+  color: #8b9199;
+}
+
+.bar {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.6s ease;
+}
+
+/* Fullscreen: the game has the whole monitor, taskbar gone. */
+.gameFull {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background: #0a0d12;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 14px;
+  animation: appIn 0.2s ease;
+}
+
+.gameFull .bar { width: 72%; }
+
+.gameText {
+  font-size: 8px;
+  color: #c6ccd4;
+  letter-spacing: 0.04em;
+}
+
+.gameBig {
+  font-size: 20px;
+  font-weight: 500;
+  color: #fff;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.gameDim {
+  font-size: 6.5px;
+  color: #7f868f;
+}
+
+/* In the world. Not their art: a horizon, which is what any game looks like
+   from across a room, and enough to say the loading is over. */
+.gameWorld {
+  background: linear-gradient(#1b2a3b 0%, #2d3a44 46%, #3b3a33 46%, #23211c 100%);
+}
+
+.gameHorizon {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(70% 36% at 28% 44%, rgba(255, 214, 160, 0.22), transparent 70%),
+    linear-gradient(transparent 44%, rgba(0, 0, 0, 0.26) 46%, transparent 47%);
+}
+
+/* The phone, mirroring it. */
 .shotState {
   font-size: 12px;
   font-weight: 500;
@@ -1015,8 +1181,7 @@
 
 .shotStateDone { color: #4cc08a; }
 
-/* The tap. A ring that leaves the button is the cheapest way to show a
-   finger that is not there. */
+.shotJoin { position: relative; transition: transform 0.12s ease; }
 .shotJoinTap { transform: scale(0.96); }
 
 .tapRipple {
@@ -1033,26 +1198,7 @@
   to { opacity: 0; transform: scale(1.5); }
 }
 
-.shotJoin { position: relative; transition: transform 0.12s ease; }
-
-/* Five rows always, so the window does not resize as the log fills. */
-.pcLine {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition: color 0.2s ease, opacity 0.2s ease;
-}
-
-.pcLineEmpty { opacity: 0; }
-
-/* The line that just happened, which is where a person's eye goes on a real
-   terminal too. */
-.pcLineNow {
-  color: var(--text);
-  font-weight: 600;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .tapRipple { animation: none; }
-  .shotJoin { transition: none; }
+  .tapRipple, .winApp, .gameFull { animation: none; }
+  .shotJoin, .bar span { transition: none; }
 }
