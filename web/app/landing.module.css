@@ -911,19 +911,28 @@
 
 /* Signing up, on the page itself.
 
-   Email on its own first, then the password drops in underneath. Every page
-   load between somebody wanting the thing and having it is a place where they
-   stop wanting it, and this removes the one that was there. */
+   One field with an arrow on the end of it. A full-width button saying "Get
+   QueueUp" next to a box asking for an email was two things competing to be
+   the thing you press, when there is only one thing to do here. The arrow is
+   the whole button, and it stays on the same line on a phone, because
+   stacking it turned one small ask into two tall ones. */
 .startForm {
-  max-width: 420px;
+  max-width: 400px;
   margin: 0 auto;
   width: 100%;
 }
 
+/* The pill is the row, not the input. The input sits inside it with no edges
+   of its own, so the field and its button read as one control. */
 .startForm :global(.startRow),
 .startForm :global(.startDrop) {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 5px 5px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--card);
 }
 
 .startForm :global(.startDrop) {
@@ -931,54 +940,50 @@
   animation: dropIn 0.22s ease;
 }
 
-/* It arrives rather than appearing, so the eye follows it down to the field
-   it is now meant to be looking at. */
 @keyframes dropIn {
   from { opacity: 0; transform: translateY(-6px); }
   to { opacity: 1; transform: none; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .startForm :global(.startDrop) { animation: none; }
+.startForm :global(.startRow:focus-within),
+.startForm :global(.startDrop:focus-within) {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(208, 90, 42, 0.14);
 }
 
 .startForm input {
   flex: 1;
   min-width: 0;
-  min-height: 52px;
-  padding: 0 18px;
+  min-height: 42px;
+  padding: 0 8px 0 12px;
   font-size: 16px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-pill);
-  background: var(--card);
+  border: none;
+  background: none;
   color: var(--text);
 }
 
+.startForm input:focus { outline: none; }
 .startForm input::placeholder { color: var(--muted); }
-
-.startForm input:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(208, 90, 42, 0.14);
-}
 
 .startForm button {
   flex: none;
-  min-height: 52px;
-  padding: 0 26px;
-  font-size: 16px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  background: var(--accent);
-  color: var(--accent-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  min-height: 0;
+  padding: 0;
   border: none;
   border-radius: var(--radius-pill);
-  box-shadow: 0 8px 22px rgba(208, 90, 42, 0.26);
+  background: var(--accent);
+  color: var(--accent-text);
   cursor: pointer;
-  white-space: nowrap;
+  transition: transform 0.12s ease, opacity 0.12s ease;
 }
 
-.startForm button:disabled { opacity: 0.7; box-shadow: none; }
+.startForm button:hover:not(:disabled) { transform: translateX(1px); }
+.startForm button:disabled { opacity: 0.45; cursor: default; transform: none; }
 
 .startForm :global(.startError) {
   margin: 10px 0 0;
@@ -992,11 +997,13 @@
   color: var(--muted);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .startForm :global(.startDrop) { animation: none; }
+  .startForm button { transition: none; }
+}
+
 @media (max-width: 560px) {
-  .startForm { max-width: 340px; }
-  .startForm :global(.startRow),
-  .startForm :global(.startDrop) { flex-direction: column; gap: 10px; }
-  .startForm input { text-align: center; }
+  .startForm { max-width: 330px; }
 }
 
 /* ------------------------------------------------- the picture, playing
@@ -1202,4 +1209,27 @@
 @media (prefers-reduced-motion: reduce) {
   .tapRipple, .winApp, .gameFull { animation: none; }
   .shotJoin, .bar span { transition: none; }
+}
+
+/* The first screen is the hero's, and nothing else's.
+
+   It used to end two hundred pixels short, so the next section's heading sat
+   there competing with the headline for the one moment somebody decides
+   whether to read on. A sliver below the fold invites a scroll; a whole
+   heading just arrives early.
+
+   svh rather than vh: on a phone, vh is the height the screen would be if the
+   browser's own bars were not there, which they are. */
+.hero {
+  min-height: 82svh;
+  justify-content: center;
+  align-content: center;
+}
+
+@supports not (height: 1svh) {
+  .hero { min-height: 82vh; }
+}
+
+@media (max-width: 560px) {
+  .hero { min-height: 80svh; }
 }

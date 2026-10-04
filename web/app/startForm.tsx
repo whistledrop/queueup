@@ -94,8 +94,8 @@ export default function StartForm({ className }: { className?: string }) {
           aria-label="Your email"
         />
         {!open && (
-          <button type="submit" disabled={busy}>
-            {busy ? 'One moment' : 'Get QueueUp'}
+          <button type="submit" disabled={busy} aria-label="Continue">
+            <Arrow />
           </button>
         )}
       </div>
@@ -112,8 +112,8 @@ export default function StartForm({ className }: { className?: string }) {
             autoComplete="new-password"
             aria-label="Pick a password"
           />
-          <button type="submit" disabled={busy || !password}>
-            {busy ? 'One moment' : 'Create account'}
+          <button type="submit" disabled={busy || !password} aria-label="Create account">
+            <Arrow />
           </button>
         </div>
       )}
@@ -134,5 +134,20 @@ export default function StartForm({ className }: { className?: string }) {
         </p>
       )}
     </form>
+  )
+}
+
+// The whole button, at the size a button that says one thing deserves.
+function Arrow() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M5 12h13m-5.5-6L19 12l-6.5 6"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   )
 }
