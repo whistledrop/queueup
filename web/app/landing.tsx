@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { BETA, PLAN } from '@/lib/pricing'
 import s from './landing.module.css'
 import StartForm from './startForm'
+import HeroShot from './heroShot'
 
 // The landing page. Everything on it is a picture of the real app: the phone
 // mockups are the actual screens, rebuilt in markup so they stay pin sharp.
@@ -225,59 +226,6 @@ export default function Landing() {
 //
 // So: your thumb on Join, in front of your PC getting on with it. Cause on the
 // left, effect behind it, and a label on each saying where it is.
-function HeroShot() {
-  return (
-    <div className={s.shot}>
-      <div className={s.shotSide}>
-        <div className={s.iphone}>
-          <div className={s.island} />
-          <div className={s.iphoneScreen}>
-            <div className={s.shotServer}>Rustopia EU Main</div>
-            <div className={s.shotPop}>198 / 200</div>
-            <div className={s.shotJoin}>Join</div>
-          </div>
-          <div className={s.homeBar} />
-        </div>
-        <p className={s.shotLabel}>Your phone</p>
-      </div>
-
-      <svg className={s.shotArrow} viewBox="0 0 34 12" fill="none" aria-hidden="true">
-        <path d="M0 6h26" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 3" />
-        <path d="M25 1.5 32 6l-7 4.5z" fill="currentColor" />
-      </svg>
-
-      <div className={s.shotSide}>
-        <div className={s.monitorWrap}>
-          <div className={s.monitor}>
-            <div className={s.monitorScreen}>
-              <div className={s.pcTitlebar}>
-                <span className={s.pcDot} />
-                <span className={s.pcDot} />
-                <span className={s.pcDot} />
-                <span style={{ marginLeft: 6 }}>QueueUp</span>
-              </div>
-              <div className={s.pcBody}>
-                <span className={s.pcDim}>steam ready</span>
-                <br />
-                launching Rust
-                <br />
-                connecting
-                <br />
-                <strong>in the queue, 212 ahead</strong>
-                <br />
-                <span className={s.pcDim}>holding your slot</span>
-              </div>
-            </div>
-          </div>
-          <div className={s.stand} />
-          <div className={s.base} />
-        </div>
-        <p className={s.shotLabel}>Your PC, at home</p>
-      </div>
-    </div>
-  )
-}
-
 function LivePhone() {
   return (
     <div className={s.phone}>

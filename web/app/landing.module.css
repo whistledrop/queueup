@@ -998,3 +998,61 @@
   .startForm :global(.startDrop) { flex-direction: column; gap: 10px; }
   .startForm input { text-align: center; }
 }
+
+/* ------------------------------------------------- the picture, playing
+
+   The state the phone is in, which is the same wording the real app uses.
+   Sized so the tallest state does not make the screen taller than the
+   shortest one: a picture that resizes itself every two seconds reads as
+   broken rather than as alive. */
+.shotState {
+  font-size: 12px;
+  font-weight: 500;
+  color: #eef1f4;
+  line-height: 1.25;
+  margin-top: 8px;
+}
+
+.shotStateDone { color: #4cc08a; }
+
+/* The tap. A ring that leaves the button is the cheapest way to show a
+   finger that is not there. */
+.shotJoinTap { transform: scale(0.96); }
+
+.tapRipple {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  border: 2px solid var(--accent);
+  animation: tapOut 0.6s ease-out;
+  pointer-events: none;
+}
+
+@keyframes tapOut {
+  from { opacity: 0.9; transform: scale(1); }
+  to { opacity: 0; transform: scale(1.5); }
+}
+
+.shotJoin { position: relative; transition: transform 0.12s ease; }
+
+/* Five rows always, so the window does not resize as the log fills. */
+.pcLine {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+.pcLineEmpty { opacity: 0; }
+
+/* The line that just happened, which is where a person's eye goes on a real
+   terminal too. */
+.pcLineNow {
+  color: var(--text);
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tapRipple { animation: none; }
+  .shotJoin { transition: none; }
+}
