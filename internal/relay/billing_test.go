@@ -48,16 +48,33 @@ func newFakeStripe(t *testing.T) *fakeStripe {
 			f.checkouts = append(f.checkouts, r.PostForm)
 			f.mu.Unlock()
 			_, _ = w.Write([]byte(`{"url":"https://checkout.stripe.com/c/pay/cs_test_1"}`))
+		// A promotion code points at its coupon by id, under "promotion". This
+		// is the shape Stripe actually sends; the fake used to answer with an
+		// expanded coupon at the top level, which no version of Stripe does,
+		// and so these tests passed while every code on the live site was
+		// being reported invalid.
 		case r.Method == http.MethodGet && r.URL.Path == "/v1/promotion_codes":
 			switch r.URL.Query().Get("code") {
 			case "TIKTOK":
 				_, _ = w.Write([]byte(`{"data":[{"id":"promo_tiktok","code":"TIKTOK","active":true,
-					"coupon":{"amount_off":300,"duration":"once","valid":true}}]}`))
+					"promotion":{"type":"coupon","coupon":"coupon_first_month"}}]}`))
 			case "FOREVER":
 				_, _ = w.Write([]byte(`{"data":[{"id":"promo_forever","code":"FOREVER","active":true,
-					"coupon":{"percent_off":50,"duration":"forever","valid":true}}]}`))
+					"promotion":{"type":"coupon","coupon":"coupon_forever"}}]}`))
 			default:
 				_, _ = w.Write([]byte(`{"data":[]}`))
+			}
+		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/v1/coupons/"):
+			switch strings.TrimPrefix(r.URL.Path, "/v1/coupons/") {
+			case testCouponID:
+				_, _ = w.Write([]byte(`{"id":"coupon_first_month","amount_off":300,
+					"currency":"gbp","duration":"once","valid":true}`))
+			case "coupon_forever":
+				_, _ = w.Write([]byte(`{"id":"coupon_forever","percent_off":50,
+					"duration":"forever","valid":true}`))
+			default:
+				w.WriteHeader(http.StatusNotFound)
+				_, _ = w.Write([]byte(`{"error":{"message":"No such coupon"}}`))
 			}
 		case r.Method == http.MethodPost && r.URL.Path == "/v1/billing_portal/sessions":
 			_, _ = w.Write([]byte(`{"url":"https://billing.stripe.com/p/session/test_1"}`))
@@ -575,4 +592,95 @@ func TestClearingRefusesALiveSubscription(t *testing.T) {
 	if sub, _ := b.st.SubscriptionFor(b.acct.ID); !sub.Active() {
 		t.Error("a live paying customer was cleared")
 	}
+}
+
+// Cancelling, and what the person who cancelled is told afterwards.
+//
+// Stripe does not end a subscription the moment somebody cancels: they keep
+// the month they paid for, so the status stays "active" and the gate stays
+// open. That is right, and it means "active" cannot tell a staying customer
+// from a leaving one. Without the end date, somebody who has just cancelled
+// opens Settings, reads "Subscribed", and concludes it did not work — and the
+// ones who do not write in to ask go to their bank instead.
+func TestCancellingIsVisibleWhileAccessContinues(t *testing.T) {
+	b := newBillingRig(t, true)
+	b.subscribe(t, "sub_1")
+
+	endsOn := time.Date(2026, 11, 4, 9, 0, 0, 0, time.UTC)
+
+	// They cancel. Stripe says so with an update, not a deletion, and the
+	// status it reports is still "active".
+	b.stripe.set(stripe.Subscription{
+		ID: "sub_1", Status: "active", Customer: "cus_1",
+		CancelAtPeriodEnd: true,
+		Items:             itemsEnding(endsOn),
+	})
+	if code := b.webhook(t, "customer.subscription.updated",
+		map[string]any{"id": "sub_1", "customer": "cus_1"}); code != http.StatusOK {
+		t.Fatalf("cancel webhook = %d", code)
+	}
+
+	code, out := b.call(t, "GET", "/api/billing")
+	if code != 200 {
+		t.Fatalf("billing = %d", code)
+	}
+	// They keep what they paid for.
+	if out["paying"] != true || out["subscribed"] != true {
+		t.Error("cancelling locked somebody out of a month they had already paid for")
+	}
+	// And they can see that it is going to stop, on the right day.
+	got, _ := time.Parse(time.RFC3339, fmt.Sprint(out["ends_at"]))
+	if !got.Equal(endsOn) {
+		t.Errorf("ends_at = %v, want %v", out["ends_at"], endsOn)
+	}
+
+	// They change their mind inside the month. Nothing may still say they are
+	// leaving.
+	b.stripe.set(stripe.Subscription{ID: "sub_1", Status: "active", Customer: "cus_1"})
+	b.webhook(t, "customer.subscription.updated", map[string]any{"id": "sub_1", "customer": "cus_1"})
+	_, out = b.call(t, "GET", "/api/billing")
+	if at, _ := time.Parse(time.RFC3339, fmt.Sprint(out["ends_at"])); !at.IsZero() {
+		t.Errorf("ends_at = %v after the cancellation was withdrawn, want none", out["ends_at"])
+	}
+
+	// The month runs out. Now the gate closes.
+	b.stripe.set(stripe.Subscription{ID: "sub_1", Status: "canceled", Customer: "cus_1"})
+	b.webhook(t, "customer.subscription.deleted", map[string]any{"id": "sub_1", "customer": "cus_1"})
+	_, out = b.call(t, "GET", "/api/billing")
+	if out["paying"] != false {
+		t.Error("the gate stayed open after the paid month ended")
+	}
+}
+
+// A fresh subscription must not inherit the last one's leaving date, or
+// somebody who cancelled, left, and came back is told they are leaving again.
+func TestResubscribingClearsTheOldLeavingDate(t *testing.T) {
+	b := newBillingRig(t, true)
+	b.subscribe(t, "sub_1")
+	b.stripe.set(stripe.Subscription{ID: "sub_1", Status: "active", Customer: "cus_1",
+		CancelAtPeriodEnd: true, Items: itemsEnding(time.Date(2026, 11, 4, 9, 0, 0, 0, time.UTC))})
+	b.webhook(t, "customer.subscription.updated", map[string]any{"id": "sub_1", "customer": "cus_1"})
+
+	b.stripe.set(stripe.Subscription{ID: "sub_1", Status: "canceled", Customer: "cus_1"})
+	b.webhook(t, "customer.subscription.deleted", map[string]any{"id": "sub_1", "customer": "cus_1"})
+
+	b.subscribe(t, "sub_2")
+	_, out := b.call(t, "GET", "/api/billing")
+	if out["paying"] != true {
+		t.Fatal("the new subscription did not open the gate")
+	}
+	if at, _ := time.Parse(time.RFC3339, fmt.Sprint(out["ends_at"])); !at.IsZero() {
+		t.Errorf("a new subscription carries the old one's leaving date: %v", out["ends_at"])
+	}
+}
+
+func itemsEnding(at time.Time) (items struct {
+	Data []struct {
+		CurrentPeriodEnd int64 `json:"current_period_end"`
+	} `json:"data"`
+}) {
+	items.Data = append(items.Data, struct {
+		CurrentPeriodEnd int64 `json:"current_period_end"`
+	}{CurrentPeriodEnd: at.Unix()})
+	return items
 }

@@ -2,6 +2,7 @@ package stripe
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -300,6 +301,64 @@ func TestADiscountAlreadyOnTheSubscriptionIsSeen(t *testing.T) {
 			}
 			if sub.HasDiscount() != c.want {
 				t.Errorf("HasDiscount() = %v, want %v", sub.HasDiscount(), c.want)
+			}
+		})
+	}
+}
+
+// When a cancelled subscription actually stops.
+//
+// Stripe reports this in more than one place and not always in the same one:
+// cancel_at is filled in when a date was named outright, but cancelling at the
+// end of the period does not reliably set it, and the period's end has moved
+// off the subscription onto its items. A date shown to somebody is a date they
+// plan a wipe around, so a wrong one is worse than none.
+func TestWhenACancelledSubscriptionActuallyStops(t *testing.T) {
+	day := time.Date(2026, 11, 4, 9, 0, 0, 0, time.UTC)
+	item := func(ts ...time.Time) string {
+		parts := make([]string, len(ts))
+		for i, at := range ts {
+			parts[i] = fmt.Sprintf(`{"current_period_end":%d}`, at.Unix())
+		}
+		return `{"items":{"data":[` + strings.Join(parts, ",") + `]}`
+	}
+
+	cases := []struct {
+		name string
+		body string
+		want time.Time
+	}{{
+		name: "not cancelled, so no end date however much else is set",
+		body: item(day) + `,"cancel_at_period_end":false}`,
+	}, {
+		name: "cancelled at period end: the date is on the item",
+		body: item(day) + `,"cancel_at_period_end":true}`,
+		want: day,
+	}, {
+		name: "a named cancellation date wins",
+		body: fmt.Sprintf(`{"cancel_at":%d,"cancel_at_period_end":false}`, day.Unix()),
+		want: day,
+	}, {
+		name: "several items: the last one to end is when access really stops",
+		body: item(day.AddDate(0, 0, -7), day, day.AddDate(0, 0, -3)) + `,"cancel_at_period_end":true}`,
+		want: day,
+	}, {
+		name: "older shape, the period end still on the subscription",
+		body: fmt.Sprintf(`{"cancel_at_period_end":true,"current_period_end":%d}`, day.Unix()),
+		want: day,
+	}, {
+		name: "cancelled but Stripe gave us no date: say nothing rather than guess",
+		body: `{"cancel_at_period_end":true}`,
+	}}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			var sub Subscription
+			if err := json.Unmarshal([]byte(c.body), &sub); err != nil {
+				t.Fatalf("unmarshalling: %v", err)
+			}
+			if got := sub.EndsAt(); !got.Equal(c.want) {
+				t.Errorf("EndsAt() = %v, want %v", got, c.want)
 			}
 		})
 	}

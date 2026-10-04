@@ -28,7 +28,15 @@ type Subscription struct {
 	// It survives cancelling, which is the point: cancel and resubscribe is
 	// full price, or the intro offer is £1.99 forever.
 	IntroUsed bool
+	// EndsAt is set when somebody has cancelled but is still inside the month
+	// they paid for. The gate stays open until then, so Status alone says
+	// nothing about it, and somebody who has just cancelled and sees no sign
+	// of it on the screen reasonably concludes it did not work.
+	EndsAt time.Time
 }
+
+// Ending reports whether this subscription is on its way out.
+func (s Subscription) Ending() bool { return !s.EndsAt.IsZero() }
 
 // Active reports whether the gate is open for this account.
 func (s Subscription) Active() bool { return s.Status == "active" || s.Status == StatusComped }
@@ -47,13 +55,15 @@ func (s Subscription) Comped() bool { return s.Status == StatusComped }
 func (s *Store) SubscriptionFor(accountID string) (Subscription, error) {
 	var sub Subscription
 	var at, intro int64
-	var paid int64
+	var paid, ends int64
 	err := s.db.QueryRow(
-		`SELECT subscription_status, subscription_id, subscribed_at, stripe_customer_id, intro_used, first_paid_at
+		`SELECT subscription_status, subscription_id, subscribed_at, stripe_customer_id, intro_used,
+		        first_paid_at, subscription_ends_at
 		   FROM accounts WHERE id = ?`,
-		accountID).Scan(&sub.Status, &sub.SubID, &at, &sub.CustomerID, &intro, &paid)
+		accountID).Scan(&sub.Status, &sub.SubID, &at, &sub.CustomerID, &intro, &paid, &ends)
 	sub.IntroUsed = intro != 0
 	sub.FirstPaidAt = fromMs(paid)
+	sub.EndsAt = fromMs(ends)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Subscription{}, ErrNotFound
 	}
@@ -75,7 +85,8 @@ func (s *Store) SetSubscription(accountID, status, subID string) error {
 		at = ms(s.now().UTC())
 	}
 	res, err := s.db.Exec(
-		`UPDATE accounts SET subscription_status = ?, subscription_id = ?, subscribed_at = ? WHERE id = ?`,
+		`UPDATE accounts SET subscription_status = ?, subscription_id = ?, subscribed_at = ?,
+		                     subscription_ends_at = 0 WHERE id = ?`,
 		status, subID, at, accountID)
 	if err != nil {
 		return err
@@ -91,6 +102,26 @@ func (s *Store) SetSubscription(accountID, status, subID string) error {
 			ms(s.now().UTC()), accountID); err != nil {
 			return err
 		}
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// NoteEnding records that a live subscription is going to stop, and when. A
+// zero time means it is not: somebody who changes their mind inside the month
+// must stop being told they are leaving.
+//
+// It is kept apart from SetSubscription because nothing about the gate changes
+// here. They have paid for this month and they keep it; the only thing that
+// changes is what the screen is allowed to tell them.
+func (s *Store) NoteEnding(accountID string, at time.Time) error {
+	res, err := s.db.Exec(
+		`UPDATE accounts SET subscription_ends_at = ? WHERE id = ?`,
+		ms(at.UTC()), accountID)
+	if err != nil {
+		return err
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
 		return ErrNotFound

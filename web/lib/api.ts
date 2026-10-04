@@ -32,6 +32,12 @@ export type Billing = {
   can_manage: boolean
   checkout_ready: boolean
   test_mode: boolean
+  /**
+   * Set when they have cancelled but are still inside the month they paid
+   * for. The gate stays open until this date, so `subscribed` stays true and
+   * this is the only thing that says they are on their way out.
+   */
+  ends_at?: string
 }
 
 /** Opens Stripe's own page for changing card, receipts and cancelling. */

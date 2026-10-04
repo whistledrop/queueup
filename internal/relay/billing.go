@@ -95,6 +95,7 @@ func (s *Server) handleBilling(w http.ResponseWriter, r *http.Request, acct stor
 		"source_code":    code,
 		"currency":       priceCurrency,
 		"subscribed_at":  sub.SubscribedAt,
+		"ends_at":        sub.EndsAt,
 		"can_manage":     sub.CustomerID != "" && s.cfg.Stripe.Enabled() && !sub.Comped(),
 		"checkout_ready": s.stripeReady(),
 		"test_mode":      s.cfg.Stripe.TestMode(),
@@ -303,11 +304,31 @@ func (s *Server) syncSubscription(ctx context.Context, accountID, subID string) 
 		if err := s.st.LinkStripe(accountID, live.Customer, live.ID); err != nil {
 			return err
 		}
-		if !current.Active() || current.SubID != live.ID {
+		fresh := !current.Active() || current.SubID != live.ID
+		if fresh {
 			s.log.Info("subscription active", "account", accountID, "status", live.Status)
 			if err := s.st.SetSubscription(accountID, "active", live.ID); err != nil {
 				return err
 			}
+		}
+		// Whether they are staying or on their way out. This comes after any
+		// status change on purpose: setting the status clears the leaving
+		// date, so doing it the other way round would wipe what we just wrote.
+		//
+		// Somebody who cancels keeps the month they paid for, so Stripe leaves
+		// the status "active" and nothing above this line changes. Without
+		// this, cancelling is invisible to us and to them.
+		ends := live.EndsAt()
+		if !ends.IsZero() && current.EndsAt.IsZero() {
+			s.log.Info("subscription will end", "account", accountID, "on", ends.Format("2006-01-02"))
+		}
+		if ends.IsZero() && !current.EndsAt.IsZero() {
+			s.log.Info("cancellation withdrawn", "account", accountID)
+		}
+		if err := s.st.NoteEnding(accountID, ends); err != nil {
+			return err
+		}
+		if fresh {
 			// They have paid. If their PC is already on, whoever sent them has
 			// just earned a month.
 			s.maybeAwardReferral(ctx, accountID)

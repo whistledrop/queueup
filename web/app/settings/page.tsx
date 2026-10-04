@@ -46,6 +46,15 @@ export default function SettingsPage() {
     getBilling().then(setBilling).catch(() => {})
   }, [load])
 
+  // The day a cancelled subscription actually stops, written the way every
+  // other date on the site is. A zero time comes back from Go as the year 1,
+  // which would read as "ends on 1 January 1" rather than as "not ending".
+  const endsAt = billing?.ends_at ? new Date(billing.ends_at) : null
+  const ending =
+    endsAt && endsAt.getFullYear() > 1970
+      ? endsAt.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
+      : null
+
   async function signOut() {
     await fetch('/api/auth/logout', { method: 'POST' })
     router.push('/login')
@@ -129,23 +138,37 @@ export default function SettingsPage() {
 
       <div className="card">
         <h2>Subscription</h2>
-        <p className="muted" style={{ marginTop: 0 }}>
-          {billing === null
-            ? 'Loading'
-            : !billing.enabled
-              ? 'QueueUp is a free beta. Nobody is being charged.'
-              : billing.comped
-              ? 'You have free access to QueueUp. There is nothing to pay.'
-              : billing.subscribed
-                ? `Subscribed. ${billing.price_line}`
-                : 'Not subscribed, so joining is locked.'}
-        </p>
+        {ending ? (
+          // Somebody who cancels keeps the month they paid for, so the gate
+          // stays open and the status stays "subscribed". Saying only that
+          // reads as though the cancellation did not take, which is the point
+          // at which people stop asking us and ask their bank instead.
+          <p style={{ marginTop: 0 }}>
+            <b>Your subscription ends on {ending}.</b>
+            <br />
+            <span className="muted">
+              You keep joining until then. Nothing more will be charged.
+            </span>
+          </p>
+        ) : (
+          <p className="muted" style={{ marginTop: 0 }}>
+            {billing === null
+              ? 'Loading'
+              : !billing.enabled
+                ? 'QueueUp is a free beta. Nobody is being charged.'
+                : billing.comped
+                ? 'You have free access to QueueUp. There is nothing to pay.'
+                : billing.subscribed
+                  ? `Subscribed. ${billing.price_line}`
+                  : 'Not subscribed, so joining is locked.'}
+          </p>
+        )}
         {billing?.can_manage && (
           <button
             className="btn-wide"
             onClick={() => openManageSubscription().catch((e) => setError((e as Error).message))}
           >
-            Manage subscription
+            {ending ? 'Restart subscription' : 'Manage subscription'}
           </button>
         )}
         {billing?.enabled && !billing.subscribed && (

@@ -209,6 +209,49 @@ type Subscription struct {
 	Discounts []json.RawMessage `json:"discounts"`
 	// Discount is the same thing, before the field became a list.
 	Discount json.RawMessage `json:"discount"`
+
+	// CancelAtPeriodEnd is somebody who has cancelled but is still inside the
+	// month they paid for. Stripe keeps the status "active" until that month
+	// runs out, which is right — they keep what they bought — but it means
+	// "active" alone cannot tell a staying customer from a leaving one.
+	CancelAtPeriodEnd bool `json:"cancel_at_period_end"`
+	// CancelAt is set when a cancellation date was named outright. A plain
+	// "cancel at the end of the period" does not reliably fill it in, so it is
+	// the first choice for the end date and not the only one.
+	CancelAt int64 `json:"cancel_at"`
+	// Items carries the current period's end. It used to sit on the
+	// subscription itself; that field is gone, and a subscription can hold
+	// several items, so the latest end among them is the one that matters.
+	Items struct {
+		Data []struct {
+			CurrentPeriodEnd int64 `json:"current_period_end"`
+		} `json:"data"`
+	} `json:"items"`
+	// CurrentPeriodEnd is where that date lived before it moved.
+	CurrentPeriodEnd int64 `json:"current_period_end"`
+}
+
+// EndsAt is the day access actually stops, for a subscription that is going to
+// stop. It is zero for one that is not, and zero when Stripe gives us no date
+// at all, because a wrong date on the screen is worse than no date: somebody
+// plans a wipe around it.
+func (s Subscription) EndsAt() time.Time {
+	if !s.CancelAtPeriodEnd && s.CancelAt == 0 {
+		return time.Time{}
+	}
+	at := s.CancelAt
+	if at == 0 {
+		at = s.CurrentPeriodEnd
+		for _, it := range s.Items.Data {
+			if it.CurrentPeriodEnd > at {
+				at = it.CurrentPeriodEnd
+			}
+		}
+	}
+	if at <= 0 {
+		return time.Time{}
+	}
+	return time.Unix(at, 0).UTC()
 }
 
 // HasDiscount reports whether a discount is already waiting on this
