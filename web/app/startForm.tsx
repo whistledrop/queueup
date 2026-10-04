@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { storedPromo } from '@/lib/promo'
+import { track } from '@/lib/analytics'
 
 export default function StartForm({ className }: { className?: string }) {
   const router = useRouter()
@@ -74,6 +75,7 @@ export default function StartForm({ className }: { className?: string }) {
         setBusy(false)
         return
       }
+      track('account_created', { from: 'landing' })
       router.push('/subscribe?welcome=1')
     } catch {
       setError('We could not reach QueueUp. Check your connection.')

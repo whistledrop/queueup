@@ -7,6 +7,7 @@ import { api, getBilling, type Billing } from '@/lib/api'
 import { PLAN, priceLine } from '@/lib/pricing'
 import { capturePromoFromURL, storedPromo, storePromo } from '@/lib/promo'
 import s from './subscribe.module.css'
+import { track } from '@/lib/analytics'
 
 // The paywall, and the second screen of signing up rather than a gate somebody
 // hits later.
@@ -98,6 +99,10 @@ function Subscribe() {
   async function checkout() {
     setBusy(true)
     setNote('')
+    // Fired before leaving for Stripe, not after coming back: this is the
+    // count of people who got as far as wanting to pay, and the gap between
+    // it and subscription_paid is the cost of the payment page itself.
+    track('checkout_started', applied ? { promo_code: applied } : undefined, { leaving: true })
     try {
       const res = await api<{ url?: string }>('/api/billing/checkout', {
         method: 'POST',

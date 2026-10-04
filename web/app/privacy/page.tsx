@@ -82,7 +82,25 @@ export default function PrivacyPage() {
         </ul>
         <p>
           The website sets one cookie, which keeps you signed in. There are no
-          adverts, no tracking, and no analytics.
+          adverts, and nothing follows you to other websites.
+        </p>
+        <p>
+          We do count visits, using{' '}
+          <a href="https://posthog.com" target="_blank" rel="noopener noreferrer">
+            PostHog
+          </a>
+          , on their European servers. It is set up to store nothing on your
+          device at all: no analytics cookie, nothing kept in your browser, and
+          no identifier that survives you closing the tab. That means we can see
+          that a page was visited and which link it came from, and we cannot see
+          that it was you, or tell today&apos;s visit from tomorrow&apos;s.
+          Nothing we send it contains your email address or your account.
+        </p>
+        <p>
+          What it is for is knowing which video or Discord link people arrive
+          from, so that the ones that work get made again. If you would rather
+          not be counted, any browser&apos;s &quot;do not track&quot; setting,
+          or any ad blocker, stops it.
         </p>
 
         <h2>Why</h2>

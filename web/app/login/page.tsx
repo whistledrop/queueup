@@ -3,6 +3,7 @@
 import { Suspense, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { track } from '@/lib/analytics'
 
 export default function LoginPage() {
   return (
@@ -42,6 +43,7 @@ function LoginForm() {
         return
       }
       if (creating) {
+        track('account_created', { from: 'login_page' })
         const billing = await fetch('/api/relay/api/billing')
           .then((r) => (r.ok ? r.json() : null))
           .catch(() => null)

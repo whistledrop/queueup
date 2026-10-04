@@ -1,12 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import Nav, { Footer } from './nav'
 import { useRouter } from 'next/navigation'
 import { api, getBilling, isActive, outcome, stateLabel, type Billing, type Device, type Job } from '@/lib/api'
 import type { Favourite, Schedule } from '@/lib/types'
 import { BETA } from '@/lib/pricing'
+import { track } from '@/lib/analytics'
 
 function siteHost(): string {
   if (typeof window === 'undefined') return 'queueup'
@@ -76,6 +77,24 @@ export default function Dashboard({ email }: { email: string }) {
       window.history.replaceState(null, '', '/')
     }
   }, [])
+
+  // The sale, reported once.
+  //
+  // It waits for the billing call, because the promo code is the point of the
+  // event and billing is where the authoritative one lives — the same code
+  // the relay wrote down and put on the Stripe subscription, not whatever
+  // happens to be left in this browser's storage.
+  //
+  // This counts sales from the browser, which means it misses anybody who
+  // closes the tab on Stripe's page instead of coming back. Stripe is the
+  // number that pays the bills; this one is for comparing against the
+  // checkouts that started.
+  const paidReported = useRef(false)
+  useEffect(() => {
+    if (!justPaid || paidReported.current || billing === null) return
+    paidReported.current = true
+    track('subscription_paid', billing.source_code ? { promo_code: billing.source_code } : undefined)
+  }, [justPaid, billing])
 
 
 
@@ -239,7 +258,12 @@ export default function Dashboard({ email }: { email: string }) {
             <ol className="setup">
               <li>
                 <strong>Download QueueUp on this PC.</strong>
-                <a className="btn btn-primary" href="/download" style={{ marginTop: 8 }}>
+                <a
+                  className="btn btn-primary"
+                  href="/download"
+                  style={{ marginTop: 8 }}
+                  onClick={() => track('agent_downloaded', { from: 'dashboard' }, { leaving: true })}
+                >
                   Download for Windows
                 </a>
               </li>

@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { SmartScreenHelp } from '../dashboard'
+import { track } from '@/lib/analytics'
 
 export default function GetPage() {
   const [notWindows, setNotWindows] = useState(false)
@@ -33,7 +34,12 @@ export default function GetPage() {
         <ol className="setup">
           <li>
             <strong>Download QueueUp.</strong>
-            <a className="btn btn-primary" href="/download" style={{ marginTop: 8 }}>
+            <a
+              className="btn btn-primary"
+              href="/download"
+              style={{ marginTop: 8 }}
+              onClick={() => track('agent_downloaded', { from: 'get_page' }, { leaving: true })}
+            >
               Download for Windows
             </a>
           </li>
