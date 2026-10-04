@@ -1156,18 +1156,19 @@
   color: #7f868f;
 }
 
-/* In the world. Not their art: a horizon, which is what any game looks like
-   from across a room, and enough to say the loading is over. */
+/* In the world: the beach you wake up on, drawn rather than screenshotted.
+   The game's art belongs to Facepunch and QueueUp's standing with them rests
+   on touching nothing of theirs. */
 .gameWorld {
-  background: linear-gradient(#1b2a3b 0%, #2d3a44 46%, #3b3a33 46%, #23211c 100%);
+  background: #24354d;
+  padding: 0;
 }
 
-.gameHorizon {
+.spawn {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(70% 36% at 28% 44%, rgba(255, 214, 160, 0.22), transparent 70%),
-    linear-gradient(transparent 44%, rgba(0, 0, 0, 0.26) 46%, transparent 47%);
+  width: 100%;
+  height: 100%;
 }
 
 /* The phone, mirroring it. */

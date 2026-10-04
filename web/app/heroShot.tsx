@@ -132,7 +132,7 @@ export default function HeroShot() {
                         <div className={s.gameDim}>players ahead of you</div>
                       </>
                     )}
-                    {p.pc === 'world' && <div className={s.gameHorizon} />}
+                    {p.pc === 'world' && <Spawn />}
                   </div>
                 )}
 
@@ -150,5 +150,70 @@ export default function HeroShot() {
         <p className={s.shotLabel}>Your PC, at home</p>
       </div>
     </div>
+  )
+}
+
+// Where a Rust player wakes up: a beach, at dawn, with a rock.
+//
+// Drawn rather than screenshotted. The game's art belongs to Facepunch, and
+// QueueUp's whole standing with them rests on being the tool that touches
+// nothing of theirs. It does not need to be exact; it needs to be recognisable
+// at the size of a thumbnail, which is the opposite problem to accuracy.
+//
+// The first version was accurate and unreadable: a dark sky over a dark sea
+// over dark sand is a black rectangle from two feet away. This one puts the
+// sun on the horizon and the light on the sand, because what a beach at dawn
+// actually looks like from across a room is bright.
+function Spawn() {
+  return (
+    <svg className={s.spawn} viewBox="0 0 160 90" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <linearGradient id="qsky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#2f4a6b" />
+          <stop offset="42%" stopColor="#8f7f8e" />
+          <stop offset="78%" stopColor="#e8a06a" />
+          <stop offset="100%" stopColor="#f6c98d" />
+        </linearGradient>
+        <linearGradient id="qsea" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#c99a72" />
+          <stop offset="55%" stopColor="#4a6f83" />
+          <stop offset="100%" stopColor="#355a6e" />
+        </linearGradient>
+        <linearGradient id="qsand" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#c6a878" />
+          <stop offset="100%" stopColor="#7d6648" />
+        </linearGradient>
+      </defs>
+
+      <rect width="160" height="90" fill="url(#qsky)" />
+      <circle cx="104" cy="49" r="9" fill="#fff1cf" />
+      <circle cx="104" cy="49" r="16" fill="#ffd9a0" opacity="0.3" />
+
+      {/* A headland, so the sea has something to end against. */}
+      <path d="M0 50q16-7 30-4t22 5H0z" fill="#3c4f5e" opacity="0.85" />
+      <path d="M8 47l3-5 3 5zM16 48l3-6 4 6zM25 48l3-5 3 5z" fill="#2e3f4c" />
+
+      <rect y="50" width="160" height="14" fill="url(#qsea)" />
+      <path d="M92 55h24M62 58h20M112 60h34M30 61h26" stroke="#ffe6bf" strokeWidth="0.9" opacity="0.55" />
+
+      {/* Wet sand catching the light, then the dry beach. */}
+      <path d="M0 64q42-4 82-1t78 2v25H0z" fill="url(#qsand)" />
+      <path d="M0 64q42-4 82-1t78 2v3q-38-4-78-2T0 67z" fill="#e8cf9e" opacity="0.5" />
+
+      {/* The rock you wake up next to. */}
+      <path d="M22 80l6-13 9-3 10 6 4 10z" fill="#6b655c" />
+      <path d="M28 67l9-3 5 4-8 5z" fill="#847d72" />
+      <path d="M22 80l6-13 4 2-3 11z" fill="#57524a" />
+
+      {/* And you, holding the rock you woke up with. */}
+      <g fill="#33281f">
+        <circle cx="62" cy="68" r="2.4" />
+        <path d="M60.4 70.7h3.2l1.1 8h-5.4z" />
+        <path d="M60.2 78.7h1.7l-.5 5.6h-1.8zM62.7 78.7h1.7l.6 5.6h-1.8z" />
+        <path d="M64.3 71.6l3.9 1.8-.7 1.5-3.8-1.7z" />
+      </g>
+      <ellipse cx="62" cy="84.6" rx="4.6" ry="1" fill="#000" opacity="0.18" />
+      <ellipse cx="34" cy="81" rx="12" ry="1.6" fill="#000" opacity="0.14" />
+    </svg>
   )
 }
