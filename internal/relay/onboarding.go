@@ -71,6 +71,23 @@ func (s *Server) handleEmailPCLink(w http.ResponseWriter, r *http.Request, acct 
 	})
 }
 
+// subscribedNow reports whether this account may actually use QueueUp.
+//
+// Mirrors the gate on joining. An error reads as "not subscribed" on purpose:
+// the cost of staying quiet is one late email, and the cost of guessing the
+// other way is telling somebody who has not paid to go and set up a PC.
+func (s *Server) subscribedNow(accountID string) bool {
+	if !s.cfg.BillingEnabled {
+		return true
+	}
+	sub, err := s.st.SubscriptionFor(accountID)
+	if err != nil {
+		s.log.Error("reading a subscription for a reminder", "account", accountID, "err", err)
+		return false
+	}
+	return sub.Active()
+}
+
 // RunPCReminders sends the one "your PC is not linked yet" reminder to each
 // account that needs it, until ctx ends.
 func (s *Server) RunPCReminders(ctx context.Context, every time.Duration) {
@@ -102,6 +119,16 @@ func (s *Server) sendPCReminders(ctx context.Context, now time.Time) {
 	}
 	link := s.getURL()
 	for _, a := range due {
+		// Somebody who has not paid cannot use a linked PC, so "your PC isn't
+		// linked yet" is the wrong email to send them: the thing between them
+		// and QueueUp is the subscription, not the PC, and pointing them at a
+		// download they cannot use wastes the one message we allow ourselves.
+		//
+		// They are deliberately NOT marked as reminded. If they pay later and
+		// still have no PC, their one reminder is still there waiting.
+		if !s.subscribedNow(a.ID) {
+			continue
+		}
 		if err := s.st.MarkPCReminded(a.ID); err != nil {
 			s.log.Error("marking a reminder", "account", a.ID, "err", err)
 			continue

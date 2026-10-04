@@ -139,3 +139,82 @@ func TestNoEmailMeansNobodyLosesTheirReminder(t *testing.T) {
 		t.Fatalf("after a run with no email, awaiting = %v, %v; want the account still waiting", still, err)
 	}
 }
+
+// With the gate on, the "your PC isn't linked yet" reminder goes only to
+// people who have actually paid.
+//
+// Everything that email asks for is behind the paywall: it points at the
+// download page and talks them through linking a PC they cannot join from.
+// Sending it to somebody who has not paid tells them to do the wrong thing,
+// and spends the single message we allow ourselves doing it.
+func TestTheReminderDoesNotGoToPeopleWhoHaveNotPaid(t *testing.T) {
+	st, err := store.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	fake, sender := newFakeResend(t)
+	quiet := slog.New(slog.NewTextHandler(io.Discard, nil))
+	srv := New(Config{
+		Store: st, Log: quiet, Servers: servers.NewStub(), Mail: sender,
+		WebURL: "https://queueuprust.com", BillingEnabled: true,
+	})
+
+	now := time.Now()
+	aged := func(email string) store.Account {
+		a, err := st.Register(email, "a good password")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := st.ExecForTests(`UPDATE accounts SET created_at = ? WHERE id = ?`,
+			now.Add(-26*time.Hour).UnixMilli(), a.ID); err != nil {
+			t.Fatal(err)
+		}
+		return a
+	}
+	paid := aged("paid-but-no-pc@example.com")
+	if err := st.SetSubscription(paid.ID, "active", "sub_1"); err != nil {
+		t.Fatal(err)
+	}
+	comped := aged("free-access@example.com")
+	if err := st.SetSubscription(comped.ID, store.StatusComped, ""); err != nil {
+		t.Fatal(err)
+	}
+	unpaid := aged("never-paid@example.com")
+
+	srv.sendPCReminders(context.Background(), now)
+
+	sent := fake.emails(t, 2)
+	got := map[string]bool{}
+	for _, e := range sent {
+		if to, _ := e["to"].([]any); len(to) == 1 {
+			got[to[0].(string)] = true
+		}
+	}
+	if !got[paid.Email] {
+		t.Error("a paying customer with no PC was not reminded")
+	}
+	if !got[comped.Email] {
+		t.Error("somebody on free access was not reminded; they can use QueueUp")
+	}
+	if got[unpaid.Email] {
+		t.Error("somebody who never paid was told to go and set up a PC")
+	}
+
+	// And they keep their reminder. Paying on day three must still bring it,
+	// because it has not been spent.
+	if err := st.SetSubscription(unpaid.ID, "active", "sub_2"); err != nil {
+		t.Fatal(err)
+	}
+	srv.sendPCReminders(context.Background(), now.Add(time.Hour))
+	after := fake.emails(t, 3)
+	var reminded bool
+	for _, e := range after {
+		if to, _ := e["to"].([]any); len(to) == 1 && to[0] == unpaid.Email {
+			reminded = true
+		}
+	}
+	if !reminded {
+		t.Error("somebody who paid later never got the reminder they had not used")
+	}
+}
