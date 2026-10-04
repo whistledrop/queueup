@@ -15,6 +15,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -349,5 +350,30 @@ func (s *Store) SetClockForTest(now func() time.Time) { s.now = now }
 // older database; nothing outside tests calls it.
 func (s *Store) ExecForTests(query string, args ...any) error {
 	_, err := s.db.Exec(query, args...)
+	return err
+}
+
+// BackupTo writes a consistent copy of the whole database to one file.
+//
+// Copying queueup.db while the relay is running does not work: the database is
+// in WAL mode, so the recent writes are in a second file and the copy is a
+// database from some moment that never existed. VACUUM INTO asks SQLite to
+// write out a complete, consistent, already-compacted copy, which is the thing
+// you can actually carry somewhere else.
+//
+// Fly snapshots the volume nightly and keeps a month, which covers the disk
+// dying. This covers the other kind of loss: wanting the customer list on a
+// machine that is not Fly, and being able to look at last Tuesday without
+// rolling the live database back to it.
+func (s *Store) BackupTo(path string) error {
+	if strings.TrimSpace(path) == "" {
+		return errors.New("a path to write the backup to is required")
+	}
+	// SQLite will not overwrite, which is the safer way round: a backup that
+	// silently replaced a good one with a bad one would be worse than none.
+	if _, err := os.Stat(path); err == nil {
+		return fmt.Errorf("%s already exists", path)
+	}
+	_, err := s.db.Exec(`VACUUM INTO ?`, path)
 	return err
 }

@@ -95,6 +95,7 @@ Settings come from environment variables, never from files in the repo:
 Commands:
   relay stripe-setup        create the product, price, discount and webhook
   relay stripe-code TIKTOK  mint one channel's promo code for the discount
+  relay backup [path]       write a consistent copy of the database to a file
 
 Every channel gets its own code. The code is the only thing that says where a
 paying customer came from, so a sale with no code is a sale we cannot trace.
@@ -158,6 +159,27 @@ func run(args []string) error {
 			return err
 		}
 		fmt.Printf("Deleted %s.\n", acct.Email)
+		return nil
+	case "backup":
+		path := fmt.Sprintf("/data/queueup-%s.db", time.Now().UTC().Format("2006-01-02-1504"))
+		if len(args) > 1 {
+			path = args[1]
+		}
+		if err := st.BackupTo(path); err != nil {
+			return err
+		}
+		fmt.Printf(`
+Wrote %s
+
+Bring it down to your own machine with:
+
+  fly ssh sftp get %s ./queueup-backup.db -a queueup-relay
+
+Then delete it from the server, because a copy of every customer sitting
+next to the live database is a second thing to lose:
+
+  fly ssh console -a queueup-relay -C "rm %s"
+`, path, path, path)
 		return nil
 	case "set-subscription":
 		if len(args) < 3 {

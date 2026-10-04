@@ -1,59 +1,138 @@
 'use client'
 
-// The first step of signing up, on the landing page itself.
+// Signing up, on the landing page, in one place.
 //
-// One field, not two. A button that says "Get QueueUp" asks somebody to
-// commit before they have done anything; an email box asks for one small
-// thing and carries them into the rest with momentum already behind them.
+// Email first, on its own. Press go and a password field drops in underneath
+// it, and the account is made without ever leaving the page. The second page
+// is gone: every page load between somebody wanting the thing and having it is
+// a place where they stop wanting it.
 //
-// And it is why we know anything about the people who leave. The address is
-// kept the moment they press go, before the password, so somebody who starts
-// and then thinks better of it is still a person we can count and talk to
-// rather than a visit that happened to nobody.
+// The address is kept the moment they press go, before the password exists.
+// Somebody who gets that far and then thinks better of it used to be a visit
+// that happened to nobody; now they are a person we can count and talk to.
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { storedPromo } from '@/lib/promo'
 
 export default function StartForm({ className }: { className?: string }) {
   const router = useRouter()
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [taken, setTaken] = useState(false)
+  const passwordBox = useRef<HTMLInputElement>(null)
 
-  async function start(e: React.FormEvent) {
+  // The field they are meant to fill in next should be the one their keyboard
+  // is already pointed at.
+  useEffect(() => {
+    if (open) passwordBox.current?.focus()
+  }, [open])
+
+  async function submit(e: React.FormEvent) {
     e.preventDefault()
     const address = email.trim()
     if (!address || busy) return
+
+    if (!open) {
+      setBusy(true)
+      try {
+        // Keep the address before asking for anything else. If this fails we
+        // carry on anyway: losing a lead is a shame, but refusing somebody a
+        // sign-up because we could not file their address first is worse.
+        await fetch('/api/relay/api/leads', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ email: address, code: storedPromo() }),
+        })
+      } catch {
+        // as above
+      }
+      setBusy(false)
+      setOpen(true)
+      return
+    }
+
+    if (!password) return
     setBusy(true)
+    setError('')
+    setTaken(false)
     try {
-      // Keep it before going anywhere. If this fails we carry on regardless:
-      // losing a lead is a shame, and blocking somebody from signing up
-      // because we could not file their address first would be worse.
-      await fetch('/api/relay/api/leads', {
+      const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email: address, code: storedPromo() }),
+        body: JSON.stringify({ email: address, password, code: storedPromo() }),
       })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        const message = body.error ?? 'That did not work. Try again.'
+        setError(message)
+        setTaken(/already/i.test(message))
+        setBusy(false)
+        return
+      }
+      router.push('/subscribe?welcome=1')
     } catch {
-      // as above
+      setError('We could not reach QueueUp. Check your connection.')
+      setBusy(false)
     }
-    router.push(`/login?mode=create&email=${encodeURIComponent(address)}`)
   }
 
   return (
-    <form className={className} onSubmit={start}>
-      <input
-        type="email"
-        required
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="you@email.com"
-        autoComplete="email"
-        aria-label="Your email"
-      />
-      <button type="submit" disabled={busy}>
-        {busy ? 'One moment' : 'Get QueueUp'}
-      </button>
+    <form className={className} onSubmit={submit}>
+      <div className="startRow">
+        <input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@email.com"
+          autoComplete="email"
+          aria-label="Your email"
+        />
+        {!open && (
+          <button type="submit" disabled={busy}>
+            {busy ? 'One moment' : 'Get QueueUp'}
+          </button>
+        )}
+      </div>
+
+      {open && (
+        <div className="startDrop">
+          <input
+            ref={passwordBox}
+            type="password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Pick a password"
+            autoComplete="new-password"
+            aria-label="Pick a password"
+          />
+          <button type="submit" disabled={busy || !password}>
+            {busy ? 'One moment' : 'Create account'}
+          </button>
+        </div>
+      )}
+
+      {error && (
+        <p className="startError">
+          {error}{' '}
+          {taken && (
+            <Link href={`/login?email=${encodeURIComponent(email.trim())}`}>Sign in instead</Link>
+          )}
+        </p>
+      )}
+
+      {open && !error && (
+        <p className="startSmall">
+          Eight characters or more. By creating an account you have read the{' '}
+          <Link href="/privacy">privacy notice</Link>.
+        </p>
+      )}
     </form>
   )
 }

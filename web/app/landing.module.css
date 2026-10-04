@@ -909,16 +909,37 @@
   .shotLabel { font-size: 9px; letter-spacing: 0.04em; }
 }
 
-/* The first step, on the page itself.
+/* Signing up, on the page itself.
 
-   One field and one button, side by side on a laptop and stacked on a phone,
-   where a 44px-tall row of two things is a row of two things nobody can hit
-   accurately. */
+   Email on its own first, then the password drops in underneath. Every page
+   load between somebody wanting the thing and having it is a place where they
+   stop wanting it, and this removes the one that was there. */
 .startForm {
-  display: flex;
-  gap: 8px;
   max-width: 420px;
   margin: 0 auto;
+  width: 100%;
+}
+
+.startForm :global(.startRow),
+.startForm :global(.startDrop) {
+  display: flex;
+  gap: 8px;
+}
+
+.startForm :global(.startDrop) {
+  margin-top: 10px;
+  animation: dropIn 0.22s ease;
+}
+
+/* It arrives rather than appearing, so the eye follows it down to the field
+   it is now meant to be looking at. */
+@keyframes dropIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .startForm :global(.startDrop) { animation: none; }
 }
 
 .startForm input {
@@ -959,11 +980,21 @@
 
 .startForm button:disabled { opacity: 0.7; box-shadow: none; }
 
+.startForm :global(.startError) {
+  margin: 10px 0 0;
+  font-size: 14px;
+  color: var(--bad);
+}
+
+.startForm :global(.startSmall) {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
 @media (max-width: 560px) {
-  .startForm {
-    flex-direction: column;
-    gap: 10px;
-    max-width: 340px;
-  }
+  .startForm { max-width: 340px; }
+  .startForm :global(.startRow),
+  .startForm :global(.startDrop) { flex-direction: column; gap: 10px; }
   .startForm input { text-align: center; }
 }

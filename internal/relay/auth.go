@@ -58,6 +58,12 @@ func (s *Server) authRoutes() {
 type credentials struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+	// Code is whatever they arrived on, carried through from the link they
+	// clicked. Recorded at sign-up rather than only at checkout, because
+	// otherwise the channel that brought somebody is only ever known for the
+	// ones who paid, and the interesting question is which channel brings
+	// people who DON'T.
+	Code string `json:"code"`
 }
 
 func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
@@ -90,6 +96,11 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 	// finished. The lead stops being a lead rather than being counted twice.
 	if err := s.st.MarkLeadConverted(acct.Email); err != nil {
 		s.log.Error("marking a lead converted", "err", err)
+	}
+	if c.Code != "" {
+		if err := s.st.RememberSourceCode(acct.ID, c.Code); err != nil {
+			s.log.Error("remembering where a new account came from", "err", err)
+		}
 	}
 	token, err := s.st.NewSession(acct.ID)
 	if err != nil {

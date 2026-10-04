@@ -2,6 +2,7 @@ package store_test
 
 import (
 	"encoding/json"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -302,5 +303,42 @@ func TestAllAccountsCarriesNoSecrets(t *testing.T) {
 		if strings.Contains(string(raw), forbidden) {
 			t.Errorf("the account list contains %q", forbidden)
 		}
+	}
+}
+
+// A backup has to be a database you can actually open, taken while the relay
+// is running and writing. Copying the file would not be: in WAL mode the
+// recent writes live in a second file, so a plain copy is a database from a
+// moment that never existed.
+func TestBackupIsAWholeUsableDatabase(t *testing.T) {
+	st := newStore(t)
+	acct, err := st.Register("backed-up@example.com", "a good password")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	path := filepath.Join(t.TempDir(), "copy.db")
+	if err := st.BackupTo(path); err != nil {
+		t.Fatal(err)
+	}
+
+	// Open the copy on its own and look for the person who was in the original.
+	copied, err := store.Open(path)
+	if err != nil {
+		t.Fatalf("the backup will not open: %v", err)
+	}
+	defer copied.Close()
+	got, err := copied.AccountByEmail("backed-up@example.com")
+	if err != nil {
+		t.Fatalf("the account is missing from the backup: %v", err)
+	}
+	if got.ID != acct.ID {
+		t.Errorf("backup has account %q, want %q", got.ID, acct.ID)
+	}
+
+	// And it refuses to write over one, because replacing a good backup with
+	// a bad one is worse than not taking one.
+	if err := st.BackupTo(path); err == nil {
+		t.Error("the backup silently overwrote an existing file")
 	}
 }
