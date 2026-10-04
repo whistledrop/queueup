@@ -14,10 +14,13 @@ export default function LoginPage() {
 
 function LoginForm() {
   const router = useRouter()
+  const params = useSearchParams()
   // The landing page's buttons land people straight on the create form.
-  const wantsCreate = useSearchParams().get('mode') === 'create'
+  const wantsCreate = params.get('mode') === 'create'
   const [creating, setCreating] = useState(wantsCreate)
-  const [email, setEmail] = useState('')
+  // They already typed this on the landing page. Asking for it twice is the
+  // sort of thing that makes people stop.
+  const [email, setEmail] = useState(params.get('email') ?? '')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)

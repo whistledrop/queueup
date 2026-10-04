@@ -908,3 +908,62 @@
   .shot .pcTitlebar { font-size: 7px; padding: 4px 6px; }
   .shotLabel { font-size: 9px; letter-spacing: 0.04em; }
 }
+
+/* The first step, on the page itself.
+
+   One field and one button, side by side on a laptop and stacked on a phone,
+   where a 44px-tall row of two things is a row of two things nobody can hit
+   accurately. */
+.startForm {
+  display: flex;
+  gap: 8px;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.startForm input {
+  flex: 1;
+  min-width: 0;
+  min-height: 52px;
+  padding: 0 18px;
+  font-size: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--card);
+  color: var(--text);
+}
+
+.startForm input::placeholder { color: var(--muted); }
+
+.startForm input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(208, 90, 42, 0.14);
+}
+
+.startForm button {
+  flex: none;
+  min-height: 52px;
+  padding: 0 26px;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  background: var(--accent);
+  color: var(--accent-text);
+  border: none;
+  border-radius: var(--radius-pill);
+  box-shadow: 0 8px 22px rgba(208, 90, 42, 0.26);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.startForm button:disabled { opacity: 0.7; box-shadow: none; }
+
+@media (max-width: 560px) {
+  .startForm {
+    flex-direction: column;
+    gap: 10px;
+    max-width: 340px;
+  }
+  .startForm input { text-align: center; }
+}

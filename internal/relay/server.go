@@ -85,6 +85,8 @@ type Server struct {
 	pcLinks *throttle
 	// asks counts help-assistant questions per account.
 	asks *throttle
+	// leads caps an endpoint anybody on the internet can post to.
+	leads *throttle
 
 	bot *support.Bot
 
@@ -115,6 +117,7 @@ func New(cfg Config) *Server {
 		resets:    newThrottle(resetRequestLimit, resetRequestWindow, time.Now),
 		pcLinks:   newThrottle(pcLinkLimit, pcLinkWindow, time.Now),
 		asks:      newThrottle(askLimit, askWindow, time.Now),
+		leads:     newThrottle(leadLimit, leadWindow, time.Now),
 		debugLogs: map[string][]string{},
 	}
 	if cfg.Mail == nil {
@@ -173,6 +176,8 @@ func (s *Server) routes() {
 	s.accountRoutes()
 	// Bringing your mates.
 	s.referralRoutes()
+	// Email addresses, and what became of them.
+	s.leadRoutes()
 
 	// Account-facing.
 	s.mux.HandleFunc("POST /api/pair", s.withAccount(s.handleClaimCode))

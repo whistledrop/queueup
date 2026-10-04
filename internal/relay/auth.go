@@ -86,6 +86,11 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.signUps.fail(from) // counts accounts made, not mistakes
+	// They gave this address on the landing page and have now come back and
+	// finished. The lead stops being a lead rather than being counted twice.
+	if err := s.st.MarkLeadConverted(acct.Email); err != nil {
+		s.log.Error("marking a lead converted", "err", err)
+	}
 	token, err := s.st.NewSession(acct.ID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError,

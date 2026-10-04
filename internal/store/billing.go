@@ -21,6 +21,9 @@ type Subscription struct {
 	// CustomerID is Stripe's customer for this account, set by the first
 	// checkout. It is what the "manage subscription" page needs.
 	CustomerID string
+	// FirstPaidAt is when money first changed hands, kept forever so that a
+	// customer who left is not mistaken for one who never arrived.
+	FirstPaidAt time.Time
 	// IntroUsed records that this account has had the discounted first month.
 	// It survives cancelling, which is the point: cancel and resubscribe is
 	// full price, or the intro offer is £1.99 forever.
@@ -44,11 +47,13 @@ func (s Subscription) Comped() bool { return s.Status == StatusComped }
 func (s *Store) SubscriptionFor(accountID string) (Subscription, error) {
 	var sub Subscription
 	var at, intro int64
+	var paid int64
 	err := s.db.QueryRow(
-		`SELECT subscription_status, subscription_id, subscribed_at, stripe_customer_id, intro_used
+		`SELECT subscription_status, subscription_id, subscribed_at, stripe_customer_id, intro_used, first_paid_at
 		   FROM accounts WHERE id = ?`,
-		accountID).Scan(&sub.Status, &sub.SubID, &at, &sub.CustomerID, &intro)
+		accountID).Scan(&sub.Status, &sub.SubID, &at, &sub.CustomerID, &intro, &paid)
 	sub.IntroUsed = intro != 0
+	sub.FirstPaidAt = fromMs(paid)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Subscription{}, ErrNotFound
 	}
@@ -74,6 +79,18 @@ func (s *Store) SetSubscription(accountID, status, subID string) error {
 		status, subID, at, accountID)
 	if err != nil {
 		return err
+	}
+	// subscribed_at is cleared when somebody cancels, which means a customer
+	// who paid for six months and left looks exactly like somebody who never
+	// paid at all. first_paid_at is written once and never cleared, so churn
+	// stays visible: it is the difference between "did not want it" and "did
+	// want it, then stopped", and those call for completely different work.
+	if status == "active" {
+		if _, err := s.db.Exec(
+			`UPDATE accounts SET first_paid_at = ? WHERE id = ? AND first_paid_at = 0`,
+			ms(s.now().UTC()), accountID); err != nil {
+			return err
+		}
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
 		return ErrNotFound

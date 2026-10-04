@@ -287,6 +287,8 @@ export default function AdminPage() {
             </div>
           </div>
 
+          <Funnel token={token} />
+
           <div className="card">
             <h2>How joins went</h2>
             <OutcomeRow title="Last 24 hours" s={day} />
@@ -448,6 +450,58 @@ function OutcomeRow({ title, s }: { title: string; s: ReturnType<typeof summaris
         <span className="pill bad">failed {s.failed}{pct(s.failed)}</span>
         {s.running > 0 && <> <span className="pill warn">still running {s.running}</span></>}
       </div>
+    </div>
+  )
+}
+
+/* The funnel: everybody we have an address for and how far they got.
+
+   The stage that matters most is "lapsed", which is somebody who paid and
+   then stopped. Before first_paid_at existed they were indistinguishable
+   from somebody who never paid at all, and those two call for opposite work:
+   one did not want it, the other did want it and then something went wrong. */
+function Funnel({ token }: { token: string }) {
+  const [counts, setCounts] = useState<Record<string, number> | null>(null)
+
+  useEffect(() => {
+    if (!token) return
+    fetch('/api/relay/admin/funnel', { headers: { 'x-admin-token': token } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b) => b && setCounts(b.counts ?? {}))
+      .catch(() => {})
+  }, [token])
+
+  if (!counts) return null
+  const n = (k: string) => counts[k] ?? 0
+
+  async function download() {
+    const res = await fetch('/api/relay/admin/funnel.csv', { headers: { 'x-admin-token': token } })
+    if (!res.ok) return
+    const url = URL.createObjectURL(await res.blob())
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `queueup-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <div className="card">
+      <h2>Who they are</h2>
+      <div className="row" style={{ flexWrap: 'wrap' }}>
+        <Stat n={n('lead')} label="email only" />
+        <Stat n={n('signed_up')} label="signed up" />
+        <Stat n={n('paying')} label="paying" />
+        <Stat n={n('lapsed')} label="was paying" />
+        <Stat n={n('free')} label="free access" />
+      </div>
+      <p className="muted small" style={{ marginTop: 10 }}>
+        <b>Email only</b> typed an address on the landing page and never
+        finished. <b>Was paying</b> paid at least once and has stopped.
+      </p>
+      <button className="btn-wide" onClick={download}>
+        Download the list as a spreadsheet
+      </button>
     </div>
   )
 }

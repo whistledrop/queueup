@@ -162,7 +162,7 @@ func Open(path string) (*Store, error) {
 			return nil, fmt.Errorf("setting %s: %w", pragma, err)
 		}
 	}
-	for _, s := range []string{schema, authSchema, serversSchema, feedbackSchema, resetSchema} {
+	for _, s := range []string{schema, authSchema, serversSchema, feedbackSchema, resetSchema, leadSchema} {
 		if _, err := db.Exec(s); err != nil {
 			return nil, fmt.Errorf("creating schema: %w", err)
 		}
@@ -256,6 +256,7 @@ func (s *Store) migrate() error {
 		{"accounts", "referral_rewarded", "INTEGER NOT NULL DEFAULT 0"},
 		{"accounts", "referral_credits", "INTEGER NOT NULL DEFAULT 0"},
 		{"accounts", "referral_earned", "INTEGER NOT NULL DEFAULT 0"},
+		{"accounts", "first_paid_at", "INTEGER NOT NULL DEFAULT 0"},
 	} {
 		has, err := s.hasColumn(m.table, m.column)
 		if err != nil {

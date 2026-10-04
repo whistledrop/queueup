@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { BETA, PLAN } from '@/lib/pricing'
 import s from './landing.module.css'
+import StartForm from './startForm'
 
 // The landing page. Everything on it is a picture of the real app: the phone
 // mockups are the actual screens, rebuilt in markup so they stay pin sharp.
@@ -29,11 +30,7 @@ export default function Landing() {
             Tap join from school, work or the traffic. Your PC queues. You walk
             in and play.
           </p>
-          <div className={s.ctaRow}>
-            <Link href="/login?mode=create" className={s.cta}>
-              {BETA ? 'Get QueueUp free' : 'Get QueueUp'}
-            </Link>
-          </div>
+          <StartForm className={s.startForm} />
         </div>
         <div>
           <HeroShot />

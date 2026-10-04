@@ -50,6 +50,16 @@ export default function PrivacyPage() {
             scrambled, one-way form that cannot be turned back into the password.
           </li>
           <li>
+            <b>An email address you typed but did not finish with:</b> if you
+            put your address into the box on the front page and then stopped
+            before making an account, we keep that address. It tells us how
+            many people set out and did not get there, which is how the sign-up
+            gets better. We may email you about a wipe. Reply to any of it
+            saying stop, or write to{' '}
+            <a href="mailto:hello@queueuprust.com">hello@queueuprust.com</a>,
+            and it goes for good.
+          </li>
+          <li>
             <b>Your linked PC:</b> its Windows computer name, the QueueUp version
             it runs, its sleep setting, and when it was last connected.
           </li>
