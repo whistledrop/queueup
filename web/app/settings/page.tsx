@@ -56,9 +56,18 @@ export default function SettingsPage() {
       : null
 
   async function signOut() {
-    await fetch('/api/auth/logout', { method: 'POST' })
-    router.push('/login')
-    router.refresh()
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' })
+    } catch {
+      // The cookie is dropped server-side either way; go anyway.
+    }
+    // The front door, not the login form: somebody signing out has finished,
+    // and the landing page is what they recognise. Signing in again is one
+    // tap from there.
+    //
+    // A hard navigation, because router.push would leave the client router
+    // holding rendered pages from the session that just ended.
+    window.location.href = '/'
   }
 
   // Unlinking is for a new PC, a sold PC, or starting again. The confirm says

@@ -96,6 +96,22 @@ function Subscribe() {
       .catch(() => {})
   }, [preview, check])
 
+  // Signing out from the paywall used to be a link to Settings, which does
+  // not sign anybody out: it dropped them into the app, full navigation and
+  // all, which is the one place somebody who has not paid should not be.
+  //
+  // A hard navigation rather than router.push, because signing out has to
+  // drop every page the client router is still holding. The landing page is
+  // where they came in, and where they sign in again from.
+  async function signOut() {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' })
+    } catch {
+      // The cookie is dropped server-side either way; go anyway.
+    }
+    window.location.href = '/'
+  }
+
   async function checkout() {
     setBusy(true)
     setNote('')
@@ -124,7 +140,9 @@ function Subscribe() {
     <div className="shell narrow">
       <header className="top">
         <Link href="/" className="brand">Queue<span>Up</span></Link>
-        <Link href="/settings" className="tab">Sign out</Link>
+        <button type="button" className="tab" onClick={signOut}>
+          Sign out
+        </button>
       </header>
 
       {billing?.test_mode && (
