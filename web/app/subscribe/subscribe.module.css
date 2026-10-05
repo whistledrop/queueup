@@ -79,16 +79,16 @@
   display: inline-flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 3px;
-  padding: 6px 10px 7px;
-  border-radius: 10px;
+  gap: 2px;
+  padding: 4px 7px 5px;
+  border-radius: 7px;
   background: rgba(192, 57, 47, 0.09);
   color: var(--bad);
   line-height: 1;
 }
 
 .timerLabel {
-  font-size: 10px;
+  font-size: 8.5px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -96,7 +96,7 @@
 }
 
 .timerDigits {
-  font-size: 17px;
+  font-size: 13.5px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
