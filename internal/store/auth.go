@@ -63,6 +63,78 @@ func (s *Store) Register(email, password string) (Account, error) {
 	return a, nil
 }
 
+// ErrAccountExists means somebody already has that email address. It is
+// separate from every other signup error because what happens next depends
+// on what kind of account it is.
+var ErrAccountExists = errors.New("there is already an account with that email address")
+
+// StartAccount creates an account from an email address alone.
+//
+// This is how somebody gets from the landing page to the price: an email,
+// and nothing else in the way. The password comes after they have paid, when
+// there is finally something worth protecting. Until then the account has no
+// password at all, and SignIn refuses it, so nobody can sign into one.
+func (s *Store) StartAccount(email string) (Account, error) {
+	email = strings.ToLower(strings.TrimSpace(email))
+	if !strings.Contains(email, "@") || len(email) < 5 {
+		return Account{}, errors.New("that doesn't look like an email address")
+	}
+	if _, err := s.AccountByEmail(email); err == nil {
+		return Account{}, ErrAccountExists
+	}
+	_, unusable := NewToken()
+	a := Account{ID: newID("acct"), Email: email, CreatedAt: s.now().UTC()}
+	if _, err := s.db.Exec(
+		`INSERT INTO accounts (id, email, token_hash, password_hash, created_at) VALUES (?, ?, ?, '', ?)`,
+		a.ID, a.Email, unusable, ms(a.CreatedAt)); err != nil {
+		return Account{}, err
+	}
+	return a, nil
+}
+
+// HasPassword reports whether this account has ever had a password set.
+func (s *Store) HasPassword(accountID string) (bool, error) {
+	var hash string
+	err := s.db.QueryRow(`SELECT password_hash FROM accounts WHERE id = ?`, accountID).Scan(&hash)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, ErrNotFound
+	}
+	return hash != "", err
+}
+
+// ErrPasswordAlreadySet is returned when somebody tries to set a first
+// password on an account that already has one.
+var ErrPasswordAlreadySet = errors.New("this account already has a password")
+
+// SetFirstPassword gives a password to an account that has never had one.
+//
+// It refuses outright if a password is already there. Changing a password
+// needs the current one, and this must never become a way round that: a
+// session left open on somebody's phone would otherwise be enough to lock
+// them out of their own account.
+func (s *Store) SetFirstPassword(accountID, password string) error {
+	if err := CheckPassword(password); err != nil {
+		return err
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	res, err := s.db.Exec(
+		`UPDATE accounts SET password_hash = ? WHERE id = ? AND password_hash = ''`,
+		string(hash), accountID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		if _, err := s.AccountByID(accountID); err != nil {
+			return ErrNotFound
+		}
+		return ErrPasswordAlreadySet
+	}
+	return nil
+}
+
 // SignIn checks an email and password and starts a session.
 func (s *Store) SignIn(email, password string) (Account, string, error) {
 	email = strings.ToLower(strings.TrimSpace(email))

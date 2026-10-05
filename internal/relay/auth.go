@@ -168,5 +168,11 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request, acct store.Acc
 	if when, leaving := acct.LeavingOn(); leaving {
 		out["erase_after"] = when
 	}
+	// Somebody who paid but has not chosen a password yet is sent to choose
+	// one before anything else: until they do, they could not sign in again
+	// anywhere but this browser.
+	if has, err := s.st.HasPassword(acct.ID); err == nil {
+		out["has_password"] = has
+	}
 	writeJSON(w, http.StatusOK, out)
 }

@@ -78,27 +78,37 @@ func (s *Server) handleForgotPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	link := fmt.Sprintf("%s/reset?token=%s", strings.TrimSuffix(s.cfg.WebURL, "/"), token)
-	text := "Somebody asked to reset the password for your QueueUp account.\n\n" +
-		"Open this link to choose a new one. It works for one hour, once:\n\n" +
-		link + "\n\n" +
-		"If that was not you, you can ignore this email. Your password has not changed,\n" +
-		"and nobody can use this link without opening it from your inbox.\n\n" +
-		"QueueUp is a free beta. It never asks for your Steam password.\n"
+	s.emailPasswordLink(acct, token, "Reset your QueueUp password",
+		"Somebody asked to reset the password for your QueueUp account.")
 
-	// Sent in the background: the person is staring at a page, and how long
-	// Resend takes is not their business.
+	answer()
+}
+
+// emailPasswordLink sends somebody a one-hour, one-use link to choose a
+// password, in the background: the person is staring at a page, and how long
+// Resend takes is not their business.
+//
+// Two people need this. Somebody who forgot their password, and somebody who
+// paid without ever setting one — they closed the tab before that step, and
+// signing in needs a password, so a link to their inbox is the only way back
+// that proves the account is theirs.
+func (s *Server) emailPasswordLink(acct store.Account, token, subject, opening string) {
+	link := fmt.Sprintf("%s/reset?token=%s", strings.TrimSuffix(s.cfg.WebURL, "/"), token)
+	text := opening + "\n\n" +
+		"Open this link to choose your password. It works for one hour, once:\n\n" +
+		link + "\n\n" +
+		"If that was not you, you can ignore this email. Nothing has changed,\n" +
+		"and nobody can use this link without opening it from your inbox.\n\n" +
+		"QueueUp never asks for your Steam password.\n"
 	go func(to string) {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		if err := s.mail.Send(ctx, to, "Reset your QueueUp password", text); err != nil {
-			s.log.Error("sending a password reset email", "err", err)
+		if err := s.mail.Send(ctx, to, subject, text); err != nil {
+			s.log.Error("sending a password link", "err", err)
 			return
 		}
-		s.log.Info("password reset email sent", "account", acct.ID)
+		s.log.Info("password link sent", "account", acct.ID)
 	}(acct.Email)
-
-	answer()
 }
 
 func (s *Server) handleResetPassword(w http.ResponseWriter, r *http.Request) {

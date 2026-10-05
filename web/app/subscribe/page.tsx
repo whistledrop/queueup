@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { api, getBilling, type Billing } from '@/lib/api'
+import { api, ApiError, getBilling, type Billing } from '@/lib/api'
 import { PLAN, priceLine } from '@/lib/pricing'
 import { capturePromoFromURL, storedPromo, storePromo } from '@/lib/promo'
 import s from './subscribe.module.css'
@@ -101,7 +101,16 @@ function Subscribe() {
         if (b.paying || (b.subscribed && !preview)) window.location.href = '/'
         else setBilling(b)
       })
-      .catch(() => {})
+      .catch((e) => {
+        // Signed out. Usually somebody who signed up inside TikTok's browser
+        // and tapped a reminder email that opened somewhere else. The way
+        // back is the email box on the front page, and the code they came
+        // on goes with them so the price they see is the one in the email.
+        if (e instanceof ApiError && e.status === 401) {
+          const code = new URLSearchParams(window.location.search).get('promo') ?? storedPromo()
+          window.location.href = code ? `/?promo=${encodeURIComponent(code)}` : '/'
+        }
+      })
   }, [preview, check])
 
   // Signing out from the paywall used to be a link to Settings, which does

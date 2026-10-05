@@ -189,8 +189,11 @@ func (s *Server) handleCheckout(w http.ResponseWriter, r *http.Request, acct sto
 
 		PromotionCodeID: discount,
 		SourceCode:      promo.Code,
-		SuccessURL:      web + "/?subscribed=1",
-		CancelURL:       web + "/subscribe",
+		// The password step, not the dashboard: somebody who paid without
+		// ever setting one does it here, and somebody who already has one is
+		// passed straight on to the thank-you.
+		SuccessURL: web + "/finish?subscribed=1",
+		CancelURL:  web + "/subscribe",
 	})
 	if err != nil {
 		s.log.Error("creating a checkout page", "account", acct.ID, "err", err)

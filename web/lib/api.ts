@@ -3,6 +3,16 @@
 // Small wrapper the pages use. Every call goes to this app, which adds the
 // session token and forwards it to the relay.
 
+/** A failed call, carrying the status so a page can tell "signed out" from "broken". */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message)
+  }
+}
+
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch('/api/relay' + path, {
     ...init,
@@ -15,7 +25,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     if (res.status === 402 && typeof window !== 'undefined') {
       window.location.href = '/subscribe'
     }
-    throw new Error(body.error ?? 'Something went wrong. Try again.')
+    throw new ApiError(body.error ?? 'Something went wrong. Try again.', res.status)
   }
   return body as T
 }

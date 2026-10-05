@@ -1,17 +1,19 @@
 'use client'
 
-// Signing up, on the landing page, in one place.
+// Signing up, on the landing page: an email address and nothing else.
 //
-// Email first, on its own. Press go and a password field drops in underneath
-// it, and the account is made without ever leaving the page. The second page
-// is gone: every page load between somebody wanting the thing and having it is
-// a place where they stop wanting it.
+// The next screen is the price. The password comes after they have paid,
+// which is the first moment there is anything in the account worth
+// protecting; asking for it sooner is asking for effort before they know
+// whether they want the thing.
 //
-// The address is kept the moment they press go, before the password exists.
-// Somebody who gets that far and then thinks better of it used to be a visit
-// that happened to nobody; now they are a person we can count and talk to.
+// The same box is how somebody gets back. They signed up inside TikTok's own
+// browser, tapped the reminder email, and landed here in Safari signed out:
+// typing the address again takes them back to the price. Only ever into an
+// account that has never been paid for and never had a password. Anything
+// more than that needs the password, or a link sent to their own inbox.
 
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { storedPromo } from '@/lib/promo'
@@ -20,63 +22,41 @@ import { track } from '@/lib/analytics'
 export default function StartForm({ className }: { className?: string }) {
   const router = useRouter()
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [taken, setTaken] = useState(false)
-  const passwordBox = useRef<HTMLInputElement>(null)
-
-  // The field they are meant to fill in next should be the one their keyboard
-  // is already pointed at.
-  useEffect(() => {
-    if (open) passwordBox.current?.focus()
-  }, [open])
+  const [signIn, setSignIn] = useState(false)
+  const [sent, setSent] = useState('')
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     const address = email.trim()
     if (!address || busy) return
-
-    if (!open) {
-      setBusy(true)
-      try {
-        // Keep the address before asking for anything else. If this fails we
-        // carry on anyway: losing a lead is a shame, but refusing somebody a
-        // sign-up because we could not file their address first is worse.
-        await fetch('/api/relay/api/leads', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ email: address, code: storedPromo() }),
-        })
-      } catch {
-        // as above
-      }
-      setBusy(false)
-      setOpen(true)
-      return
-    }
-
-    if (!password) return
     setBusy(true)
     setError('')
-    setTaken(false)
+    setSignIn(false)
+    setSent('')
     try {
-      const res = await fetch('/api/auth/register', {
+      const res = await fetch('/api/auth/start', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email: address, password, code: storedPromo() }),
+        body: JSON.stringify({ email: address, code: storedPromo() }),
       })
       const body = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        const message = body.error ?? 'That did not work. Try again.'
-        setError(message)
-        setTaken(/already/i.test(message))
+      if (res.status === 201 || res.status === 200) {
+        if (body.created) track('account_created', { from: 'landing' })
+        router.push(body.created ? '/subscribe?welcome=1' : '/subscribe')
+        return
+      }
+      if (res.status === 202) {
+        // Paid but never chose a password: the way back is a link in their
+        // own inbox, and this is all the page says about it.
+        setSent(body.status ?? 'Check your email for a link.')
         setBusy(false)
         return
       }
-      track('account_created', { from: 'landing' })
-      router.push('/subscribe?welcome=1')
+      setError(body.error ?? 'That did not work. Try again.')
+      setSignIn(Boolean(body.sign_in))
+      setBusy(false)
     } catch {
       setError('We could not reach QueueUp. Check your connection.')
       setBusy(false)
@@ -95,44 +75,27 @@ export default function StartForm({ className }: { className?: string }) {
           autoComplete="email"
           aria-label="Your email"
         />
-        {!open && (
-          <button type="submit" disabled={busy} aria-label="Continue">
-            <Arrow />
-          </button>
-        )}
+        <button type="submit" disabled={busy} aria-label="Continue">
+          <Arrow />
+        </button>
       </div>
-
-      {open && (
-        <div className="startDrop">
-          <input
-            ref={passwordBox}
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Pick a password"
-            autoComplete="new-password"
-            aria-label="Pick a password"
-          />
-          <button type="submit" disabled={busy || !password} aria-label="Create account">
-            <Arrow />
-          </button>
-        </div>
-      )}
 
       {error && (
         <p className="startError">
           {error}{' '}
-          {taken && (
-            <Link href={`/login?email=${encodeURIComponent(email.trim())}`}>Sign in instead</Link>
-          )}
+          {/* No address in the link: an email in a URL ends up in browser
+              history and in the logs of every server it passes through. */}
+          {signIn && <Link href="/login">Sign in</Link>}
         </p>
       )}
 
-      {open && !error && (
+      {sent && <p className="startSmall">{sent}</p>}
+
+      {/* Pressing the arrow is what makes the account now, so this is where
+          the privacy notice has to be: before it, not after. */}
+      {!error && !sent && (
         <p className="startSmall">
-          Eight characters or more. By creating an account you have read the{' '}
-          <Link href="/privacy">privacy notice</Link>.
+          By continuing you accept the <Link href="/privacy">privacy notice</Link>.
         </p>
       )}
     </form>

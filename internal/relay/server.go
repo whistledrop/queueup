@@ -171,6 +171,7 @@ func (s *Server) routes() {
 	// Getting from "signed up on my phone" to "PC linked".
 	s.onboardingRoutes()
 	s.winbackRoutes()
+	s.startRoutes()
 	// The help assistant.
 	s.supportRoutes()
 	// Finding servers and starring them.
