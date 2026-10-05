@@ -167,7 +167,7 @@ function Subscribe() {
         <p className={s.kicker}>{discounted ? 'Your first month' : 'QueueUp'}</p>
         <div className={s.priceRow}>
           {discounted && <span className={s.was}>{money(full)}</span>}
-          <span className={s.price}>{money(nowPence)}</span>
+          <span className={`${s.price} ${discounted ? s.priceDeal : ''}`}>{money(nowPence)}</span>
         </div>
         <p className={s.after}>
           {discounted ? `then ${priceLine()}. Cancel anytime.` : 'a month. Cancel anytime.'}

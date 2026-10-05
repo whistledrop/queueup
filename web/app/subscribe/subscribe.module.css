@@ -43,6 +43,12 @@
   line-height: 1;
 }
 
+/* The discounted price, in red, so the deal is the first thing the eye lands
+   on. Only when there is a deal: the standard £4.99 stays plain. */
+.priceDeal {
+  color: var(--bad);
+}
+
 /* The price they would have paid, kept visible next to the one they will, so
    a discount is something they can see rather than something we assert. */
 .was {
