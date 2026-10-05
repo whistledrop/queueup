@@ -27,3 +27,10 @@
 [build.environment]
   NEXT_PUBLIC_POSTHOG_KEY  = "phc_uiyViY3BWd4LjV6eiwi5fKtgDsmrJZok4C7Ec4QLtcAm"
   NEXT_PUBLIC_POSTHOG_HOST = "https://eu.i.posthog.com"
+  # QUEUEUP_PROXY_KEY is set in the Netlify dashboard as a secret, and the
+  # website's server needs it to tell the relay which visitor it is calling
+  # for. Netlify's own server bundle carries it, so the secrets scanner — which
+  # reads every file in the build, server code included — failed every deploy
+  # once it was added. It never reaches a browser: after each deploy, the live
+  # site's served files are searched for the value, and a hit means rotating it.
+  SECRETS_SCAN_OMIT_KEYS   = "QUEUEUP_PROXY_KEY"
