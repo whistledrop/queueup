@@ -51,10 +51,11 @@ func newWinbackRig(t *testing.T, demo, testimonial string) *winbackRig {
 	return &winbackRig{srv: srv, st: st, ts: ts, mail: fake}
 }
 
-// signup makes an account that arrived on `code` and is `age` old at `now`.
+// signup makes an account the way the landing page does — an email and no
+// password — that arrived on `code` and is `age` old at `now`.
 func (r *winbackRig) signup(t *testing.T, email, code string, age time.Duration, now time.Time) store.Account {
 	t.Helper()
-	a, err := r.st.Register(email, "a good password")
+	a, err := r.st.StartAccount(email)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,8 +127,9 @@ func TestTheSequenceSendsTheRightEmailAtTheRightTime(t *testing.T) {
 		"TIKTOK",
 		// The deadline as hours left: sent three hours after signup, so 69.
 		"for the next 69 hours",
-		// The code rides in the link, so it works on any device.
-		"https://queueuprust.com/subscribe?promo=TIKTOK",
+		// One tap back to their own paywall, with the code riding along.
+		"https://queueuprust.com/continue?a=" + a.ID,
+		"promo=TIKTOK",
 		"£4.99 a month",
 		"not affiliated with Facepunch",
 	} {
@@ -401,4 +403,126 @@ func TestTimeLeftIsSaidInHours(t *testing.T) {
 			t.Errorf("%v left: %q, want %q", c.left, got, c.want)
 		}
 	}
+}
+
+// continueFrom pulls the "pick up where you left off" link out of an email.
+func continueFrom(t *testing.T, body string) url.Values {
+	t.Helper()
+	i := strings.Index(body, "https://queueuprust.com/continue?")
+	if i < 0 {
+		t.Fatalf("no continue link in:\n%s", body)
+	}
+	u, err := url.Parse(strings.Fields(body[i:])[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	return u.Query()
+}
+
+func (r *winbackRig) do(t *testing.T, method, path, session, body string) (int, map[string]any) {
+	t.Helper()
+	req, _ := http.NewRequest(method, r.ts.URL+path, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	if session != "" {
+		req.Header.Set("Authorization", "Bearer "+session)
+	}
+	resp, err := r.ts.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var out map[string]any
+	_ = json.NewDecoder(resp.Body).Decode(&out)
+	return resp.StatusCode, out
+}
+
+func (r *winbackRig) follow(t *testing.T, q url.Values) (int, map[string]any) {
+	t.Helper()
+	b, _ := json.Marshal(map[string]string{"a": q.Get("a"), "t": q.Get("t"), "code": q.Get("promo")})
+	return r.do(t, "POST", "/api/auth/continue", "", string(b))
+}
+
+// The link in the email, tapped somewhere they are not signed in: straight
+// back to their own paywall, at the price the email promised, counting down
+// from their own signup — not a fresh 72 hours, and not the full price.
+func TestTheEmailLinkLandsOnTheirOwnOfferAndCountdown(t *testing.T) {
+	r := newWinbackRig(t, "", "")
+	start := time.Now().Add(-3 * time.Hour)
+	a := r.signup(t, "tapped@example.com", "TIKTOK", 0, start)
+	r.srv.sendWinback(context.Background(), time.Now())
+	got := r.sent()
+	if len(got) != 1 {
+		t.Fatalf("%d emails", len(got))
+	}
+	q := continueFrom(t, text(got[0]))
+	if q.Get("a") != a.ID || q.Get("t") == "" || q.Get("promo") != "TIKTOK" {
+		t.Fatalf("link carries %v", q)
+	}
+
+	code, out := r.follow(t, q)
+	if code != http.StatusOK || out["session_token"] == nil {
+		t.Fatalf("following the link = %d %v", code, out)
+	}
+	session := out["session_token"].(string)
+
+	// Their account, not a new one.
+	if code, me := r.do(t, "GET", "/api/auth/me", session, ""); code != 200 || me["email"] != "tapped@example.com" {
+		t.Fatalf("signed in as %v (%d)", me["email"], code)
+	}
+	// Their countdown: 72 hours from when they signed up.
+	_, bill := r.do(t, "GET", "/api/billing", session, "")
+	ends, err := time.Parse(time.RFC3339Nano, fmt.Sprint(bill["offer_ends_at"]))
+	if err != nil {
+		t.Fatalf("offer_ends_at = %v", bill["offer_ends_at"])
+	}
+	if want := a.CreatedAt.Add(offerWindow); ends.Sub(want).Abs() > time.Second {
+		t.Errorf("countdown ends %v, want %v (72 hours from their own signup)", ends, want)
+	}
+	// Their price.
+	if _, chk := r.do(t, "POST", "/api/billing/code", session, `{"code":"TIKTOK"}`); chk["first_month_pence"] != float64(199) {
+		t.Errorf("price on arrival = %v, want 199", chk["first_month_pence"])
+	}
+}
+
+// The link is no stronger than typing the address: it never opens an account
+// that has a password or a payment behind it.
+func TestTheEmailLinkIsNoStrongerThanTypingTheEmail(t *testing.T) {
+	setup := func(t *testing.T) (*winbackRig, store.Account, url.Values) {
+		r := newWinbackRig(t, "", "")
+		start := time.Now().Add(-3 * time.Hour)
+		a := r.signup(t, "link@example.com", "TIKTOK", 0, start)
+		r.srv.sendWinback(context.Background(), time.Now())
+		return r, a, continueFrom(t, text(r.sent()[0]))
+	}
+
+	t.Run("after choosing a password", func(t *testing.T) {
+		r, a, q := setup(t)
+		if err := r.st.SetFirstPassword(a.ID, "a good password"); err != nil {
+			t.Fatal(err)
+		}
+		code, out := r.follow(t, q)
+		if code != http.StatusConflict || out["session_token"] != nil {
+			t.Errorf("= %d %v, want 409 and no session", code, out)
+		}
+	})
+	t.Run("after paying", func(t *testing.T) {
+		r, a, q := setup(t)
+		if err := r.st.SetSubscription(a.ID, "active", "sub_1"); err != nil {
+			t.Fatal(err)
+		}
+		code, out := r.follow(t, q)
+		if code != http.StatusAccepted || out["session_token"] != nil {
+			t.Errorf("= %d %v, want 202 and no session", code, out)
+		}
+	})
+	t.Run("a made-up token, or the unsubscribe one", func(t *testing.T) {
+		r, a, q := setup(t)
+		unsub := unsubscribeFrom(t, text(r.sent()[0])).Get("t")
+		for _, tok := range []string{"made-up", unsub, ""} {
+			bad := url.Values{"a": {a.ID}, "t": {tok}, "promo": {q.Get("promo")}}
+			if code, out := r.follow(t, bad); code != http.StatusBadRequest || out["session_token"] != nil {
+				t.Errorf("token %q = %d %v, want 400", tok, code, out)
+			}
+		}
+	})
 }

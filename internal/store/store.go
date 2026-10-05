@@ -262,6 +262,7 @@ func (s *Store) migrate() error {
 		{"accounts", "winback_stage", "INTEGER NOT NULL DEFAULT 0"},
 		{"accounts", "email_optout_at", "INTEGER NOT NULL DEFAULT 0"},
 		{"accounts", "unsubscribe_token", "TEXT NOT NULL DEFAULT ''"},
+		{"accounts", "continue_token", "TEXT NOT NULL DEFAULT ''"},
 	} {
 		has, err := s.hasColumn(m.table, m.column)
 		if err != nil {

@@ -113,10 +113,15 @@ func (s *Server) sendOneWinback(ctx context.Context, acct store.Account, stage s
 	}
 	web := strings.TrimSuffix(s.cfg.WebURL, "/")
 	unsub := web + "/unsubscribe?" + url.Values{"a": {acct.ID}, "t": {token}}.Encode()
-	// The code rides in the link, so following it on a phone or a borrowed
-	// laptop — anywhere the code was never saved — still shows the price the
-	// email promised.
-	back := web + "/subscribe?" + url.Values{"promo": {promo.Code}}.Encode()
+	// One tap back to their own paywall, wherever the mail app opens it:
+	// signed in as them, so the price and the countdown are their own, and
+	// with the code riding along so the discount is applied on arrival.
+	cont, err := s.st.ContinueToken(acct.ID)
+	if err != nil {
+		s.log.Error("making a continue link", "account", acct.ID, "err", err)
+		return
+	}
+	back := web + "/continue?" + url.Values{"a": {acct.ID}, "t": {cont}, "promo": {promo.Code}}.Encode()
 
 	subject, body := winbackMessage(stage, winbackDetails{
 		code:        promo.Code,

@@ -99,8 +99,47 @@ func (s *Store) MarkWinbackSent(accountID string, stage WinbackStage) (bool, err
 // what it can do, which is exactly one thing: stop marketing email to this
 // address. It cannot sign in, cannot read anything, and cannot undo itself.
 func (s *Store) UnsubscribeToken(accountID string) (string, error) {
+	return s.lazyToken(accountID, "unsubscribe_token")
+}
+
+// ContinueToken returns the token that goes in the "pick up where you left
+// off" links in the reminder emails, making one the first time it is needed.
+//
+// It is separate from the unsubscribe token on purpose. That one is handed to
+// mail providers in a header and may be fetched by them; this one opens a
+// session, and the two must never be able to do each other's job.
+//
+// What it opens is exactly what typing the address on the landing page opens,
+// and no more: the caller applies the same rules, so for an account that has
+// paid or has a password it gets nobody in. Kept in the clear for the same
+// reason as the unsubscribe token: it has to be written into each email.
+func (s *Store) ContinueToken(accountID string) (string, error) {
+	return s.lazyToken(accountID, "continue_token")
+}
+
+// ErrBadContinue covers every reason a continue link is refused, as one error,
+// so the link cannot be used to find out which accounts exist.
+var ErrBadContinue = errors.New("that link is not valid")
+
+// AccountByContinueToken finds the account a continue link belongs to.
+func (s *Store) AccountByContinueToken(accountID, token string) (Account, error) {
+	if accountID == "" || token == "" {
+		return Account{}, ErrBadContinue
+	}
+	var want string
+	err := s.db.QueryRow(`SELECT continue_token FROM accounts WHERE id = ?`, accountID).Scan(&want)
+	if err != nil || want == "" || subtle.ConstantTimeCompare([]byte(want), []byte(token)) != 1 {
+		return Account{}, ErrBadContinue
+	}
+	return s.AccountByID(accountID)
+}
+
+// lazyToken reads a per-account token from `column`, making one the first time.
+// Only ever fills an empty one, so two sends racing to make the first cannot
+// leave an email in somebody's inbox carrying the loser.
+func (s *Store) lazyToken(accountID, column string) (string, error) {
 	var tok string
-	err := s.db.QueryRow(`SELECT unsubscribe_token FROM accounts WHERE id = ?`, accountID).Scan(&tok)
+	err := s.db.QueryRow(`SELECT `+column+` FROM accounts WHERE id = ?`, accountID).Scan(&tok)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", ErrNotFound
 	}
@@ -115,14 +154,12 @@ func (s *Store) UnsubscribeToken(accountID string) (string, error) {
 		return "", err
 	}
 	tok = base64.RawURLEncoding.EncodeToString(b)
-	// Only fill an empty one, so two sends racing to make the first token
-	// cannot leave an email in somebody's inbox carrying the loser.
 	if _, err := s.db.Exec(
-		`UPDATE accounts SET unsubscribe_token = ? WHERE id = ? AND unsubscribe_token = ''`,
+		`UPDATE accounts SET `+column+` = ? WHERE id = ? AND `+column+` = ''`,
 		tok, accountID); err != nil {
 		return "", err
 	}
-	err = s.db.QueryRow(`SELECT unsubscribe_token FROM accounts WHERE id = ?`, accountID).Scan(&tok)
+	err = s.db.QueryRow(`SELECT `+column+` FROM accounts WHERE id = ?`, accountID).Scan(&tok)
 	return tok, err
 }
 

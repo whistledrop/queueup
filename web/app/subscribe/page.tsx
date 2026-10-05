@@ -51,6 +51,12 @@ function Subscribe() {
   // it still counts for attribution and the page should say what happened
   // rather than just show a higher price.
   const [expired, setExpired] = useState(false)
+  // Nothing about the price is shown until the code they came with has been
+  // checked and their offer is known. Before, the page drew £4.99 first and
+  // corrected itself a second later — which is all somebody arriving from an
+  // email promising £1.99 needs to see to decide the email was a lie.
+  const [codeKnown, setCodeKnown] = useState(false)
+  const [billingKnown, setBillingKnown] = useState(false)
 
   // quiet is for the code we found saved from a ?promo= link rather than one
   // they typed. If that one fails there is nothing for them to fix and nothing
@@ -93,13 +99,18 @@ function Subscribe() {
     const saved = storedPromo()
     if (saved) {
       setCode(saved)
-      check(saved, true)
+      check(saved, true).finally(() => setCodeKnown(true))
+    } else {
+      setCodeKnown(true)
     }
     getBilling()
       .then((b) => {
         // Already paying, or nothing to pay for: this page has no job.
         if (b.paying || (b.subscribed && !preview)) window.location.href = '/'
-        else setBilling(b)
+        else {
+          setBilling(b)
+          setBillingKnown(true)
+        }
       })
       .catch((e) => {
         // Signed out. Usually somebody who signed up inside TikTok's browser
@@ -109,7 +120,10 @@ function Subscribe() {
         if (e instanceof ApiError && e.status === 401) {
           const code = new URLSearchParams(window.location.search).get('promo') ?? storedPromo()
           window.location.href = code ? `/?promo=${encodeURIComponent(code)}` : '/'
+          return
         }
+        // Anything else: show what we have rather than nothing at all.
+        setBillingKnown(true)
       })
   }, [preview, check])
 
@@ -151,6 +165,7 @@ function Subscribe() {
   const full = Math.round(PLAN.monthly * 100)
   const discounted = firstMonth !== null && firstMonth < full
   const offerEnds = billing?.offer_ends_at ? new Date(billing.offer_ends_at) : null
+  const priceReady = codeKnown && billingKnown
   const nowPence = discounted ? firstMonth! : full
   const money = (pence: number) => `${PLAN.symbol}${(pence / 100).toFixed(2)}`
 
@@ -173,24 +188,28 @@ function Subscribe() {
       {note && <div className="error">{note}</div>}
 
       <div className={s.panel}>
-        <p className={s.kicker}>{discounted ? 'Your first month' : 'QueueUp'}</p>
-        <div className={s.priceRow}>
-          {discounted && <span className={s.was}>{money(full)}</span>}
-          <span className={`${s.price} ${discounted ? s.priceDeal : ''}`}>{money(nowPence)}</span>
+        <div className={priceReady ? undefined : s.pending} aria-busy={!priceReady}>
+          <p className={s.kicker}>{discounted ? 'Your first month' : 'QueueUp'}</p>
+          <div className={s.priceRow}>
+            {discounted && <span className={s.was}>{money(full)}</span>}
+            <span className={`${s.price} ${discounted ? s.priceDeal : ''}`}>{money(nowPence)}</span>
+            {discounted && offerEnds && (
+              <Countdown
+                endsAt={offerEnds}
+                className={s.timer}
+                labelClassName={s.timerLabel}
+                digitsClassName={s.timerDigits}
+                // At zero, ask the relay rather than assume: it is what
+                // decides the price at checkout, and this keeps the page
+                // agreeing with it.
+                onEnded={() => check(applied, true)}
+              />
+            )}
+          </div>
+          <p className={s.after}>
+            {discounted ? `then ${priceLine()}. Cancel anytime.` : 'a month. Cancel anytime.'}
+          </p>
         </div>
-        <p className={s.after}>
-          {discounted ? `then ${priceLine()}. Cancel anytime.` : 'a month. Cancel anytime.'}
-        </p>
-
-        {discounted && offerEnds && (
-          <Countdown
-            endsAt={offerEnds}
-            className={s.countdown}
-            // At zero, ask the relay rather than assume: it is what decides
-            // the price at checkout, and this keeps the page agreeing with it.
-            onEnded={() => check(applied, true)}
-          />
-        )}
 
         {expired && applied && (
           <p className={s.offerEnded}>
@@ -211,8 +230,8 @@ function Subscribe() {
           ))}
         </ul>
 
-        <button className={s.cta} onClick={checkout} disabled={busy}>
-          {busy ? 'One moment' : `Subscribe for ${money(nowPence)}`}
+        <button className={s.cta} onClick={checkout} disabled={busy || !priceReady}>
+          {busy || !priceReady ? 'One moment' : `Subscribe for ${money(nowPence)}`}
         </button>
 
         <p className={s.trust}>

@@ -31,6 +31,45 @@ import (
 func (s *Server) startRoutes() {
 	s.mux.HandleFunc("POST /api/auth/start", s.handleStart)
 	s.mux.HandleFunc("POST /api/auth/first-password", s.withAccount(s.handleFirstPassword))
+	s.mux.HandleFunc("POST /api/auth/continue", s.handleContinue)
+}
+
+// handleContinue is the link in a reminder email: "pick up where you left
+// off", one tap, straight back to the price.
+//
+// It does exactly what typing the address on the landing page does, by
+// going through the very same rules: for an account that has never paid and
+// never had a password, back to the paywall; for anything more, a password
+// or a link to their own inbox. The token only stands in for typing the
+// address, which is why it can be no stronger than that. Anybody opening the
+// email has the address in front of them anyway.
+//
+// It exists because the emails are opened wherever the mail app opens links,
+// which is usually not the browser they signed up in. Signed out, the
+// paywall could not tell whose offer it was looking at and showed the full
+// price — on the one link whose whole job was to show the discounted one.
+func (s *Server) handleContinue(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Account string `json:"a"`
+		Token   string `json:"t"`
+		Code    string `json:"code"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "Couldn't read that request.")
+		return
+	}
+	from := "ip:" + s.clientIP(r)
+	if s.signIns.blocked(from) {
+		writeError(w, http.StatusTooManyRequests, "Too many attempts. Wait a few minutes and try again.")
+		return
+	}
+	acct, err := s.st.AccountByContinueToken(body.Account, body.Token)
+	if err != nil {
+		s.signIns.fail(from)
+		writeError(w, http.StatusBadRequest, "That link is no longer valid.")
+		return
+	}
+	s.startExisting(w, from, acct.Email, strings.ToUpper(strings.TrimSpace(body.Code)))
 }
 
 func (s *Server) handleStart(w http.ResponseWriter, r *http.Request) {

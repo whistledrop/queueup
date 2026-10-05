@@ -65,18 +65,41 @@
   color: var(--muted);
 }
 
-/* The deadline. Accent, not alarm red: it is information, and the page
-   already has one thing shouting, which is the button. */
-.countdown {
-  margin: 8px 0 0;
-  font-size: 14px;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
+/* Held back, not removed, while the price is being worked out: the space
+   stays where it is, so nothing jumps when it appears. */
+.pending {
+  visibility: hidden;
 }
 
-.countdown b {
-  color: var(--accent);
+/* The deadline, beside the price and in the same red, so the two read as one
+   thing: this price, for this long. Digits that do not change width, or the
+   whole row would shuffle sideways every second. */
+.timer {
+  align-self: center;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 6px 10px 7px;
+  border-radius: 10px;
+  background: rgba(192, 57, 47, 0.09);
+  color: var(--bad);
+  line-height: 1;
+}
+
+.timerLabel {
+  font-size: 10px;
   font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.timerDigits {
+  font-size: 17px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .offerEnded {

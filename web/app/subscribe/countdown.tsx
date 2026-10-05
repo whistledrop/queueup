@@ -1,27 +1,38 @@
 'use client'
 
-// How long the discounted first month has left.
+// The offer's deadline, as a clock you can watch run down, beside the price.
 //
-// Days and hours while there is more than a day to go, because "2 days 5
-// hours 14 minutes" is a number nobody needs the minutes of. In the last day
-// it switches to hours and minutes, because that is when the minutes start
-// to matter.
+// Hours, minutes and seconds, the hours counted all the way up: a fresh offer
+// reads "71:59:42", ticking every second. A number that visibly moves says
+// "this ends" in a way a sentence underneath the price never does.
 //
-// The deadline it counts to comes from the relay, and the relay is what
-// enforces it at checkout. This only tells the truth about it: winding the
-// clock on the phone back changes nothing about the price.
+// The deadline comes from the relay — 72 hours from this person's own signup
+// — and the relay enforces it at checkout. Winding the phone's clock back
+// changes what this shows, and nothing about the price.
 
 import { useEffect, useState } from 'react'
 
-const MINUTE = 60_000
+const SECOND = 1000
+const MINUTE = 60 * SECOND
 const HOUR = 60 * MINUTE
 const DAY = 24 * HOUR
+
+const two = (n: number) => String(n).padStart(2, '0')
+
+/** Hours, minutes and seconds left: "71:59:42". */
+export function clock(ms: number): string {
+  const left = Math.max(0, ms)
+  const hours = Math.floor(left / HOUR)
+  const minutes = Math.floor((left % HOUR) / MINUTE)
+  const seconds = Math.floor((left % MINUTE) / SECOND)
+  return `${two(hours)}:${two(minutes)}:${two(seconds)}`
+}
 
 function unit(n: number, one: string): string {
   return `${n} ${one}${n === 1 ? '' : 's'}`
 }
 
-/** "2 days 5 hours", "23 hours 14 minutes", "less than a minute". */
+/** The same deadline in words, for screen readers: "2 days 5 hours". */
 export function timeLeft(ms: number): string {
   if (ms < MINUTE) return 'less than a minute'
   if (ms >= DAY) {
@@ -39,18 +50,22 @@ export default function Countdown({
   endsAt,
   onEnded,
   className,
+  labelClassName,
+  digitsClassName,
 }: {
   endsAt: Date
   /** Called once, the moment it reaches zero, so the price can be re-checked. */
   onEnded: () => void
   className?: string
+  labelClassName?: string
+  digitsClassName?: string
 }) {
   const [now, setNow] = useState(() => Date.now())
 
   useEffect(() => {
-    // Fifteen seconds is often enough that the minute never sits visibly
-    // stale in the last day, and rare enough to cost nothing.
-    const t = setInterval(() => setNow(Date.now()), 15_000)
+    // A quarter of a second, not a whole one: an interval drifts, and a
+    // one-second tick that drifts visibly skips a second now and then.
+    const t = setInterval(() => setNow(Date.now()), 250)
     return () => clearInterval(t)
   }, [])
 
@@ -66,8 +81,15 @@ export default function Countdown({
 
   if (ended) return null
   return (
-    <p className={className} aria-live="polite">
-      Offer ends in <b>{timeLeft(left)}</b>
-    </p>
+    // role="timer" is announced only when asked, not every second; the
+    // words in the label say it properly when it is.
+    <span className={className} role="timer" aria-label={`Offer ends in ${timeLeft(left)}`}>
+      <span className={labelClassName} aria-hidden="true">
+        Ends in
+      </span>
+      <span className={digitsClassName} aria-hidden="true">
+        {clock(left)}
+      </span>
+    </span>
   )
 }
