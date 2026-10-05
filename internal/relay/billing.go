@@ -189,10 +189,12 @@ func (s *Server) handleCheckout(w http.ResponseWriter, r *http.Request, acct sto
 
 		PromotionCodeID: discount,
 		SourceCode:      promo.Code,
-		// The password step, not the dashboard: somebody who paid without
-		// ever setting one does it here, and somebody who already has one is
-		// passed straight on to the thank-you.
-		SuccessURL: web + "/finish?subscribed=1",
+		// The home page, which every version of the website has. The new one
+		// passes somebody who paid without a password on to choose one; this
+		// used to point straight at that step, and for the minutes a website
+		// deploy lagged behind the relay, people who had just paid landed on
+		// a page that did not exist yet.
+		SuccessURL: web + "/?subscribed=1",
 		CancelURL:  web + "/subscribe",
 	})
 	if err != nil {
