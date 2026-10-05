@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"strings"
 	"sync"
 	"time"
 )
@@ -23,22 +24,57 @@ type throttle struct {
 	window time.Duration
 	now    func() time.Time
 
+	// name and report say out loud when this throttle turns somebody away.
+	// It used to be silent, which is how every signup in the world sharing
+	// one Netlify address went unnoticed: people were being refused and
+	// nothing anywhere said so.
+	name   string
+	report func(name, key string)
+
 	mu    sync.Mutex
 	fails map[string][]time.Time
+	// noted is when each key was last reported, so one source hammering away
+	// is one line in the log per window, not one per attempt.
+	noted map[string]time.Time
 }
 
 func newThrottle(limit int, window time.Duration, now func() time.Time) *throttle {
 	if now == nil {
 		now = time.Now
 	}
-	return &throttle{limit: limit, window: window, now: now, fails: map[string][]time.Time{}}
+	return &throttle{limit: limit, window: window, now: now,
+		fails: map[string][]time.Time{}, noted: map[string]time.Time{}}
 }
 
 // blocked reports whether this key has failed too often lately.
 func (t *throttle) blocked(key string) bool {
 	t.mu.Lock()
-	defer t.mu.Unlock()
-	return len(t.recent(key)) >= t.limit
+	over := len(t.recent(key)) >= t.limit
+	tell := false
+	if over && t.report != nil {
+		if last, ok := t.noted[key]; !ok || t.now().Sub(last) > t.window {
+			t.noted[key] = t.now()
+			tell = true
+		}
+	}
+	t.mu.Unlock()
+	if tell {
+		t.report(t.name, redactKey(key))
+	}
+	return over
+}
+
+// redactKey keeps email addresses out of the log. An address on the internet
+// is what the limits are about and is worth seeing; whose account was being
+// guessed at is not something a log needs to keep.
+func redactKey(key string) string {
+	if !strings.Contains(key, "@") {
+		return key
+	}
+	if i := strings.IndexByte(key, ':'); i >= 0 {
+		return key[:i+1] + "(an email address)"
+	}
+	return "(an email address)"
 }
 
 // fail records one failure.
@@ -83,6 +119,11 @@ func (t *throttle) sweep() {
 	for key, times := range t.fails {
 		if len(times) == 0 || !times[len(times)-1].After(cutoff) {
 			delete(t.fails, key)
+		}
+	}
+	for key, at := range t.noted {
+		if !at.After(cutoff) {
+			delete(t.noted, key)
 		}
 	}
 }

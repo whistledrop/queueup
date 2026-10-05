@@ -49,7 +49,7 @@ func (s *Server) handleForgotPassword(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": same})
 	}
 
-	who, from := "reset:"+email, "reset-ip:"+clientIP(r)
+	who, from := "reset:"+email, "reset-ip:"+s.clientIP(r)
 	if s.resets.blocked(who) || s.resets.blocked(from) {
 		// Even the throttle answers the same way, so it cannot be used to
 		// discover which addresses exist.

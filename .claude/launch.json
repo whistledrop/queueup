@@ -37,6 +37,7 @@
       "name": "queueup-relay-paid",
       "runtimeExecutable": "env",
       "runtimeArgs": [
+        "QUEUEUP_PROXY_KEY=local-dev-proxy-key-not-a-secret",
         "QUEUEUP_BILLING=on",
         "QUEUEUP_ADDR=:8091",
         "QUEUEUP_STRIPE_SECRET_KEY=sk_test_placeholder_not_a_real_key",
@@ -49,6 +50,7 @@
       "name": "queueup-web-paid",
       "runtimeExecutable": "env",
       "runtimeArgs": [
+        "QUEUEUP_PROXY_KEY=local-dev-proxy-key-not-a-secret",
         "RELAY_URL=http://127.0.0.1:8091",
         "npm",
         "--prefix",

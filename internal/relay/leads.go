@@ -44,7 +44,7 @@ func (s *Server) handleLead(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "Couldn't read that.")
 		return
 	}
-	from := "lead:" + clientIP(r)
+	from := "lead:" + s.clientIP(r)
 	if s.leads.blocked(from) {
 		// Quietly fine. Somebody hammering this learns nothing from being told.
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})

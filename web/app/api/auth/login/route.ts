@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers'
-import { relayURL, SESSION_COOKIE, sessionCookieOptions } from '@/lib/relay'
+import { relayURL, SESSION_COOKIE, sessionCookieOptions, visitorHeaders } from '@/lib/relay'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,7 +14,7 @@ export async function signIn(request: Request, relayPath: string) {
   try {
     upstream = await fetch(relayURL() + relayPath, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...visitorHeaders(request.headers) },
       body: await request.text(),
       cache: 'no-store',
     })

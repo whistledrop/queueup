@@ -38,7 +38,7 @@ func (s *Server) handleChangePassword(w http.ResponseWriter, r *http.Request, ac
 
 	// Guessing the current password here is the same attack as guessing it at
 	// the sign-in page, so it meets the same limit.
-	from := "ip:" + clientIP(r)
+	from := "ip:" + s.clientIP(r)
 	if s.signIns.blocked(acct.ID) || s.signIns.blocked(from) {
 		writeError(w, http.StatusTooManyRequests,
 			"Too many attempts. Wait a few minutes and try again.")
@@ -102,7 +102,7 @@ func (s *Server) handleEraseOwnAccount(w http.ResponseWriter, r *http.Request, a
 		}
 	}
 
-	from := "ip:" + clientIP(r)
+	from := "ip:" + s.clientIP(r)
 	if s.signIns.blocked(acct.ID) || s.signIns.blocked(from) {
 		writeError(w, http.StatusTooManyRequests,
 			"Too many attempts. Wait a few minutes and try again.")

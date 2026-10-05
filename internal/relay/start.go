@@ -45,7 +45,7 @@ func (s *Server) handleStart(w http.ResponseWriter, r *http.Request) {
 	email := strings.ToLower(strings.TrimSpace(body.Email))
 	code := strings.ToUpper(strings.TrimSpace(body.Code))
 
-	from := "ip:" + clientIP(r)
+	from := "ip:" + s.clientIP(r)
 	if s.signIns.blocked(from) {
 		writeError(w, http.StatusTooManyRequests, "Too many attempts. Wait a few minutes and try again.")
 		return

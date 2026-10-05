@@ -394,7 +394,7 @@ func (s *Server) handleCheckCode(w http.ResponseWriter, r *http.Request, acct st
 	}
 	// Guessing at codes is cheap and the prize is a discount, so it meets the
 	// same limit as guessing at passwords.
-	from := "code:" + clientIP(r)
+	from := "code:" + s.clientIP(r)
 	if s.signIns.blocked(from) {
 		writeError(w, http.StatusTooManyRequests, "Too many codes tried. Wait a few minutes.")
 		return

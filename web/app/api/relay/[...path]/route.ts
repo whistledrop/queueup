@@ -6,7 +6,7 @@
 // needs.
 
 import type { NextRequest } from 'next/server'
-import { relayURL, sessionToken } from '@/lib/relay'
+import { relayURL, sessionToken, visitorHeaders } from '@/lib/relay'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,6 +29,7 @@ async function forward(request: NextRequest, path: string[]) {
     const v = request.headers.get(h)
     if (v) headers.set(h, v)
   }
+  for (const [k, v] of Object.entries(visitorHeaders(request.headers))) headers.set(k, v)
 
   const hasBody = request.method !== 'GET' && request.method !== 'HEAD'
   let upstream: Response

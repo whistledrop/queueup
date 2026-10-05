@@ -284,6 +284,7 @@ func serve(st *store.Store) error {
 		StripeIntroCouponID:    os.Getenv("QUEUEUP_STRIPE_INTRO_COUPON_ID"),
 		StripeReferralCouponID: os.Getenv("QUEUEUP_STRIPE_REFERRAL_COUPON_ID"),
 		StripeWebhookSecret:    os.Getenv("QUEUEUP_STRIPE_WEBHOOK_SECRET"),
+		ProxyKey:               os.Getenv("QUEUEUP_PROXY_KEY"),
 		DemoURL:                os.Getenv("QUEUEUP_DEMO_URL"),
 		Testimonial:            os.Getenv("QUEUEUP_TESTIMONIAL"),
 	})

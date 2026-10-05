@@ -30,6 +30,12 @@ type Config struct {
 	Log        *slog.Logger
 	AdminToken string
 
+	// ProxyKey is shared with the website's server. A request carrying it may
+	// say which visitor it is calling for, and the limits on guessing and on
+	// making accounts are then counted against that visitor rather than
+	// against Netlify. Empty means nobody is believed, as before.
+	ProxyKey string
+
 	// Servers is where server search and address lookups come from. It is
 	// swappable because the source turned out to be a decision with money
 	// attached: see internal/servers.
@@ -127,6 +133,18 @@ func New(cfg Config) *Server {
 		asks:      newThrottle(askLimit, askWindow, time.Now),
 		leads:     newThrottle(leadLimit, leadWindow, time.Now),
 		debugLogs: map[string][]string{},
+	}
+	for name, t := range map[string]*throttle{
+		"sign-in": s.signIns, "signup": s.signUps, "reset": s.resets,
+		"pc-link": s.pcLinks, "help": s.asks, "lead": s.leads,
+	} {
+		t.name = name
+		t.report = func(name, key string) {
+			s.log.Warn("a limit turned somebody away", "limit", name, "key", key)
+		}
+	}
+	if cfg.ProxyKey != "" {
+		s.log.Info("trusting the website's word for which visitor it is calling for")
 	}
 	if cfg.Mail == nil {
 		s.mail = &mail.Sender{} // disabled

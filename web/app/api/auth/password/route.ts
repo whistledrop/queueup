@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers'
-import { relayURL, SESSION_COOKIE, sessionToken, sessionCookieOptions } from '@/lib/relay'
+import { relayURL, SESSION_COOKIE, sessionToken, sessionCookieOptions, visitorHeaders } from '@/lib/relay'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,6 +15,7 @@ export async function POST(request: Request) {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
+        ...visitorHeaders(request.headers),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: await request.text(),
