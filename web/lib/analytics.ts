@@ -115,6 +115,9 @@ export function startAnalytics(): void {
   if (started || typeof window === 'undefined' || !KEY) return
   posthog.init(KEY, {
     api_host: HOST,
+    // Events go through our own subdomain, so PostHog has to be told where
+    // its own app lives, or the links it builds point at the proxy.
+    ui_host: 'https://eu.posthog.com',
 
     // No cookies and no localStorage: PostHog's state lives in the tab and
     // dies with it. This is the line that keeps the site free of a consent

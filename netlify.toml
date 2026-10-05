@@ -26,7 +26,11 @@
 # Fly as secrets. Nothing in this file is worth stealing.
 [build.environment]
   NEXT_PUBLIC_POSTHOG_KEY  = "phc_uiyViY3BWd4LjV6eiwi5fKtgDsmrJZok4C7Ec4QLtcAm"
-  NEXT_PUBLIC_POSTHOG_HOST = "https://eu.i.posthog.com"
+  # Through our own subdomain rather than straight to PostHog: ad blockers
+  # drop requests to posthog.com, and Rust players run ad blockers. A CNAME on
+  # e.queueuprust.com points at PostHog's EU proxy; the data ends up in the
+  # same place, on the same European servers.
+  NEXT_PUBLIC_POSTHOG_HOST = "https://e.queueuprust.com"
   # QUEUEUP_PROXY_KEY is set in the Netlify dashboard as a secret, and the
   # website's server needs it to tell the relay which visitor it is calling
   # for. Netlify's own server bundle carries it, so the secrets scanner — which
