@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -123,8 +124,8 @@ func TestTheSequenceSendsTheRightEmailAtTheRightTime(t *testing.T) {
 	for _, want := range []string{
 		"£1.99",
 		"TIKTOK",
-		// The deadline, in UK time: signup 10:00 BST plus 72 hours.
-		"10:00am on Thursday 8 October",
+		// The deadline as hours left: sent three hours after signup, so 69.
+		"for the next 69 hours",
 		// The code rides in the link, so it works on any device.
 		"https://queueuprust.com/subscribe?promo=TIKTOK",
 		"£4.99 a month",
@@ -160,7 +161,7 @@ func TestTheSequenceSendsTheRightEmailAtTheRightTime(t *testing.T) {
 	if s := subject(got[1]); !strings.Contains(s, "allowed") {
 		t.Errorf("email two subject = %q", s)
 	}
-	for _, want := range []string{"cheat", "memory", "Steam", "cancel", "keep the days", "/unsubscribe?"} {
+	for _, want := range []string{"cheat", "memory", "Steam", "cancel", "keep the days", "for the next 47 hours", "/unsubscribe?"} {
 		if !strings.Contains(two, want) {
 			t.Errorf("email two is missing %q:\n%s", want, two)
 		}
@@ -188,8 +189,16 @@ func TestTheSequenceSendsTheRightEmailAtTheRightTime(t *testing.T) {
 	if s := subject(got[2]); s != "Your £1.99 month ends in 4 hours" {
 		t.Errorf("email three subject = %q", s)
 	}
-	if b := text(got[2]); !strings.Contains(b, "10:00am today") || !strings.Contains(b, "/unsubscribe?") {
+	if b := text(got[2]); !strings.Contains(b, "ends in 4 hours") || !strings.Contains(b, "/unsubscribe?") {
 		t.Errorf("email three:\n%s", b)
+	}
+
+	// Hours only: no date and no clock time anywhere in any of them.
+	clock := regexp.MustCompile(`\d(am|pm)\b|\d:\d\d|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|October|today|tomorrow`)
+	for i, m := range got {
+		if hit := clock.FindString(subject(m) + "\n" + text(m)); hit != "" {
+			t.Errorf("email %d gives a date or time (%q), not hours left:\n%s", i+1, hit, text(m))
+		}
 	}
 
 	// And then nothing, ever.
@@ -371,35 +380,8 @@ func TestTheOfferEndsAfterSeventyTwoHours(t *testing.T) {
 	}
 }
 
-// Deadlines written the way a person says them, in UK time, across the
-// clocks going back.
-func TestDeadlinesAreWrittenInUKTime(t *testing.T) {
-	cases := []struct {
-		name     string
-		end, now time.Time
-		want     string
-	}{
-		{"same day, summer time",
-			time.Date(2026, 10, 8, 13, 14, 0, 0, time.UTC), time.Date(2026, 10, 8, 9, 0, 0, 0, time.UTC),
-			"2:14pm today"},
-		{"tomorrow",
-			time.Date(2026, 10, 9, 8, 30, 0, 0, time.UTC), time.Date(2026, 10, 8, 20, 0, 0, 0, time.UTC),
-			"9:30am tomorrow"},
-		{"further off",
-			time.Date(2026, 10, 8, 13, 14, 0, 0, time.UTC), time.Date(2026, 10, 5, 9, 0, 0, 0, time.UTC),
-			"2:14pm on Thursday 8 October"},
-		// The clocks go back on 25 October 2026. 13:14 UTC is 1:14pm in
-		// London after that, not 2:14pm.
-		{"after the clocks go back",
-			time.Date(2026, 10, 27, 13, 14, 0, 0, time.UTC), time.Date(2026, 10, 24, 9, 0, 0, 0, time.UTC),
-			"1:14pm on Tuesday 27 October"},
-	}
-	for _, c := range cases {
-		if got := whenItEnds(c.end, c.now); got != c.want {
-			t.Errorf("%s: %q, want %q", c.name, got, c.want)
-		}
-	}
-
+// The time left, as every email says it: whole hours, to the nearest one.
+func TestTimeLeftIsSaidInHours(t *testing.T) {
 	// To the nearest hour: the usual send, just after the mark, says "4
 	// hours", and a late one never overstates by more than half an hour.
 	end := time.Date(2026, 10, 8, 13, 0, 0, 0, time.UTC)
@@ -407,6 +389,8 @@ func TestDeadlinesAreWrittenInUKTime(t *testing.T) {
 		left time.Duration
 		want string
 	}{
+		{69*time.Hour + 55*time.Minute, "70 hours"}, // email one
+		{48 * time.Hour, "48 hours"},                // email two
 		{4 * time.Hour, "4 hours"},
 		{3*time.Hour + 55*time.Minute, "4 hours"}, // the normal five-minute tick
 		{3*time.Hour + 10*time.Minute, "3 hours"}, // never "4" for this

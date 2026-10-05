@@ -10,10 +10,6 @@ import (
 	"net/url"
 	"strings"
 	"time"
-	// The deadline in every email is written in UK time, and the relay's
-	// container has no timezone files of its own. Without this, "2:14pm"
-	// would quietly be UTC, and an hour wrong for half the year.
-	_ "time/tzdata"
 
 	"queueup/internal/store"
 	"queueup/internal/stripe"
@@ -170,14 +166,19 @@ type winbackDetails struct {
 // Short on purpose. These go to somebody who has already shown they will not
 // read a wall of text, on a phone, and every line that is not doing a job is
 // a line between them and the link.
+//
+// The deadline is always a number of hours, never a date or a clock time. A
+// count needs no working out — "70 hours" means the same thing to everybody,
+// wherever and whenever they open it — and it is the thing that actually
+// makes somebody act.
 func winbackMessage(stage store.WinbackStage, d winbackDetails) (subject, body string) {
-	ends := whenItEnds(d.endsAt, d.now)
+	left := hoursLeft(d.endsAt, d.now)
 	switch stage {
 	case 1:
 		subject = "Your " + d.firstMonth + " first month is saved"
 		body = "You signed up for QueueUp but didn't finish.\n\n" +
 			"Your first month is " + d.firstMonth + " with code " + d.code + ". " +
-			"It's held for you until " + ends + ".\n\n" +
+			"It's held for you for the next " + left + ".\n\n" +
 			"Pick up where you left off:\n" + d.link + "\n\n" +
 			"After that it's " + d.fullPrice + " a month. Cancel anytime.\n"
 
@@ -201,15 +202,14 @@ func winbackMessage(stage store.WinbackStage, d winbackDetails) (subject, body s
 		}
 		b.WriteString("If it's not for you, cancel in Settings. Two taps, and you keep " +
 			"the days you've paid for.\n\n")
-		b.WriteString("Your " + d.firstMonth + " first month is still held until " + ends + ":\n" +
+		b.WriteString("Your " + d.firstMonth + " first month is still held for the next " + left + ":\n" +
 			d.link + "\n")
 		body = b.String()
 
 	case 3:
-		left := hoursLeft(d.endsAt, d.now)
 		subject = "Your " + d.firstMonth + " month ends in " + left
 		body = "Last one about this: your first month at " + d.firstMonth +
-			" ends at " + ends + ".\n\n" +
+			" ends in " + left + ".\n\n" +
 			"After that it's " + d.fullPrice + " a month.\n\n" +
 			d.link + "\n"
 	}
@@ -225,44 +225,12 @@ func winbackFooter(unsubscribeURL string) string {
 		"Don't want these emails? Unsubscribe: " + unsubscribeURL + "\n"
 }
 
-// london is where nearly everybody reading these is, and the only timezone a
-// deadline in an email can sensibly be written in without asking.
-var london = func() *time.Location {
-	loc, err := time.LoadLocation("Europe/London")
-	if err != nil {
-		return time.UTC
-	}
-	return loc
-}()
-
-// whenItEnds writes a deadline the way a person would say it: "2:14pm today",
-// "9:30am tomorrow", or "2:14pm on Thursday 9 October" when it is further off.
-func whenItEnds(end, now time.Time) string {
-	e, n := end.In(london), now.In(london)
-	clock := e.Format("3:04pm")
-	switch {
-	case sameDate(e, n):
-		return clock + " today"
-	case sameDate(e, n.AddDate(0, 0, 1)):
-		return clock + " tomorrow"
-	default:
-		return clock + " on " + e.Format("Monday 2 January")
-	}
-}
-
-func sameDate(a, b time.Time) bool {
-	ay, am, ad := a.Date()
-	by, bm, bd := b.Date()
-	return ay == by && am == bm && ad == bd
-}
-
-// hoursLeft is the time remaining as a subject line says it, to the nearest
-// hour. The email goes out on a five-minute tick just after the four-hour
-// mark, so it normally reads "4 hours" — as it should. Rounding up instead
-// would let a late send overstate the time by most of an hour, and somebody
-// who trusts the subject and comes back "in time" would find it gone. The
-// exact clock time is in the body, which is what anybody planning around it
-// reads.
+// hoursLeft is the time remaining as an email says it, to the nearest hour.
+// Each email goes out on a five-minute tick just after its mark, so the last
+// one normally reads "4 hours", as it should. Rounding up instead would let a
+// late send overstate the time by most of an hour, and somebody who trusted
+// it and came back "in time" would find the offer gone; to the nearest hour,
+// it is never out by more than half of one.
 func hoursLeft(end, now time.Time) string {
 	h := int(math.Round(end.Sub(now).Hours()))
 	if h <= 1 {
