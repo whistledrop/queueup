@@ -38,6 +38,11 @@ export type Billing = {
    * this is the only thing that says they are on their way out.
    */
   ends_at?: string
+  /**
+   * When the discounted first month closes, counted from signup. Only
+   * meaningful with a code: without one there is no discount to end.
+   */
+  offer_ends_at?: string
 }
 
 /** Opens Stripe's own page for changing card, receipts and cancelling. */

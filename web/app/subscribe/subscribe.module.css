@@ -59,6 +59,26 @@
   color: var(--muted);
 }
 
+/* The deadline. Accent, not alarm red: it is information, and the page
+   already has one thing shouting, which is the button. */
+.countdown {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.countdown b {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.offerEnded {
+  margin: 12px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
 .codeApplied {
   display: inline-flex;
   align-items: center;

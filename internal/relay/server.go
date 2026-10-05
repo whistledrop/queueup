@@ -50,6 +50,14 @@ type Config struct {
 	// WebURL is the website's own address, used to build links inside emails.
 	WebURL string
 
+	// DemoURL and Testimonial are the two optional lines in the second
+	// reminder email. Empty means the line is left out entirely rather than
+	// sent with a gap where it should be. Set them on Fly when they exist:
+	// a link to a clip of a real join, and one real quote from a real
+	// customer, used with their permission.
+	DemoURL     string
+	Testimonial string
+
 	// Stripe is the payment provider. Disabled (no key) means checkout says
 	// payments are not switched on.
 	Stripe *stripe.Client
@@ -162,6 +170,7 @@ func (s *Server) routes() {
 	s.resetRoutes()
 	// Getting from "signed up on my phone" to "PC linked".
 	s.onboardingRoutes()
+	s.winbackRoutes()
 	// The help assistant.
 	s.supportRoutes()
 	// Finding servers and starring them.

@@ -107,11 +107,25 @@ export default function PrivacyPage() {
         <p>
           Only to run QueueUp for you and to fix it when it goes wrong. Your
           email is used to sign you in, and for the few emails QueueUp sends:
-          ones you ask for (a password reset, or the link for your PC), and one
-          reminder a day after signing up if you have not linked a PC yet. That
-          reminder is sent once, ever. We do not sell your information or share
-          it with anyone for marketing, and we will not email you marketing
-          without asking first.
+        </p>
+        <ul>
+          <li>
+            <b>Ones you ask for</b>: a password reset, or the link for your PC.
+          </li>
+          <li>
+            <b>One reminder to link your PC</b>, a day after you subscribe, if
+            you have not done it yet. Once, ever.
+          </li>
+          <li>
+            <b>Up to three reminders about your offer</b>, if you signed up with
+            an offer code and have not subscribed: in the three days before the
+            offer ends, and never after it. They stop the moment you subscribe,
+            and every one has an unsubscribe link. Unsubscribing is permanent.
+          </li>
+        </ul>
+        <p>
+          We do not sell your information or share it with anyone for
+          marketing.
         </p>
 
         <h2>Where it lives</h2>

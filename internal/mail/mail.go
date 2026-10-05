@@ -1,8 +1,9 @@
 // Package mail sends the few emails QueueUp needs, through Resend.
 //
-// There is exactly one email so far: "you asked to reset your password". That
-// is deliberate. Nobody signed up to be emailed, so the only messages sent are
-// ones a person has just asked for by pressing a button.
+// Two kinds, kept apart on purpose. Send is for email somebody asked for by
+// pressing a button: a password reset, the link for their PC. SendMarketing
+// is for email nobody asked for — the reminders after somebody signs up and
+// does not pay — and it will not send without an unsubscribe link.
 //
 // The API key comes from the environment, never from the repo, and is scrubbed
 // out of anything on its way to a log.
@@ -51,8 +52,34 @@ func (s *Sender) Enabled() bool { return s != nil && s.APIKey != "" }
 // not set up" apart from "the send failed".
 var ErrDisabled = errors.New("email is not set up on this relay")
 
-// Send delivers one plain-text email.
+// Send delivers one plain-text email that somebody asked for: a password
+// reset, the link for their PC. Nothing to opt out of, because they pressed
+// the button.
 func (s *Sender) Send(ctx context.Context, to, subject, body string) error {
+	return s.send(ctx, to, subject, body, nil)
+}
+
+// SendMarketing delivers an email that nobody pressed a button for, and so
+// carries a way out of it.
+//
+// The link goes in the body for the person and in a List-Unsubscribe header
+// for their mail app, which is what puts Gmail's and Apple Mail's own
+// "Unsubscribe" button at the top of the message. That button is the
+// difference between somebody leaving and somebody pressing "Report spam",
+// which costs every email QueueUp sends afterwards a little of its
+// deliverability.
+func (s *Sender) SendMarketing(ctx context.Context, to, subject, body, unsubscribeURL string) error {
+	if unsubscribeURL == "" {
+		// Refuse rather than send: marketing with no way out is the one kind
+		// of email this package must not be able to produce.
+		return errors.New("a marketing email needs an unsubscribe link")
+	}
+	return s.send(ctx, to, subject, body, map[string]string{
+		"List-Unsubscribe": "<" + unsubscribeURL + ">",
+	})
+}
+
+func (s *Sender) send(ctx context.Context, to, subject, body string, headers map[string]string) error {
 	if !s.Enabled() {
 		return ErrDisabled
 	}
@@ -60,12 +87,16 @@ func (s *Sender) Send(ctx context.Context, to, subject, body string) error {
 	if base == "" {
 		base = "https://api.resend.com"
 	}
-	payload, err := json.Marshal(map[string]any{
+	msg := map[string]any{
 		"from":    s.From,
 		"to":      []string{to},
 		"subject": subject,
 		"text":    body,
-	})
+	}
+	if len(headers) > 0 {
+		msg["headers"] = headers
+	}
+	payload, err := json.Marshal(msg)
 	if err != nil {
 		return err
 	}

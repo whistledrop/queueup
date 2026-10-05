@@ -96,6 +96,7 @@ func (s *Server) handleBilling(w http.ResponseWriter, r *http.Request, acct stor
 		"currency":       priceCurrency,
 		"subscribed_at":  sub.SubscribedAt,
 		"ends_at":        sub.EndsAt,
+		"offer_ends_at":  offerEndsAt(acct),
 		"can_manage":     sub.CustomerID != "" && s.cfg.Stripe.Enabled() && !sub.Comped(),
 		"checkout_ready": s.stripeReady(),
 		"test_mode":      s.cfg.Stripe.TestMode(),
@@ -167,6 +168,16 @@ func (s *Server) handleCheckout(w http.ResponseWriter, r *http.Request, acct sto
 		}
 	}
 
+	// The discount has a deadline; the attribution does not. Past the window
+	// they can still subscribe with their code, and it still says which video
+	// brought them — which is what codes exist for — but the first month is
+	// full price. Enforced here, on the server, because a countdown that only
+	// lives in the page is a countdown anybody can wind back.
+	discount := promo.ID
+	if discount != "" && !offerOpen(acct, time.Now()) {
+		discount = ""
+	}
+
 	web := strings.TrimSuffix(s.cfg.WebURL, "/")
 	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
 	defer cancel()
@@ -176,7 +187,7 @@ func (s *Server) handleCheckout(w http.ResponseWriter, r *http.Request, acct sto
 		CustomerID: sub.CustomerID,
 		PriceID:    s.cfg.StripePriceID,
 
-		PromotionCodeID: promo.ID,
+		PromotionCodeID: discount,
 		SourceCode:      promo.Code,
 		SuccessURL:      web + "/?subscribed=1",
 		CancelURL:       web + "/subscribe",
@@ -406,6 +417,20 @@ func (s *Server) handleCheckCode(w http.ResponseWriter, r *http.Request, acct st
 	if err := s.st.RememberSourceCode(acct.ID, promo.Code); err != nil {
 		s.log.Error("remembering a source code", "account", acct.ID, "err", err)
 	}
+	// A real code past its deadline is still a real code: it is remembered
+	// for attribution and reported as valid, but the price it quotes is the
+	// price they would actually pay. The page must never show £1.99 for a
+	// checkout that will charge £4.99.
+	if !offerOpen(acct, time.Now()) {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"valid":             true,
+			"expired":           true,
+			"code":              promo.Code,
+			"first_month_pence": priceMonthlyPence,
+			"line":              "That offer has ended. " + priceLine + ", cancel anytime.",
+		})
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"valid":             true,
 		"code":              promo.Code,
@@ -413,6 +438,17 @@ func (s *Server) handleCheckCode(w http.ResponseWriter, r *http.Request, acct st
 		"line":              moneyLine(promo.FirstMonthPence) + " for your first month, then " + priceLine + ".",
 	})
 }
+
+// offerWindow is how long the discounted first month stays open, counted
+// from the moment somebody creates their account — which is the moment they
+// first see the price.
+const offerWindow = 72 * time.Hour
+
+// offerEndsAt is when this account's first-month offer closes.
+func offerEndsAt(acct store.Account) time.Time { return acct.CreatedAt.Add(offerWindow) }
+
+// offerOpen reports whether the discount still applies.
+func offerOpen(acct store.Account, now time.Time) bool { return now.Before(offerEndsAt(acct)) }
 
 // moneyLine writes pence the way a price is written on a page.
 func moneyLine(pence int) string {

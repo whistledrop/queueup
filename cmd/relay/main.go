@@ -284,6 +284,8 @@ func serve(st *store.Store) error {
 		StripeIntroCouponID:    os.Getenv("QUEUEUP_STRIPE_INTRO_COUPON_ID"),
 		StripeReferralCouponID: os.Getenv("QUEUEUP_STRIPE_REFERRAL_COUPON_ID"),
 		StripeWebhookSecret:    os.Getenv("QUEUEUP_STRIPE_WEBHOOK_SECRET"),
+		DemoURL:                os.Getenv("QUEUEUP_DEMO_URL"),
+		Testimonial:            os.Getenv("QUEUEUP_TESTIMONIAL"),
 	})
 	httpSrv := &http.Server{
 		Addr:    addr,
@@ -301,6 +303,10 @@ func serve(st *store.Store) error {
 	go srv.RunScheduler(ctx, 5*time.Second)
 	// The one "your PC isn't linked yet" reminder, a day after signing up.
 	go srv.RunPCReminders(ctx, 15*time.Minute)
+	// The three emails to somebody who signed up and did not pay. Every five
+	// minutes, because the last one has a four-hour window and a fifteen
+	// minute tick would spend a real slice of it.
+	go srv.RunWinback(ctx, 5*time.Minute)
 	// Accounts whose week is up. Hourly is plenty: the promise is a day, not
 	// a minute, and a relay that restarts often must not miss the moment.
 	go srv.RunErasureSweep(ctx, time.Hour)

@@ -8,6 +8,7 @@ import { PLAN, priceLine } from '@/lib/pricing'
 import { capturePromoFromURL, storedPromo, storePromo } from '@/lib/promo'
 import s from './subscribe.module.css'
 import { track } from '@/lib/analytics'
+import Countdown from './countdown'
 
 // The paywall, and the second screen of signing up rather than a gate somebody
 // hits later.
@@ -46,6 +47,10 @@ function Subscribe() {
   const [applied, setApplied] = useState('')
   const [firstMonth, setFirstMonth] = useState<number | null>(null)
   const [checking, setChecking] = useState(false)
+  // A real code whose offer has run out. Kept apart from "invalid", because
+  // it still counts for attribution and the page should say what happened
+  // rather than just show a higher price.
+  const [expired, setExpired] = useState(false)
 
   // quiet is for the code we found saved from a ?promo= link rather than one
   // they typed. If that one fails there is nothing for them to fix and nothing
@@ -57,13 +62,16 @@ function Subscribe() {
     setChecking(true)
     setCodeBad('')
     try {
-      const res = await api<{ valid: boolean; line: string; first_month_pence?: number }>(
-        '/api/billing/code',
-        { method: 'POST', body: JSON.stringify({ code: c }) },
-      )
+      const res = await api<{
+        valid: boolean
+        expired?: boolean
+        line: string
+        first_month_pence?: number
+      }>('/api/billing/code', { method: 'POST', body: JSON.stringify({ code: c }) })
       if (res.valid) {
         setApplied(c)
         setFirstMonth(res.first_month_pence ?? null)
+        setExpired(!!res.expired)
         setCodeOpen(false)
         storePromo(c)
       } else {
@@ -133,6 +141,7 @@ function Subscribe() {
 
   const full = Math.round(PLAN.monthly * 100)
   const discounted = firstMonth !== null && firstMonth < full
+  const offerEnds = billing?.offer_ends_at ? new Date(billing.offer_ends_at) : null
   const nowPence = discounted ? firstMonth! : full
   const money = (pence: number) => `${PLAN.symbol}${(pence / 100).toFixed(2)}`
 
@@ -163,6 +172,23 @@ function Subscribe() {
         <p className={s.after}>
           {discounted ? `then ${priceLine()}. Cancel anytime.` : 'a month. Cancel anytime.'}
         </p>
+
+        {discounted && offerEnds && (
+          <Countdown
+            endsAt={offerEnds}
+            className={s.countdown}
+            // At zero, ask the relay rather than assume: it is what decides
+            // the price at checkout, and this keeps the page agreeing with it.
+            onEnded={() => check(applied, true)}
+          />
+        )}
+
+        {expired && applied && (
+          <p className={s.offerEnded}>
+            Your first-month offer has ended. Code {applied} still counts, at the
+            standard price.
+          </p>
+        )}
 
         {applied && discounted && (
           <p className={s.codeApplied}>
