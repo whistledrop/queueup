@@ -20,6 +20,7 @@
 // into the relay's own funnel. This is the looser, faster view on top.
 
 import posthog from 'posthog-js'
+import { storedPromo } from '@/lib/promo'
 
 /** The events worth naming. Anything not on this list is not worth a chart. */
 export type AnalyticsEvent =
@@ -77,16 +78,14 @@ function arrivedWith(href: string): Record<string, string> {
   return out
 }
 
-/** The promo code already saved from an earlier page, if there is one. */
+/**
+ * The promo code from an earlier page, or TikTok's if they are plainly in the
+ * TikTok app — the same answer the paywall will get, so a chart here and a
+ * sale there are talking about the same thing. This runs before the page has
+ * had a chance to keep the code, so the TikTok check cannot wait for it.
+ */
 function savedPromo(): string {
-  try {
-    return (window.localStorage.getItem('queueup_promo') ?? '').slice(0, 64)
-  } catch {
-    // Private window, blocked storage. Costs attribution on one visit and
-    // nothing else, and must never be worth an error on a page somebody is
-    // trying to buy from.
-    return ''
-  }
+  return storedPromo().slice(0, 64)
 }
 
 /**
