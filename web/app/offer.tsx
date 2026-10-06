@@ -45,17 +45,14 @@ export function PriceAmount() {
     return (
       <>
         {money(PLAN.intro)}
-        <small>
-          {' '}
-          first month, then {money(PLAN.monthly)}
-        </small>
+        <small>first month, then {money(PLAN.monthly)}</small>
       </>
     )
   }
   return (
     <>
       {money(PLAN.monthly)}
-      <small> a month</small>
+      <small>a month</small>
     </>
   )
 }

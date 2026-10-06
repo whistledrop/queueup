@@ -20,7 +20,14 @@ import { storedPromo } from '@/lib/promo'
 import { PLAN } from '@/lib/pricing'
 import { track } from '@/lib/analytics'
 
-export default function StartForm({ className }: { className?: string }) {
+export default function StartForm({
+  className,
+  from = 'landing',
+}: {
+  className?: string
+  /** Which form on the page this is, so the two can be told apart later. */
+  from?: string
+}) {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
@@ -50,7 +57,7 @@ export default function StartForm({ className }: { className?: string }) {
       })
       const body = await res.json().catch(() => ({}))
       if (res.status === 201 || res.status === 200) {
-        if (body.created) track('account_created', { from: 'landing' })
+        if (body.created) track('account_created', { from })
         router.push(body.created ? '/subscribe?welcome=1' : '/subscribe')
         return
       }

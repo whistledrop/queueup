@@ -450,7 +450,16 @@
 }
 
 .priceAmount { font-size: 52px; font-weight: 800; letter-spacing: -0.03em; }
-.priceAmount small { font-size: 17px; font-weight: 600; color: var(--muted); }
+/* The terms on their own line under the number. Inline, they inherited the
+   52px line box and dropped "£4.99" onto a second line with a hole above it. */
+.priceAmount small {
+  display: block;
+  margin-top: 6px;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--muted);
+}
 
 .priceIncludes {
   list-style: none;
@@ -1420,4 +1429,13 @@
   font-size: 15px;
   font-weight: 600;
   letter-spacing: -0.01em;
+}
+
+/* The same form again, inside the Price card. It inherits everything from
+   .startForm; only the width differs, because the card already has its own
+   margins and the field should fill it. */
+.priceForm {
+  composes: startForm;
+  max-width: none;
+  margin: 0;
 }

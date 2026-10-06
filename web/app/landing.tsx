@@ -148,9 +148,17 @@ export default function Landing() {
               <li key={line}>{line}</li>
             ))}
           </ul>
-          <Link href="/login?mode=create" className={s.cta} style={{ display: 'block' }}>
-            {BETA ? 'Get QueueUp free' : 'Get QueueUp'}
-          </Link>
+          {/* The same box as the hero, rather than a button to another page.
+              Somebody who has read all the way down here has decided; making
+              them load a second page to type the address they could have
+              typed in front of them is a place to lose them for nothing. */}
+          {BETA ? (
+            <Link href="/login?mode=create" className={s.cta} style={{ display: 'block' }}>
+              Get QueueUp free
+            </Link>
+          ) : (
+            <StartForm className={s.priceForm} from="pricing" />
+          )}
           <p className={s.priceNote}>
             {BETA ? (
               `All we ask is that you say how it went. After the beta it is ${PLAN.symbol}${PLAN.intro.toFixed(2)} for your first month, then ${PLAN.symbol}${PLAN.monthly.toFixed(2)}, and nobody is charged without choosing to subscribe.`
