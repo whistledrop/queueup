@@ -28,6 +28,11 @@ export type AnalyticsEvent =
   | 'checkout_started'
   | 'subscription_paid'
   | 'agent_downloaded'
+  // The first-month offer card on the landing page: how many saw it, and how
+  // many took it. The gap between them is the only way to tell whether it is
+  // worth interrupting anybody for.
+  | 'offer_shown'
+  | 'offer_claimed'
 
 const KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY ?? ''
 const HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? 'https://eu.i.posthog.com'

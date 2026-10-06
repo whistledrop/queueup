@@ -1242,3 +1242,164 @@
 @media (max-width: 560px) {
   .hero { min-height: 80svh; }
 }
+
+/* The first-month offer, a few seconds in.
+
+   A dialog rather than a banner, because the one thing it asks for is a tap,
+   and a tap needs to be the obvious thing on the screen. It never appears for
+   somebody with no code — they have no offer — nor for somebody already
+   typing their email, nor twice. */
+.offerWrap {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  /* Clear of the home bar on a phone. */
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  background: rgba(11, 14, 18, 0.45);
+  backdrop-filter: blur(3px);
+  animation: offerIn 0.18s ease-out;
+}
+
+.offerCard {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  box-sizing: border-box;
+  padding: 30px 26px 22px;
+  border-radius: 20px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: 0 24px 60px rgba(11, 14, 18, 0.3);
+  text-align: center;
+  animation: offerUp 0.22s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+.offerCard:focus {
+  outline: none;
+}
+
+.offerClose {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  /* A real tap target, not a 12px cross somebody has to aim at. */
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 23px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.offerKicker {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.offerTitle {
+  margin: 0 0 10px;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+.offerBody {
+  margin: 0 0 20px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.offerBody b {
+  color: var(--bad);
+  font-size: 19px;
+  font-weight: 600;
+}
+
+/* What they would have paid, struck through, as on the paywall. */
+.offerWas {
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 400;
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+
+.offerCta {
+  display: block;
+  width: 100%;
+  padding: 14px 18px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.offerCta:hover {
+  filter: brightness(1.05);
+}
+
+/* Plain text, deliberately: declining should be easy to find and dull to
+   look at, never a trick to make the only real button the orange one. */
+.offerNo {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.offerTick {
+  margin: 0 auto 10px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(26, 127, 82, 0.12);
+  color: var(--good);
+  font-size: 23px;
+  line-height: 44px;
+}
+
+@keyframes offerIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes offerUp {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .offerWrap, .offerCard { animation: none; }
+}
+
+/* The offer, directly above the email field. Only ever shown to somebody who
+   holds a code, because only they get the discount. */
+.startForm :global(.startClaim) {
+  margin: 0 0 10px;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--bad);
+  letter-spacing: -0.01em;
+}

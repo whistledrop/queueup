@@ -3,6 +3,7 @@ import { BETA, PLAN } from '@/lib/pricing'
 import s from './landing.module.css'
 import StartForm from './startForm'
 import HeroShot from './heroShot'
+import { PriceAmount, PriceNote } from './offer'
 
 // The landing page. Everything on it is a picture of the real app: the phone
 // mockups are the actual screens, rebuilt in markup so they stay pin sharp.
@@ -137,11 +138,9 @@ export default function Landing() {
                 Free<small> during the beta</small>
               </>
             ) : (
-              <>
-                {PLAN.symbol}
-                {PLAN.intro.toFixed(2)}
-                <small> first month, then {PLAN.symbol}{PLAN.monthly.toFixed(2)}</small>
-              </>
+              // Only somebody who actually holds a code is shown the
+              // discounted first month, because only they will be charged it.
+              <PriceAmount />
             )}
           </div>
           <ul className={s.priceIncludes}>
@@ -153,9 +152,11 @@ export default function Landing() {
             {BETA ? 'Get QueueUp free' : 'Get QueueUp'}
           </Link>
           <p className={s.priceNote}>
-            {BETA
-              ? `All we ask is that you say how it went. After the beta it is ${PLAN.symbol}${PLAN.intro.toFixed(2)} for your first month, then ${PLAN.symbol}${PLAN.monthly.toFixed(2)}, and nobody is charged without choosing to subscribe.`
-              : `${PLAN.symbol}${PLAN.monthly.toFixed(2)} a month. Cancel in two taps, any time, and keep the days you have paid for.`}
+            {BETA ? (
+              `All we ask is that you say how it went. After the beta it is ${PLAN.symbol}${PLAN.intro.toFixed(2)} for your first month, then ${PLAN.symbol}${PLAN.monthly.toFixed(2)}, and nobody is charged without choosing to subscribe.`
+            ) : (
+              <PriceNote />
+            )}
           </p>
         </div>
       </section>

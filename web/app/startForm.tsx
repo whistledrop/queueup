@@ -13,10 +13,11 @@
 // account that has never been paid for and never had a password. Anything
 // more than that needs the password, or a link sent to their own inbox.
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { storedPromo } from '@/lib/promo'
+import { PLAN } from '@/lib/pricing'
 import { track } from '@/lib/analytics'
 
 export default function StartForm({ className }: { className?: string }) {
@@ -26,6 +27,12 @@ export default function StartForm({ className }: { className?: string }) {
   const [error, setError] = useState('')
   const [signIn, setSignIn] = useState(false)
   const [sent, setSent] = useState('')
+  // The discount lives behind a code, so the offer is only promised to
+  // somebody who holds one — anybody else would be reading about a price they
+  // will not be charged. null until the browser has been asked: the server
+  // cannot know, and guessing makes the line flicker in and out.
+  const [code, setCode] = useState<string | null>(null)
+  useEffect(() => setCode(storedPromo()), [])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -65,6 +72,13 @@ export default function StartForm({ className }: { className?: string }) {
 
   return (
     <form className={className} onSubmit={submit}>
+      {code && (
+        // Above the field, because an empty box asking for an email offers
+        // nothing in return, and this is the reason to fill it in. No prices:
+        // the full terms are on the Price card and again at the till, and one
+        // line in a hero does better with one idea in it.
+        <p className="startClaim">Claim {percentOff}% off your first month</p>
+      )}
       <div className="startRow">
         <input
           type="email"
@@ -101,6 +115,10 @@ export default function StartForm({ className }: { className?: string }) {
     </form>
   )
 }
+
+// Worked out rather than written down, so it cannot drift from the real
+// prices if either one ever moves.
+const percentOff = Math.round((1 - PLAN.intro / PLAN.monthly) * 100)
 
 // The whole button, at the size a button that says one thing deserves.
 function Arrow() {
