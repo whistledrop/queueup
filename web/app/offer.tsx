@@ -32,6 +32,47 @@ function useCode(): string | null {
 }
 
 /**
+ * The banner that tells somebody their discount is already on.
+ *
+ * It names the source, because "TikTok offer applied" is a different and
+ * better sentence than "offer applied": it tells them the link they followed
+ * worked, which is the thing they cannot otherwise see. Nobody without a code
+ * ever sees it, so it can never claim a discount that is not there.
+ */
+export function OfferBanner() {
+  const code = useCode()
+  const told = useRef(false)
+  useEffect(() => {
+    if (!code || told.current) return
+    told.current = true
+    track('promo_banner_shown', { code, source: sourceName(code) })
+  }, [code])
+  if (!code) return null
+  return (
+    <p className={s.offerBanner} role="status">
+      <span aria-hidden="true">✓</span> {sourceName(code)} offer applied: first month{' '}
+      {money(PLAN.intro)}
+    </p>
+  )
+}
+
+/**
+ * A promo code as a person would say it: TIKTOK is TikTok, a server's own code
+ * is its own name. Unknown codes are shown as they are rather than guessed at.
+ */
+function sourceName(code: string): string {
+  const known: Record<string, string> = {
+    TIKTOK: 'TikTok',
+    YOUTUBE: 'YouTube',
+    INSTA: 'Instagram',
+    INSTAGRAM: 'Instagram',
+    DISCORD: 'Discord',
+    RUSTMATCH: 'RustMatch',
+  }
+  return known[code] ?? code
+}
+
+/**
  * The price on the Price card.
  *
  * It used to say "£1.99 first month" to everybody, including people with no
@@ -44,8 +85,13 @@ export function PriceAmount() {
   if (code) {
     return (
       <>
-        {money(PLAN.intro)}
-        <small>first month, then {money(PLAN.monthly)}</small>
+        {/* What they would have paid, beside what they will. A discount
+            somebody can see is worth more than one we assert. */}
+        <span className={s.priceWas}>{money(PLAN.monthly)}</span>
+        <span className={s.priceNow}>{money(PLAN.intro)}</span>
+        <small>
+          first month, then {money(PLAN.monthly)}/month, cancel anytime
+        </small>
       </>
     )
   }

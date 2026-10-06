@@ -201,3 +201,53 @@ func (s *Store) OptedOutOfEmail(accountID string) (bool, error) {
 	}
 	return at != 0, err
 }
+
+// AccountsDueRenewalReminder returns people who paid `after` ago, are still
+// paying, and have not yet been warned that the full price is coming.
+//
+// The paywall promises this email in as many words — "Day 25: we email you a
+// reminder" — so it is not a nicety. A renewal nobody saw coming is a
+// chargeback, and a chargeback costs the fee, the customer and a mark against
+// every future payment.
+//
+// Keyed on first_paid_at, which is written once and never cleared, so it is
+// the day they actually started paying and not the day a webhook last fired.
+func (s *Store) AccountsDueRenewalReminder(now time.Time, after, cutoff time.Duration) ([]Account, error) {
+	rows, err := s.db.Query(`
+		SELECT `+accountColumns+` FROM accounts
+		 WHERE renewal_reminder_at = 0
+		   AND first_paid_at != 0
+		   AND first_paid_at <= ?
+		   AND first_paid_at > ?
+		   AND subscription_status = 'active'
+		   AND subscription_ends_at = 0
+		   AND erase_after = 0
+		 ORDER BY first_paid_at`,
+		ms(now.Add(-after)), ms(now.Add(-cutoff)))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Account
+	for rows.Next() {
+		a, err := scanAccount(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
+// MarkRenewalReminded records that the warning has gone, so it goes once.
+// Reports whether this call is the one that claimed it.
+func (s *Store) MarkRenewalReminded(accountID string, now time.Time) (bool, error) {
+	res, err := s.db.Exec(
+		`UPDATE accounts SET renewal_reminder_at = ? WHERE id = ? AND renewal_reminder_at = 0`,
+		ms(now.UTC()), accountID)
+	if err != nil {
+		return false, err
+	}
+	n, _ := res.RowsAffected()
+	return n == 1, nil
+}

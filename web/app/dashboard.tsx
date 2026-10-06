@@ -431,10 +431,26 @@ export default function Dashboard({ email }: { email: string }) {
    link that does not look like a button, and the whole thing reads like a virus
    warning, so people stop here. Showing them the dialog before they see it,
    with the two clicks numbered, turns a scare into a formality. */
+/**
+ * The Windows warning, explained, on the screens where somebody is actually
+ * installing — never on the landing page, where it is an objection raised
+ * before anybody has decided anything.
+ *
+ * REMOVE THIS WHOLE COMPONENT, and its two uses, once the Microsoft Store
+ * build ships: Windows will not warn about a Store app, and an explanation of
+ * a box nobody sees is just doubt.
+ *
+ * The dialog below is drawn rather than screenshotted, on purpose: it stays
+ * sharp on any screen, follows dark mode, and cannot go stale when Microsoft
+ * restyles it.
+ */
 export function SmartScreenHelp() {
   return (
     <div className="warnBox">
       <h4>Windows will try to stop you. This is expected.</h4>
+      <p>
+        <b>This is normal for new apps: tap More info, then Run anyway.</b>
+      </p>
       <p>
         QueueUp is new, so Windows does not recognise it yet. You will see this
         exact box. Here is what to press.

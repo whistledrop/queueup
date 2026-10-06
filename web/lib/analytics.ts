@@ -33,6 +33,17 @@ export type AnalyticsEvent =
   // worth interrupting anybody for.
   | 'offer_shown'
   | 'offer_claimed'
+  // Every way in, with where on the page it was pressed, so the sections can
+  // be judged against each other rather than argued about.
+  | 'cta_clicked'
+  // The green banner, with the source it named: how many arrivals actually
+  // carried a code, seen from the page rather than from the database.
+  | 'promo_banner_shown'
+  // The paywall, counted on its own. The step between an account and a
+  // payment, which is where the money is won or lost.
+  | 'paywall_viewed'
+  // The deadline passing with nobody having paid.
+  | 'offer_expired'
 
 const KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY ?? ''
 const HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? 'https://eu.i.posthog.com'

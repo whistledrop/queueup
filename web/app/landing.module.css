@@ -1439,3 +1439,226 @@
   max-width: none;
   margin: 0;
 }
+
+/* ---------------------------------------------------------------- the hero */
+
+/* The headline word that changes. The slot is as wide as the longest word,
+   always, so the line never reflows while the word swaps. */
+.rotator {
+  position: relative;
+  display: inline-block;
+  color: var(--accent);
+  font-style: normal;
+}
+
+/* The real longest word, taking up its space and showing nothing. Anything
+   else would be a guess that breaks with a different font. */
+.rotatorGhost {
+  visibility: hidden;
+  display: block;
+  height: 0;
+  overflow: hidden;
+}
+
+.rotatorWord {
+  display: inline-block;
+  animation: rotateWord 0.4s ease;
+}
+
+/* The full stop stays put while the word moves. */
+.rotatorStop {
+  color: var(--accent);
+}
+
+@keyframes rotateWord {
+  from { opacity: 0; transform: translateY(0.22em); }
+  to { opacity: 1; transform: none; }
+}
+
+/* The three things somebody needs to hear before they will pay for a tool
+   that touches a game they can be banned from. */
+.reassure {
+  margin: 12px 0 0;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+/* ------------------------------------------------------------- the offer */
+
+.offerBanner {
+  display: inline-block;
+  margin: 0 0 14px;
+  padding: 7px 14px;
+  border-radius: var(--radius-pill);
+  background: rgba(26, 127, 82, 0.1);
+  color: var(--good);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* The price they would have paid, and the one they will, side by side. */
+.priceWas {
+  margin-right: 12px;
+  font-size: 30px;
+  font-weight: 500;
+  color: var(--muted);
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+}
+
+.priceNow {
+  color: var(--accent);
+}
+
+/* ------------------------------------------------------- how it works */
+
+.setupNote {
+  margin: 26px 0 0;
+  font-size: 14.5px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* ------------------------------------------------------------ wipe clock */
+
+.wipeClock {
+  max-width: 340px;
+  margin: 0 auto 30px;
+  padding: 18px 20px 16px;
+  border-radius: 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  text-align: center;
+}
+
+.wipeClockLabel {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.wipeClockDigits {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+
+.wipeClockDigits small {
+  margin: 0 9px 0 2px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.wipeClockDigits small:last-child { margin-right: 0; }
+
+.wipeClockWhen {
+  margin: 8px 0 0;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+/* ------------------------------------------------------------------ CTAs */
+
+.ctaRow {
+  margin-top: 32px;
+  text-align: center;
+}
+
+/* The bar on a phone. Hidden on anything wider, where the page is short
+   enough that the form is never far away. */
+.sticky {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .sticky {
+    display: block;
+    position: sticky;
+    bottom: 0;
+    z-index: 40;
+    margin: 0 -20px;
+    padding: 10px 20px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(8px);
+    border-top: 1px solid var(--line);
+  }
+
+  .stickyBtn {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    border: 0;
+    border-radius: var(--radius-pill);
+    background: var(--accent);
+    color: var(--accent-text);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+}
+
+/* ---------------------------------------------------------- testimonials */
+
+.quoteGrid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.quote {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 24px 26px;
+  border-radius: 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  text-align: left;
+}
+
+.quote p {
+  margin: 0 0 14px;
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+.quote cite {
+  display: block;
+  font-size: 13.5px;
+  font-style: normal;
+  color: var(--muted);
+}
+
+.quote cite span {
+  display: block;
+  margin-top: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rotatorWord { animation: none; }
+}
+
+/* The demo recording. A fixed shape, so the page does not jump when the video
+   arrives, and never wider than the column it sits in. */
+.demoWrap {
+  max-width: 720px;
+  margin: 0 auto;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--card);
+}
+
+.demo {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}

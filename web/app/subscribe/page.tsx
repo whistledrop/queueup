@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useCallback, useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { api, ApiError, getBilling, type Billing } from '@/lib/api'
@@ -166,6 +166,21 @@ function Subscribe() {
   const discounted = firstMonth !== null && firstMonth < full
   const offerEnds = billing?.offer_ends_at ? new Date(billing.offer_ends_at) : null
   const priceReady = codeKnown && billingKnown
+
+  // Counted once the price is settled, so the event carries what they were
+  // actually shown rather than what the page looked like mid-load.
+  const counted = useRef(false)
+  useEffect(() => {
+    if (!priceReady || counted.current) return
+    counted.current = true
+    track('paywall_viewed', {
+      price_pence: nowPence,
+      discounted,
+      ...(applied ? { promo_code: applied } : {}),
+    })
+    // Only when the page settles; the values are read at that moment.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [priceReady])
   const nowPence = discounted ? firstMonth! : full
   const money = (pence: number) => `${PLAN.symbol}${(pence / 100).toFixed(2)}`
 
@@ -224,6 +239,21 @@ function Subscribe() {
           </p>
         )}
 
+        {/* What happens next, in order, so the renewal is never a surprise.
+            The day-25 email is real and is sent by the relay; if it ever
+            stops being sent, this line has to come down with it. */}
+        <ol className={s.timeline}>
+          <li>
+            <b>Today</b> {money(nowPence)}
+          </li>
+          <li>
+            <b>Day 25</b> we email you a reminder
+          </li>
+          <li>
+            <b>Day 30</b> {priceLine()}, cancel in two taps
+          </li>
+        </ol>
+
         <ul className={s.features}>
           {PLAN.includes.map((line) => (
             <li key={line}>{line}</li>
@@ -231,12 +261,39 @@ function Subscribe() {
         </ul>
 
         <button className={s.cta} onClick={checkout} disabled={busy || !priceReady}>
-          {busy || !priceReady ? 'One moment' : `Subscribe for ${money(nowPence)}`}
+          {busy || !priceReady
+            ? 'One moment'
+            : discounted
+              ? `Start my ${money(nowPence)} month`
+              : 'Start my month'}
         </button>
+
+        <p className={s.afterPay}>Next: 2-minute PC setup</p>
+
+        {/* The two things that stop people paying for a Rust tool, met at the
+            moment they decide. No refund promise: cancelling keeps the days
+            already paid for, which is the thing that is actually true. */}
+        <p className={s.assure}>
+          <span aria-hidden="true">🛡</span> Not a cheat. Never touches the game.
+          Can&apos;t get you banned.
+        </p>
+        <p className={s.assure}>
+          <span aria-hidden="true">↩</span> Cancel in two taps, any time, and keep the days
+          you have paid for.
+        </p>
 
         <p className={s.trust}>
           <Lock /> Secure payment by Stripe
         </p>
+
+        <blockquote className={s.quote}>
+          <p>
+            “I&apos;m usually at school for when servers wipe. With this app I was able to
+            join queue whilst in class, and by the time I was home my PC was in the
+            server.”
+          </p>
+          <cite>— 9k-hour Rust player, founder of QueueUp</cite>
+        </blockquote>
 
         {!applied && !codeOpen && (
           <button className={s.codeToggle} onClick={() => setCodeOpen(true)}>

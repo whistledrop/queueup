@@ -308,6 +308,9 @@ func serve(st *store.Store) error {
 	// minutes, because the last one has a four-hour window and a fifteen
 	// minute tick would spend a real slice of it.
 	go srv.RunWinback(ctx, 5*time.Minute)
+	// The warning five days before the first full-price month. Hourly: the
+	// promise is a day, not a minute.
+	go srv.RunRenewalReminders(ctx, time.Hour)
 	// Accounts whose week is up. Hourly is plenty: the promise is a day, not
 	// a minute, and a relay that restarts often must not miss the moment.
 	go srv.RunErasureSweep(ctx, time.Hour)

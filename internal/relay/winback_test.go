@@ -526,3 +526,59 @@ func TestTheEmailLinkIsNoStrongerThanTypingTheEmail(t *testing.T) {
 		}
 	})
 }
+
+// The day-25 warning before the first full-price month.
+//
+// The paywall promises it in as many words, so it has to go — once, to the
+// right people, at the right time. A renewal nobody saw coming is a
+// chargeback, which costs the fee, the customer and a mark against every
+// payment after it.
+func TestTheRenewalWarningGoesOnceBeforeTheFullPriceMonth(t *testing.T) {
+	r := newWinbackRig(t, "", "")
+	now := time.Now()
+
+	// paid 25 days ago and still paying: this is the one.
+	due := r.signup(t, "renewing@example.com", "TIKTOK", 26*24*time.Hour, now)
+	// paid only 10 days ago: too soon.
+	early := r.signup(t, "new@example.com", "TIKTOK", 11*24*time.Hour, now)
+	// already cancelled: they know, and are not being charged again.
+	leaving := r.signup(t, "leaving@example.com", "TIKTOK", 26*24*time.Hour, now)
+	// never paid: the win-back emails are their story, not this one.
+	unpaid := r.signup(t, "browsing@example.com", "TIKTOK", 26*24*time.Hour, now)
+
+	for _, a := range []store.Account{due, early, leaving} {
+		if err := r.st.SetSubscription(a.ID, "active", "sub_"+a.ID); err != nil {
+			t.Fatal(err)
+		}
+		if err := r.st.ExecForTests(
+			`UPDATE accounts SET first_paid_at = (SELECT created_at FROM accounts WHERE id = ?) WHERE id = ?`,
+			a.ID, a.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := r.st.NoteEnding(leaving.ID, now.Add(4*24*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+
+	r.srv.sendRenewalReminders(context.Background(), now)
+	r.srv.sendRenewalReminders(context.Background(), now.Add(time.Hour)) // and again
+
+	got := r.sent()
+	if len(got) != 1 {
+		var to []any
+		for _, e := range got {
+			to = append(to, e["to"])
+		}
+		t.Fatalf("sent %d reminders to %v, want exactly one to %s", len(got), to, due.Email)
+	}
+	if addr, _ := got[0]["to"].([]any); len(addr) != 1 || addr[0] != due.Email {
+		t.Errorf("reminder went to %v", got[0]["to"])
+	}
+	body := text(got[0])
+	for _, want := range []string{"five days", "£4.99", "cancel in two taps", "/settings"} {
+		if !strings.Contains(strings.ToLower(body), strings.ToLower(want)) {
+			t.Errorf("the reminder does not mention %q:\n%s", want, body)
+		}
+	}
+	_ = unpaid
+}

@@ -3,7 +3,12 @@ import { BETA, PLAN } from '@/lib/pricing'
 import s from './landing.module.css'
 import StartForm from './startForm'
 import HeroShot from './heroShot'
-import { PriceAmount, PriceNote } from './offer'
+import { OfferBanner, PriceAmount, PriceNote } from './offer'
+import Rotator from './rotator'
+import WipeClock from './wipeClock'
+import { CtaRow, StickyCta } from './ctas'
+import Testimonials from './testimonials'
+import Demo from './demo'
 
 // The landing page. Everything on it is a picture of the real app: the phone
 // mockups are the actual screens, rebuilt in markup so they stay pin sharp.
@@ -27,39 +32,33 @@ export default function Landing() {
       <header className={s.hero}>
         <div>
           <h1>
-            Load into Rust servers <em>from anywhere.</em>
+            Load into Rust servers from <Rotator />
           </h1>
           <p className={s.lede}>
-            Tap join from school, work or the traffic. Your PC queues. You walk
-            in and play.
+            Tap join from wherever you are. Your PC queues. You walk in and play.
           </p>
+          <OfferBanner />
           <StartForm className={s.startForm} />
+          {/* The question that stops people paying for a Rust tool, answered
+              before they have to go looking for the answer. */}
+          <p className={s.reassure}>
+            Not a cheat · never touches the game · can&apos;t get you banned
+          </p>
         </div>
         <div>
           <HeroShot />
         </div>
       </header>
 
-      <section className={s.section}>
+      <section className={s.section} id="how">
         <p className={s.kicker}>How it works</p>
         <h2>Three steps, then never again</h2>
 
         <div className={s.step}>
           <div>
             <span className={s.stepNumber}>1</span>
-            <h3>Link your PC</h3>
-            <p>One file, one six character code. No router settings, ever.</p>
-          </div>
-          <div className={s.stepVisual}>
-            <PairVisual />
-          </div>
-        </div>
-
-        <div className={s.step}>
-          <div>
-            <span className={s.stepNumber}>2</span>
-            <h3>Tap join, from anywhere</h3>
-            <p>Search any server. Your phone tells your PC. That is it.</p>
+            <h3>Tap join from anywhere</h3>
+            <p>Search any server, official or community, and press one button.</p>
           </div>
           <div className={s.stepVisual}>
             <ServersPhone />
@@ -68,11 +67,11 @@ export default function Landing() {
 
         <div className={s.step}>
           <div>
-            <span className={s.stepNumber}>3</span>
-            <h3>Turn up and play</h3>
+            <span className={s.stepNumber}>2</span>
+            <h3>Your PC queues and loads in</h3>
             <p>
-              It queues, loads the map and holds your slot. Crash or reboot, it
-              rejoins on its own.
+              It waits in the queue, loads the map and holds your slot. Crash or
+              reboot, it rejoins on its own.
             </p>
           </div>
           <div className={s.stepVisual}>
@@ -80,11 +79,31 @@ export default function Landing() {
           </div>
         </div>
 
+        <div className={s.step}>
+          <div>
+            <span className={s.stepNumber}>3</span>
+            <h3>Walk in and play</h3>
+            <p>Sit down to a game that is already running, already in.</p>
+          </div>
+          <div className={s.stepVisual}>
+            <PairVisual />
+          </div>
+        </div>
+
+        <p className={s.setupNote}>
+          First time only: a 2-minute install on your PC, like pairing a speaker.
+        </p>
+
         <Diagram />
         <p className={s.diagramCaption}>
           Nothing connects in to your PC. It calls out, like a chat app.
         </p>
+        <CtaRow where="how_it_works" />
       </section>
+
+      <Demo />
+
+      <Testimonials />
 
       <section className={s.section}>
         <p className={s.kicker}>Wipe day</p>
@@ -93,6 +112,7 @@ export default function Landing() {
           Schedule it before you leave. QueueUp pings the server every couple of
           seconds and connects the moment it is back, game update and all.
         </p>
+        <WipeClock />
         <div className={s.stepVisual}>
           <SchedulePhone />
         </div>
@@ -126,6 +146,7 @@ export default function Landing() {
           No memory reading, no key presses, no game files. In game it is all
           still you.
         </p>
+        <CtaRow where="fair_play" />
       </section>
 
       <section className={s.section} id="pricing">
@@ -200,14 +221,12 @@ export default function Landing() {
           </details>
           <details>
             <summary>How long does setup take?</summary>
-            <p>
-              Two minutes on the PC. Windows will warn it does not recognise the
-              app, because it is not signed yet: choose More info, then Run
-              anyway.
-            </p>
+            <p>Two minutes, once.</p>
           </details>
         </div>
       </section>
+
+      <StickyCta />
 
       <footer className={s.footer}>
         <p>

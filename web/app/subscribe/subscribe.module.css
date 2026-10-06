@@ -319,3 +319,65 @@
   .panel { padding: 24px 18px 20px; border-radius: 22px; }
   .price { font-size: 50px; }
 }
+
+/* What happens next, in order. A renewal nobody saw coming is a chargeback,
+   so the day it arrives and the warning before it are both on the page where
+   the card is handed over. */
+.timeline {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--card-2, rgba(127, 127, 127, 0.06));
+  text-align: left;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.timeline li {
+  display: flex;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+.timeline li b {
+  flex: none;
+  min-width: 62px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Not .next — that is the "What happens next" card further down this page,
+   and reusing the name put this one line inside a bordered box. */
+.afterPay {
+  margin: 10px 0 0;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.assure {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.quote {
+  margin: 22px 0 0;
+  padding: 16px 18px;
+  border-radius: 12px;
+  background: var(--card-2, rgba(127, 127, 127, 0.06));
+  text-align: left;
+}
+
+.quote p {
+  margin: 0 0 10px;
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+
+.quote cite {
+  font-size: 12.5px;
+  font-style: normal;
+  color: var(--muted);
+}

@@ -277,3 +277,72 @@ func (s *Server) handleUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	s.log.Info("unsubscribed from email", "account", body.Account)
 	writeJSON(w, http.StatusOK, map[string]string{"status": "unsubscribed"})
 }
+
+// ------------------------------------------------- the day-25 reminder
+
+// The warning before the first full-price month.
+//
+// The paywall says it in as many words — "Day 25: we email you a reminder" —
+// so this is a promise, not a courtesy. It goes once, five days before the
+// month turns over, which is long enough to cancel without rushing and short
+// enough to still be in the inbox when the charge lands.
+const (
+	renewalRemindAfter  = 25 * 24 * time.Hour
+	renewalRemindCutoff = 29 * 24 * time.Hour
+)
+
+// RunRenewalReminders sends that warning, every `every`, until ctx ends.
+func (s *Server) RunRenewalReminders(ctx context.Context, every time.Duration) {
+	if every <= 0 {
+		every = time.Hour
+	}
+	tick := time.NewTicker(every)
+	defer tick.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-tick.C:
+			s.sendRenewalReminders(ctx, time.Now())
+		}
+	}
+}
+
+func (s *Server) sendRenewalReminders(ctx context.Context, now time.Time) {
+	if !s.mail.Enabled() {
+		return
+	}
+	due, err := s.st.AccountsDueRenewalReminder(now, renewalRemindAfter, renewalRemindCutoff)
+	if err != nil {
+		s.log.Error("finding renewal reminders to send", "err", err)
+		return
+	}
+	web := strings.TrimSuffix(s.cfg.WebURL, "/")
+	for _, acct := range due {
+		claimed, err := s.st.MarkRenewalReminded(acct.ID, now)
+		if err != nil {
+			s.log.Error("marking a renewal reminder", "account", acct.ID, "err", err)
+			continue
+		}
+		if !claimed {
+			continue
+		}
+		body := "Your first month of QueueUp is nearly up.\n\n" +
+			"In five days it renews at " + priceLine + ". Nothing to do if you want\n" +
+			"to keep it.\n\n" +
+			"If you don't, cancel in two taps from Settings and you keep the days\n" +
+			"you've already paid for:\n\n" +
+			web + "/settings\n\n" +
+			"Either way, no surprises — that's why this email exists.\n"
+		sendCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
+		// Not marketing: it is the warning before a charge, which somebody
+		// who opted out of marketing still needs and is still owed.
+		err = s.mail.Send(sendCtx, acct.Email, "Your QueueUp renews in 5 days", body)
+		cancel()
+		if err != nil {
+			s.log.Error("sending a renewal reminder", "account", acct.ID, "err", err)
+			continue
+		}
+		s.log.Info("renewal reminder sent", "account", acct.ID)
+	}
+}
