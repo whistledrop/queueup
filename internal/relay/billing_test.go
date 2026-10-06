@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -683,4 +684,63 @@ func itemsEnding(at time.Time) (items struct {
 		CurrentPeriodEnd int64 `json:"current_period_end"`
 	}{CurrentPeriodEnd: at.Unix()})
 	return items
+}
+
+// The site code is made if it is missing and left alone if it is there.
+//
+// The landing page offers 60% off to everybody, so the code that delivers it
+// to somebody with no link has to exist before the page promises it — and
+// running this on every deploy must never make a second one or touch the first.
+func TestTheSiteCodeIsMadeOnceAndNeverTouchedAgain(t *testing.T) {
+	var created []url.Values
+	exists := false
+	fs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v1/promotion_codes":
+			if exists && r.URL.Query().Get("code") == SiteCode {
+				_, _ = w.Write([]byte(`{"data":[{"id":"promo_site","code":"WELCOME","active":true,
+					"promotion":{"type":"coupon","coupon":"coupon_first_month"}}]}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{"data":[]}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/v1/promotion_codes":
+			_ = r.ParseForm()
+			created = append(created, r.PostForm)
+			exists = true
+			_, _ = w.Write([]byte(`{"id":"promo_site","code":"WELCOME"}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/v1/coupons/coupon_first_month":
+			_, _ = w.Write([]byte(`{"id":"coupon_first_month","amount_off":300,"duration":"once","valid":true}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer fs.Close()
+
+	st, err := store.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	srv := New(Config{
+		Store: st, Log: slog.New(slog.NewTextHandler(io.Discard, nil)), Servers: servers.NewStub(),
+		BillingEnabled:      true,
+		Stripe:              &stripe.Client{SecretKey: "sk_test_fake", BaseURL: fs.URL},
+		StripePriceID:       testPriceID,
+		StripeIntroCouponID: "coupon_first_month",
+	})
+
+	srv.EnsureSiteCode(context.Background())
+	if len(created) != 1 {
+		t.Fatalf("created %d codes, want 1", len(created))
+	}
+	if created[0].Get("code") != "WELCOME" || created[0].Get("promotion[coupon]") != "coupon_first_month" {
+		t.Errorf("made %v, want WELCOME on the first-month coupon", created[0])
+	}
+
+	// Every later deploy finds it and does nothing.
+	srv.EnsureSiteCode(context.Background())
+	srv.EnsureSiteCode(context.Background())
+	if len(created) != 1 {
+		t.Errorf("made %d codes across three deploys, want exactly 1", len(created))
+	}
 }

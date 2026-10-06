@@ -462,3 +462,44 @@ func moneyLine(pence int) string {
 	}
 	return fmt.Sprintf("£%d.%02d", pence/100, pence%100)
 }
+
+// SiteCode is the code for somebody who claims the offer on the website
+// without having arrived on anybody's link.
+//
+// The landing page offers 60% off to everybody, so everybody who claims it has
+// to actually get it — a page that offers a discount and a till that charges
+// full price is the one thing the page must never do. Those people get this
+// code, so the discount is real for them too, and they show up in the numbers
+// as having come direct rather than as nothing at all.
+const SiteCode = "WELCOME"
+
+// EnsureSiteCode makes sure SiteCode exists in Stripe, creating it against the
+// first-month coupon if it does not. Run once at startup. It only ever adds:
+// a code that already exists is left exactly as it is.
+func (s *Server) EnsureSiteCode(ctx context.Context) {
+	if !s.stripeReady() || s.cfg.StripeIntroCouponID == "" {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	promo, err := s.cfg.Stripe.LookupPromotionCode(ctx, SiteCode, priceMonthlyPence)
+	if err == nil {
+		s.log.Info("site code is live", "code", promo.Code, "first_month_pence", promo.FirstMonthPence)
+		return
+	}
+	if !errors.Is(err, stripe.ErrNoSuchCode) {
+		s.log.Error("checking the site code", "err", err)
+		return
+	}
+	if _, err := s.cfg.Stripe.CreatePromotionCode(ctx, s.cfg.StripeIntroCouponID, SiteCode); err != nil {
+		s.log.Error("creating the site code: the landing page offer will not apply until it exists", "err", err)
+		return
+	}
+	// Read it back rather than assume, so the log line is a fact.
+	if promo, err := s.cfg.Stripe.LookupPromotionCode(ctx, SiteCode, priceMonthlyPence); err == nil {
+		s.log.Info("site code created and live", "code", promo.Code, "first_month_pence", promo.FirstMonthPence)
+	} else {
+		s.log.Error("created the site code but cannot read it back", "err", err)
+	}
+}

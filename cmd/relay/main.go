@@ -307,6 +307,9 @@ func serve(st *store.Store) error {
 	// The three emails to somebody who signed up and did not pay. Every five
 	// minutes, because the last one has a four-hour window and a fifteen
 	// minute tick would spend a real slice of it.
+	// The code for somebody who claims the offer on the site without having
+	// come in on a link. Made once if it is missing; never touched otherwise.
+	go srv.EnsureSiteCode(ctx)
 	go srv.RunWinback(ctx, 5*time.Minute)
 	// The warning five days before the first full-price month. Hourly: the
 	// promise is a day, not a minute.
