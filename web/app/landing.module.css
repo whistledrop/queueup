@@ -1444,11 +1444,15 @@
 
 /* The headline word that changes. It is exactly as wide as itself, so the
    full stop sits right after every word, short or long. */
+/* The changing word has a line to itself. Inline, every swap from "work" to
+   "a restaurant" re-wrapped the sentence around it and the whole headline
+   jumped; on its own line only the word changes, and nothing else moves. The
+   line is always there, so the height never changes either. */
 .rotator {
-  position: relative;
-  display: inline-block;
+  display: block;
   color: var(--accent);
   font-style: normal;
+  white-space: nowrap;
 }
 
 .rotatorWord {

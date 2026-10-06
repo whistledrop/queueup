@@ -13,10 +13,10 @@
 // account that has never been paid for and never had a password. Anything
 // more than that needs the password, or a link sent to their own inbox.
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { storedPromo } from '@/lib/promo'
+import { claimCode, storePromo } from '@/lib/promo'
 import { PLAN } from '@/lib/pricing'
 import { track } from '@/lib/analytics'
 
@@ -34,13 +34,6 @@ export default function StartForm({
   const [error, setError] = useState('')
   const [signIn, setSignIn] = useState(false)
   const [sent, setSent] = useState('')
-  // The discount lives behind a code, so the offer is only promised to
-  // somebody who holds one — anybody else would be reading about a price they
-  // will not be charged. null until the browser has been asked: the server
-  // cannot know, and guessing makes the line flicker in and out.
-  const [code, setCode] = useState<string | null>(null)
-  useEffect(() => setCode(storedPromo()), [])
-
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     const address = email.trim()
@@ -49,11 +42,15 @@ export default function StartForm({
     setError('')
     setSignIn(false)
     setSent('')
+    // Kept as well as sent, so the paywall shows the discount they just
+    // claimed rather than working it out again.
+    const code = claimCode()
+    storePromo(code)
     try {
       const res = await fetch('/api/auth/start', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email: address, code: storedPromo() }),
+        body: JSON.stringify({ email: address, code }),
       })
       const body = await res.json().catch(() => ({}))
       if (res.status === 201 || res.status === 200) {
@@ -79,20 +76,16 @@ export default function StartForm({
 
   return (
     <form className={className} onSubmit={submit}>
-      {code && (
-        // Above the field, because an empty box asking for an email offers
-        // nothing in return, and this is the reason to fill it in.
-        //
-        // Four words by choice: no price, and no "first month" either. The
-        // discount IS one month, so this line alone overstates it — which is
-        // why the Price card below, the paywall and the receipt all spell out
-        // "£1.99 first month, then £4.99". Nobody can be charged without
-        // having read the whole of it.
-        <p className="startClaim">
-          Claim {percentOff}% off
-          <DownArrow />
-        </p>
-      )}
+      {/* Above the field, because an empty box asking for an email offers
+          nothing in return, and this is the reason to fill it in. Shown to
+          everybody, because everybody gets it: somebody with no code of
+          their own claims with the site's. No price here, and no "first
+          month" either; the paywall spells out £1.99 then £4.99 before
+          anybody can be charged. */}
+      <p className="startClaim">
+        Claim {percentOff}% off
+        <DownArrow />
+      </p>
       <div className="startRow">
         <input
           type="email"
@@ -103,17 +96,9 @@ export default function StartForm({
           autoComplete="email"
           aria-label="Your email"
         />
-        {/* A word, for somebody with something to claim; the arrow for
-            everybody else, who would only wonder what they were claiming. */}
-        {code ? (
-          <button type="submit" disabled={busy} className="startClaimBtn">
-            Claim
-          </button>
-        ) : (
-          <button type="submit" disabled={busy} aria-label="Continue">
-            <Arrow />
-          </button>
-        )}
+        <button type="submit" disabled={busy} className="startClaimBtn">
+          Claim
+        </button>
       </div>
 
       {error && (
@@ -127,7 +112,7 @@ export default function StartForm({
 
       {sent && <p className="startSmall">{sent}</p>}
 
-      {/* Pressing the arrow is what makes the account now, so this is where
+      {/* Pressing Claim is what makes the account now, so this is where
           the privacy notice has to be: before it, not after. */}
       {!error && !sent && (
         <p className="startSmall">
@@ -151,21 +136,6 @@ function DownArrow() {
         d="M12 5v13m-6-5.5L12 19l6-6.5"
         stroke="currentColor"
         strokeWidth="2.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
-// The whole button, at the size a button that says one thing deserves.
-function Arrow() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M5 12h13m-5.5-6L19 12l-6.5 6"
-        stroke="currentColor"
-        strokeWidth="2.2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />

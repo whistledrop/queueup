@@ -7,10 +7,10 @@
 // genuinely is when a server wipes, and "anywhere" is the one the sentence
 // settles on, so it holds twice as long before going round again.
 //
-// The word takes exactly its own width, so the full stop sits right after it
-// whichever word is showing. A slot fixed to the longest word ("a restaurant")
-// left every shorter word floating in a gap. Anybody who has asked for less
-// motion gets "anywhere", still, and the rotation never starts.
+// The word sits on a line of its own, at its own width, so the full stop
+// follows it and changing it moves nothing else in the headline. Anybody who
+// has asked for less motion gets "anywhere", still, and the rotation never
+// starts.
 
 import { useEffect, useState } from 'react'
 import s from './landing.module.css'

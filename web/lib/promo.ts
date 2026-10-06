@@ -19,6 +19,14 @@ const KEY = 'queueup_promo'
 export const TIKTOK_CODE = 'TIKTOK'
 
 /**
+ * The code for everybody else: somebody who found the site on their own and
+ * claimed the 60% the landing page offers. It is a real Stripe code the relay
+ * makes on start-up, so the offer on the page is the price at the till, and
+ * these people count as having come direct rather than as nobody.
+ */
+export const SITE_CODE = 'WELCOME'
+
+/**
  * Whether this visit is happening inside the TikTok app.
  *
  * A link tapped in TikTok opens in TikTok's own browser, and that browser
@@ -66,6 +74,14 @@ export function storedPromo(): string {
   // Where storage is blocked (private windows), nothing above could be kept,
   // so somebody inside TikTok is recognised again each time it is asked.
   return read() || (fromTikTok() ? TIKTOK_CODE : '')
+}
+
+/**
+ * The code a claim is made with: the one they came with, or the site's own.
+ * Every visitor is offered the discount, so every visitor has a code for it.
+ */
+export function claimCode(): string {
+  return storedPromo() || SITE_CODE
 }
 
 export function storePromo(code: string): void {

@@ -1,9 +1,8 @@
 import Link from 'next/link'
-import { BETA, PLAN } from '@/lib/pricing'
+import { BETA } from '@/lib/pricing'
 import s from './landing.module.css'
 import StartForm from './startForm'
 import HeroShot, { Spawn } from './heroShot'
-import { OfferBanner, PriceNote } from './offer'
 import Rotator from './rotator'
 import { CtaRow, StickyCta } from './ctas'
 import Testimonials from './testimonials'
@@ -36,7 +35,6 @@ export default function Landing() {
           <p className={s.lede}>
             Tap join from wherever you are. Your PC queues. You walk in and play.
           </p>
-          <OfferBanner />
           <StartForm className={s.startForm} />
           {/* The question that stops people paying for a Rust tool, answered
               before they have to go looking for the answer. */}
@@ -156,11 +154,7 @@ export default function Landing() {
           able to act without scrolling back up. */}
       <section className={s.section} id="pricing">
         <div className={s.claimBlock}>
-          <OfferBanner />
           <StartForm className={s.startForm} from="pricing" />
-          <p className={s.terms}>
-            <PriceNote />
-          </p>
         </div>
       </section>
 

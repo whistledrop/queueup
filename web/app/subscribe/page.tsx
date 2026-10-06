@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { api, ApiError, getBilling, type Billing } from '@/lib/api'
 import { PLAN, priceLine } from '@/lib/pricing'
-import { capturePromoFromURL, storedPromo, storePromo } from '@/lib/promo'
+import { capturePromoFromURL, claimCode, storedPromo, storePromo } from '@/lib/promo'
 import s from './subscribe.module.css'
 import { track } from '@/lib/analytics'
 import Countdown from './countdown'
@@ -96,7 +96,9 @@ function Subscribe() {
 
   useEffect(() => {
     capturePromoFromURL()
-    const saved = storedPromo()
+    // Everybody was offered the discount on the way in, so everybody arrives
+    // with a code: theirs, or the site's own.
+    const saved = claimCode()
     if (saved) {
       setCode(saved)
       check(saved, true).finally(() => setCodeKnown(true))
