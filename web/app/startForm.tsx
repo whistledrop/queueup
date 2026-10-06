@@ -74,10 +74,17 @@ export default function StartForm({ className }: { className?: string }) {
     <form className={className} onSubmit={submit}>
       {code && (
         // Above the field, because an empty box asking for an email offers
-        // nothing in return, and this is the reason to fill it in. No prices:
-        // the full terms are on the Price card and again at the till, and one
-        // line in a hero does better with one idea in it.
-        <p className="startClaim">Claim {percentOff}% off your first month</p>
+        // nothing in return, and this is the reason to fill it in.
+        //
+        // Four words by choice: no price, and no "first month" either. The
+        // discount IS one month, so this line alone overstates it — which is
+        // why the Price card below, the paywall and the receipt all spell out
+        // "£1.99 first month, then £4.99". Nobody can be charged without
+        // having read the whole of it.
+        <p className="startClaim">
+          Claim {percentOff}% off
+          <DownArrow />
+        </p>
       )}
       <div className="startRow">
         <input
@@ -89,9 +96,17 @@ export default function StartForm({ className }: { className?: string }) {
           autoComplete="email"
           aria-label="Your email"
         />
-        <button type="submit" disabled={busy} aria-label="Continue">
-          <Arrow />
-        </button>
+        {/* A word, for somebody with something to claim; the arrow for
+            everybody else, who would only wonder what they were claiming. */}
+        {code ? (
+          <button type="submit" disabled={busy} className="startClaimBtn">
+            Claim
+          </button>
+        ) : (
+          <button type="submit" disabled={busy} aria-label="Continue">
+            <Arrow />
+          </button>
+        )}
       </div>
 
       {error && (
@@ -119,6 +134,22 @@ export default function StartForm({ className }: { className?: string }) {
 // Worked out rather than written down, so it cannot drift from the real
 // prices if either one ever moves.
 const percentOff = Math.round((1 - PLAN.intro / PLAN.monthly) * 100)
+
+// Ties the offer to the box underneath it, so the two read as one thing
+// rather than a claim floating above an unrelated field.
+function DownArrow() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 5v13m-6-5.5L12 19l6-6.5"
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
 
 // The whole button, at the size a button that says one thing deserves.
 function Arrow() {
