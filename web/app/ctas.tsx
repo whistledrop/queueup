@@ -1,33 +1,63 @@
 'use client'
 
-// The ways in, further down the page.
+// The "Get QueueUp" buttons further down the page, and the box they open.
 //
-// The hero has the email box, but somebody who reads all the way to the end of
-// Fair play has just had their last objection answered and is a long scroll
-// away from anything to press. These put the next step where the decision
-// actually gets made.
-//
-// Each one goes to the Price card's form rather than a different page: the
-// address they type is what starts an account, and there is no reason to make
-// them load anything to type it.
+// The hero has the email box, but somebody who has just read How it works or
+// Fair play is a long scroll from it. Pressing one of these opens the very
+// same box — the offer above it, the address, Claim — over wherever they are,
+// so acting never means finding their way back up the page.
 
+import { useEffect, useRef, useState } from 'react'
 import { track } from '@/lib/analytics'
+import StartForm from './startForm'
 import s from './landing.module.css'
 
-/** Takes them to the form in the Price card, and puts the cursor in it. */
-function goToForm() {
-  const section = document.getElementById('pricing')
-  section?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  // After the scroll, not during: focusing first would yank the page there
-  // instantly and undo the scroll that explains where they have arrived.
-  window.setTimeout(() => {
-    const forms = document.querySelectorAll<HTMLInputElement>('#pricing input[type="email"]')
-    forms[0]?.focus({ preventScroll: true })
-  }, 600)
+/** The claim box, over the page. */
+function ClaimModal({ where, onClose }: { where: string; onClose: () => void }) {
+  const card = useRef<HTMLDivElement>(null)
+  // Held in a ref so the effect below runs once, on opening, rather than
+  // again every time the button that opened it re-renders.
+  const close = useRef(onClose)
+  close.current = onClose
+
+  useEffect(() => {
+    // The cursor straight into the address field: the box exists to be typed in.
+    card.current?.querySelector<HTMLInputElement>('input[type="email"]')?.focus()
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close.current()
+    }
+    window.addEventListener('keydown', onKey)
+    // The page underneath stays where it is while the box is open.
+    const was = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = was
+    }
+  }, [])
+
+  return (
+    <div className={s.offerWrap} onClick={onClose}>
+      <div
+        className={s.offerCard}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Get QueueUp"
+        ref={card}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button className={s.offerClose} onClick={onClose} aria-label="Close">
+          ×
+        </button>
+        <StartForm className={s.startForm} from={where} />
+      </div>
+    </div>
+  )
 }
 
-/** A "Get QueueUp" button, which says where on the page it was pressed. */
+/** A "Get QueueUp" button that opens the claim box, and says where it was. */
 export function CtaRow({ where }: { where: string }) {
+  const [open, setOpen] = useState(false)
   return (
     <div className={s.ctaRow}>
       <button
@@ -35,36 +65,34 @@ export function CtaRow({ where }: { where: string }) {
         className={s.cta}
         onClick={() => {
           track('cta_clicked', { position: where })
-          goToForm()
+          setOpen(true)
         }}
       >
         Get QueueUp
       </button>
+      {open && <ClaimModal where={where} onClose={() => setOpen(false)} />}
     </div>
   )
 }
 
-/**
- * The bar along the bottom of a phone.
- *
- * Only on a phone, and only once the hero's own form has been scrolled past —
- * two buttons asking for the same thing on one screen is one too many. It is
- * CSS that hides it on a desktop, so there is no guessing about screen sizes
- * in JavaScript.
- */
+/** The same, as a bar along the bottom of a phone. Hidden on wider screens. */
 export function StickyCta() {
+  const [open, setOpen] = useState(false)
   return (
-    <div className={s.sticky}>
-      <button
-        type="button"
-        className={s.stickyBtn}
-        onClick={() => {
-          track('cta_clicked', { position: 'sticky' })
-          goToForm()
-        }}
-      >
-        Get QueueUp
-      </button>
-    </div>
+    <>
+      <div className={s.sticky}>
+        <button
+          type="button"
+          className={s.stickyBtn}
+          onClick={() => {
+            track('cta_clicked', { position: 'sticky' })
+            setOpen(true)
+          }}
+        >
+          Get QueueUp
+        </button>
+      </div>
+      {open && <ClaimModal where="sticky" onClose={() => setOpen(false)} />}
+    </>
   )
 }

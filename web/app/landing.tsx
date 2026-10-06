@@ -2,10 +2,9 @@ import Link from 'next/link'
 import { BETA, PLAN } from '@/lib/pricing'
 import s from './landing.module.css'
 import StartForm from './startForm'
-import HeroShot from './heroShot'
-import { OfferBanner, PriceAmount, PriceNote } from './offer'
+import HeroShot, { Spawn } from './heroShot'
+import { OfferBanner, PriceNote } from './offer'
 import Rotator from './rotator'
-import WipeClock from './wipeClock'
 import { CtaRow, StickyCta } from './ctas'
 import Testimonials from './testimonials'
 import Demo from './demo'
@@ -50,6 +49,8 @@ export default function Landing() {
         </div>
       </header>
 
+      <Testimonials />
+
       <section className={s.section} id="how">
         <p className={s.kicker}>How it works</p>
         <h2>Three steps, then never again</h2>
@@ -86,7 +87,11 @@ export default function Landing() {
             <p>Sit down to a game that is already running, already in.</p>
           </div>
           <div className={s.stepVisual}>
-            <PairVisual />
+            {/* The game, loaded in: the beach you wake up on. Not the pairing
+                code, which is a step they do once and never think about. */}
+            <div className={s.spawnFrame}>
+              <Spawn />
+            </div>
           </div>
         </div>
 
@@ -103,8 +108,6 @@ export default function Landing() {
 
       <Demo />
 
-      <Testimonials />
-
       <section className={s.section}>
         <p className={s.kicker}>Wipe day</p>
         <h2>Beat the restart</h2>
@@ -112,7 +115,6 @@ export default function Landing() {
           Schedule it before you leave. QueueUp pings the server every couple of
           seconds and connects the moment it is back, game update and all.
         </p>
-        <WipeClock />
         <div className={s.stepVisual}>
           <SchedulePhone />
         </div>
@@ -149,43 +151,15 @@ export default function Landing() {
         <CtaRow where="fair_play" />
       </section>
 
+      {/* The same ask as the top of the page: the offer, and a box for the
+          address. Somebody who has read this far has decided, and should be
+          able to act without scrolling back up. */}
       <section className={s.section} id="pricing">
-        <p className={s.kicker}>Price</p>
-        <h2>{BETA ? 'Free while it is in beta' : 'One price, cancel anytime'}</h2>
-        <div className={s.priceCard}>
-          <div className={s.priceAmount}>
-            {BETA ? (
-              <>
-                Free<small> during the beta</small>
-              </>
-            ) : (
-              // Only somebody who actually holds a code is shown the
-              // discounted first month, because only they will be charged it.
-              <PriceAmount />
-            )}
-          </div>
-          <ul className={s.priceIncludes}>
-            {PLAN.includes.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
-          {/* The same box as the hero, rather than a button to another page.
-              Somebody who has read all the way down here has decided; making
-              them load a second page to type the address they could have
-              typed in front of them is a place to lose them for nothing. */}
-          {BETA ? (
-            <Link href="/login?mode=create" className={s.cta} style={{ display: 'block' }}>
-              Get QueueUp free
-            </Link>
-          ) : (
-            <StartForm className={s.priceForm} from="pricing" />
-          )}
-          <p className={s.priceNote}>
-            {BETA ? (
-              `All we ask is that you say how it went. After the beta it is ${PLAN.symbol}${PLAN.intro.toFixed(2)} for your first month, then ${PLAN.symbol}${PLAN.monthly.toFixed(2)}, and nobody is charged without choosing to subscribe.`
-            ) : (
-              <PriceNote />
-            )}
+        <div className={s.claimBlock}>
+          <OfferBanner />
+          <StartForm className={s.startForm} from="pricing" />
+          <p className={s.terms}>
+            <PriceNote />
           </p>
         </div>
       </section>

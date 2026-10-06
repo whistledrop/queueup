@@ -1442,22 +1442,13 @@
 
 /* ---------------------------------------------------------------- the hero */
 
-/* The headline word that changes. The slot is as wide as the longest word,
-   always, so the line never reflows while the word swaps. */
+/* The headline word that changes. It is exactly as wide as itself, so the
+   full stop sits right after every word, short or long. */
 .rotator {
   position: relative;
   display: inline-block;
   color: var(--accent);
   font-style: normal;
-}
-
-/* The real longest word, taking up its space and showing nothing. Anything
-   else would be a guess that breaks with a different font. */
-.rotatorGhost {
-  visibility: hidden;
-  display: block;
-  height: 0;
-  overflow: hidden;
 }
 
 .rotatorWord {
@@ -1519,51 +1510,6 @@
   text-align: center;
 }
 
-/* ------------------------------------------------------------ wipe clock */
-
-.wipeClock {
-  max-width: 340px;
-  margin: 0 auto 30px;
-  padding: 18px 20px 16px;
-  border-radius: 16px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  text-align: center;
-}
-
-.wipeClockLabel {
-  margin: 0 0 8px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.wipeClockDigits {
-  margin: 0;
-  font-size: 30px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-  color: var(--accent);
-}
-
-.wipeClockDigits small {
-  margin: 0 9px 0 2px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--muted);
-}
-
-.wipeClockDigits small:last-child { margin-right: 0; }
-
-.wipeClockWhen {
-  margin: 8px 0 0;
-  font-size: 13.5px;
-  color: var(--muted);
-}
-
 /* ------------------------------------------------------------------ CTAs */
 
 .ctaRow {
@@ -1623,9 +1569,15 @@
 }
 
 .quote p {
-  margin: 0 0 14px;
-  font-size: 17px;
-  line-height: 1.55;
+  margin: 0 0 16px;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.45;
+}
+
+@media (max-width: 560px) {
+  .quote p { font-size: 19px; }
 }
 
 .quote cite {
@@ -1661,4 +1613,32 @@
   max-width: 100%;
   aspect-ratio: 16 / 9;
   object-fit: cover;
+}
+
+/* Step 3's picture: the game, loaded in. The same beach the hero lands on. */
+.spawnFrame {
+  position: relative;
+  /* Its own width, not a share of its column's: the scene is drawn to fill
+     whatever box it is given, so a box that waits to be told its size by its
+     contents is told nothing, and shrank to a 4px sliver. */
+  width: min(340px, 82vw);
+  margin: 0 auto;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+
+/* The bottom of the page: the same ask as the top. */
+.claimBlock {
+  max-width: 420px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.terms {
+  margin: 14px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
 }

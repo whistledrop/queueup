@@ -164,7 +164,7 @@ export default function HeroShot() {
 // over dark sand is a black rectangle from two feet away. This one puts the
 // sun on the horizon and the light on the sand, because what a beach at dawn
 // actually looks like from across a room is bright.
-function Spawn() {
+export function Spawn() {
   return (
     <svg className={s.spawn} viewBox="0 0 160 90" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <defs>

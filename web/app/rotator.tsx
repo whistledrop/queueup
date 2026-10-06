@@ -7,9 +7,10 @@
 // genuinely is when a server wipes, and "anywhere" is the one the sentence
 // settles on, so it holds twice as long before going round again.
 //
-// The slot it sits in never changes width, so nothing on the page moves while
-// the word does. Anybody who has asked for less motion gets "anywhere",
-// still, and the rotation never starts.
+// The word takes exactly its own width, so the full stop sits right after it
+// whichever word is showing. A slot fixed to the longest word ("a restaurant")
+// left every shorter word floating in a gap. Anybody who has asked for less
+// motion gets "anywhere", still, and the rotation never starts.
 
 import { useEffect, useState } from 'react'
 import s from './landing.module.css'
@@ -42,13 +43,6 @@ export default function Rotator() {
     // showing: a screen reader is not told about a word changing every two
     // seconds, which would be unusable.
     <em className={s.rotator}>
-      {/* The widest word AND its full stop set the width, invisibly, so the
-          line never jumps. Real text, not a guess at how wide it might be —
-          and the stop has to be in here too, or the slot grows by the width
-          of a full stop on whichever word is the longest. */}
-      <span className={s.rotatorGhost} aria-hidden="true">
-        a restaurant.
-      </span>
       <span key={i} className={s.rotatorWord}>
         {WORDS[i]}
       </span>
