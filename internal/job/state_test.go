@@ -429,6 +429,33 @@ func TestACrashStillRelaunches(t *testing.T) {
 	}
 }
 
+// The 2026-10-06 case. QueueUp could not read Rust's log, so it never saw the
+// player get in, nor the shutdown when they closed the game. An exit it knows
+// nothing about must not be guessed into a crash: Rust reopened twice in the
+// face of somebody who had just closed it. It stops, says why, and launches
+// nothing.
+func TestAnExitQueueUpCouldNotSeeIsNotRelaunched(t *testing.T) {
+	m, c := newTestMachine(Config{MaxAttempts: 3, RetryBase: time.Second, RetryMax: time.Second})
+	feed(m, Start{}, LaunchOK{})
+	res := m.Handle(GameExited{Code: 0, LogSilent: true})
+	if m.State() != StateFailed {
+		t.Fatalf("state = %s, want failed: a blind exit was retried", m.State())
+	}
+	if f := m.Failure(); f == nil || f.Code != "lost_track" {
+		t.Fatalf("failure = %v, want lost_track", f)
+	}
+	for _, a := range res.Actions {
+		if a == ActionLaunchGame {
+			t.Fatal("relaunched Rust after an exit it could not see")
+		}
+	}
+	c.advance(time.Minute)
+	feed(m, Tick{})
+	if m.Attempt() != 1 {
+		t.Fatalf("attempts = %d, want 1", m.Attempt())
+	}
+}
+
 // A second launch starts clean: the previous copy's farewell must not bleed
 // into the next attempt and cancel it.
 func TestUserQuitFlagDoesNotOutliveTheLaunchItBelongsTo(t *testing.T) {

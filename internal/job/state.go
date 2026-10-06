@@ -125,6 +125,9 @@ type GameExited struct {
 	Code int
 	// Reason, when set, is why, in words for the player.
 	Reason string
+	// LogSilent means not one line of Rust's log reached QueueUp between this
+	// launch and the exit, so QueueUp has no idea what the game was doing.
+	LogSilent bool
 }                  // the Rust process is gone
 type Tick struct{} // "time has passed, re-check your timers"
 
@@ -542,6 +545,10 @@ func (m *Machine) handleConnectingOrQueued(in Input, res *Result) {
 			m.playerClosed(res)
 			return
 		}
+		if v.LogSilent {
+			m.lostTrack(res)
+			return
+		}
 		// The client died while we were connecting or queuing. Relaunch.
 		m.retryOrFail(exitReason(v), res)
 	}
@@ -566,6 +573,10 @@ func (m *Machine) handleInServer(in Input, res *Result) {
 	case GameExited:
 		if m.sawUserQuit {
 			m.playerClosed(res)
+			return
+		}
+		if v.LogSilent {
+			m.lostTrack(res)
 			return
 		}
 		m.retryOrFail(exitReason(v), res)
@@ -737,6 +748,20 @@ const queueWaiting = "In the queue. Your PC is waiting to get in."
 func (m *Machine) playerClosed(res *Result) {
 	r := Reason{Code: "player_closed", Message: "Rust was closed on your PC, so QueueUp stopped this join."}
 	res.Transitions = append(res.Transitions, m.moveTo(StateDone, r.Message, &r))
+}
+
+// lostTrack ends the job because Rust closed while QueueUp could not see
+// anything it was doing: not one line of its log arrived since the launch.
+//
+// A crash and the player closing the game look the same from outside; only
+// the log tells them apart. Without it, relaunching is a guess, and a wrong
+// guess is the game reopening in the face of somebody who has just shut it,
+// which is what happened on 2026-10-06. So when QueueUp is blind it stops and
+// says so, and pressing join again is one tap if they did still want in.
+func (m *Machine) lostTrack(res *Result) {
+	r := Reason{Code: "lost_track", Message: "Rust closed, and QueueUp couldn't see what it was doing, so it didn't reopen it. Press join again if you still want in."}
+	m.failure = &r
+	res.Transitions = append(res.Transitions, m.moveTo(StateFailed, r.Message, &r))
 }
 
 // playerLeft ends the job because the player disconnected from the server, or

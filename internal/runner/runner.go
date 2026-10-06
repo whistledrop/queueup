@@ -42,6 +42,11 @@ type Runner struct {
 	OnNote func(string)
 
 	lastNote string
+
+	// heard is whether any line of Rust's log has arrived since the last
+	// launch. Without it, an exit cannot be told apart from the player
+	// closing the game, and the job must not relaunch on a guess.
+	heard bool
 }
 
 // updateReporter is the optional part of the Launcher contract that says
@@ -132,6 +137,7 @@ func (r *Runner) Run(ctx context.Context) job.State {
 			}
 
 		case line := <-lines:
+			r.heard = true
 			ev, ok := r.Parser.ParseLine(line)
 			if r.OnLogLine != nil {
 				r.OnLogLine(line, ok)
@@ -155,7 +161,7 @@ func (r *Runner) Run(ctx context.Context) job.State {
 
 		case <-exitTimer:
 			exitTimer = nil
-			r.feed(job.GameExited{Code: pendingExit.Code, Reason: pendingExit.Reason}, launches, cancel)
+			r.feed(job.GameExited{Code: pendingExit.Code, Reason: pendingExit.Reason, LogSilent: !r.heard}, launches, cancel)
 		}
 	}
 	return r.Machine.State()
@@ -199,6 +205,7 @@ func (r *Runner) feed(in job.Input, launches chan launchResult, cancel context.C
 	for _, a := range res.Actions {
 		switch a {
 		case job.ActionLaunchGame:
+			r.heard = false
 			go func() {
 				if err := r.Launcher.Preflight(); err != nil {
 					launches <- launchResult{err: err}

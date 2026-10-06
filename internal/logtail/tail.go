@@ -1,20 +1,33 @@
 // Package logtail follows a growing log file, like "tail -f".
 //
 // It has to cope with three things the Rust client actually does: the file may
-// not exist yet when we start watching, it gets truncated every time the game
-// launches, and it can be replaced outright. Polling with os.Stat handles all
-// three and works identically on Windows and macOS, which matters because all
-// development happens on a Mac.
+// not exist yet when we start watching, it gets emptied and started again every
+// time the game launches, and it can be replaced outright.
+//
+// A new session is recognised by the first bytes of the file changing, and by
+// the file being shorter than where we had read to, both checked through the
+// open file itself. Neither the file's name nor its size alone is enough. A
+// relaunch can refill the file past its old length between two looks, so it
+// never appears to shrink; and on Windows the size reported for a file another
+// program is writing can lag behind the real one. Either way the tailer used to
+// carry on from the old session's end, in the middle of the new one, and miss
+// everything that mattered.
 package logtail
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"io"
 	"os"
 	"strings"
 	"time"
 )
+
+// headSize is how much of the start of the file identifies a session. Rust's
+// first line carries a timestamp to the millisecond, so two sessions never
+// begin with the same bytes.
+const headSize = 256
 
 // Follow watches path and calls onLine for every complete line appended to it.
 // It returns when ctx is cancelled. It never returns an error: a missing or
@@ -26,9 +39,9 @@ import (
 // just been banned, or had just joined, based on something that happened
 // yesterday.
 //
-// This only applies to the first open. Once the game launches it truncates the
-// log, and a truncated or replaced file is always read from the top, because
-// everything in it then belongs to the session we started.
+// This only applies to the first open. Once the game launches it starts the
+// log again, and a new session is always read from the top, because everything
+// in it then belongs to the session we started.
 func Follow(ctx context.Context, path string, poll time.Duration, fromStart bool, onLine func(string)) {
 	if poll <= 0 {
 		poll = 250 * time.Millisecond
@@ -37,28 +50,33 @@ func Follow(ctx context.Context, path string, poll time.Duration, fromStart bool
 	var (
 		f       *os.File
 		reader  *bufio.Reader
-		info    os.FileInfo
 		partial strings.Builder
-		opened  bool // after the first open, always read from the top
+		pos     int64  // how far into the file we have read
+		head    []byte // the file's first bytes when we started reading it
+		opened  bool   // after the first open, always read from the top
 	)
 
-	// Snapshot the file as it is right now. Anything already in it belongs to a
-	// previous Rust session, and with fromStart=false we skip exactly that much
-	// and no more. If the file does not exist yet, or is replaced before we get
-	// to open it, there is nothing stale to skip and we read from the top.
-	skipInfo, skipErr := os.Stat(path)
-	skipSize := int64(0)
-	if !fromStart && skipErr == nil {
-		skipSize = skipInfo.Size()
-	}
+	// What was there when we began. Only that file's existing content is
+	// skipped: one that appears later, or replaces it before we get to open it,
+	// is all new session and is read from the top.
+	before, beforeErr := os.Stat(path)
+
 	closeFile := func() {
 		if f != nil {
 			_ = f.Close()
-			f, reader, info = nil, nil, nil
+			f, reader = nil, nil
 		}
 		partial.Reset()
+		pos, head = 0, nil
 	}
 	defer closeFile()
+
+	// readHead returns up to n bytes from the very start of the open file.
+	readHead := func(n int) []byte {
+		b := make([]byte, n)
+		got, _ := f.ReadAt(b, 0)
+		return b[:got]
+	}
 
 	for {
 		select {
@@ -75,21 +93,40 @@ func Follow(ctx context.Context, path string, poll time.Duration, fromStart bool
 		case f == nil:
 			nf, oerr := os.Open(path)
 			if oerr == nil {
-				f, reader, info = nf, bufio.NewReader(nf), st
-				sameAsBefore := skipErr == nil && os.SameFile(st, skipInfo) && st.Size() >= skipSize
-				if !fromStart && !opened && sameAsBefore && skipSize > 0 {
-					if _, serr := f.Seek(skipSize, io.SeekStart); serr == nil {
-						reader.Reset(f)
+				f, reader = nf, bufio.NewReader(nf)
+				// Anything already here belongs to a previous Rust session, and
+				// with fromStart=false it is skipped, on the first open only. The
+				// size comes from the open file, not the name, so it is the real
+				// one even while Rust is writing.
+				if !fromStart && !opened && beforeErr == nil && os.SameFile(st, before) {
+					if fst, serr := f.Stat(); serr == nil && fst.Size() > 0 {
+						if _, serr := f.Seek(fst.Size(), io.SeekStart); serr == nil {
+							reader.Reset(f)
+							pos = fst.Size()
+						}
 					}
 				}
+				head = readHead(headSize)
 				opened = true
 			}
-		case st.Size() < info.Size() || !os.SameFile(st, info):
-			// Truncated (the game relaunched) or replaced. Start over from the top.
-			closeFile()
-			continue
 		default:
-			info = st
+			if fst, serr := f.Stat(); serr != nil || !os.SameFile(st, fst) {
+				// Replaced by a different file. Start over from the top.
+				closeFile()
+				continue
+			} else if fst.Size() < pos || !bytes.Equal(readHead(len(head)), head) {
+				// Emptied and begun again: a new session, read from the top.
+				// The first bytes changing catches the relaunch that refilled the
+				// file past where we had read to before we looked.
+				if _, serr := f.Seek(0, io.SeekStart); serr != nil {
+					closeFile()
+					continue
+				}
+				reader.Reset(f)
+				partial.Reset()
+				pos = 0
+				head = readHead(headSize)
+			}
 		}
 
 		if reader != nil {
@@ -97,6 +134,7 @@ func Follow(ctx context.Context, path string, poll time.Duration, fromStart bool
 				chunk, rerr := reader.ReadString('\n')
 				if chunk != "" {
 					partial.WriteString(chunk)
+					pos += int64(len(chunk))
 				}
 				if rerr != nil {
 					break // EOF for now; the rest arrives on a later poll
@@ -106,6 +144,12 @@ func Follow(ctx context.Context, path string, poll time.Duration, fromStart bool
 				if line != "" {
 					onLine(line)
 				}
+			}
+			// A file that was empty, or barely begun, when we first looked has
+			// more of its start now. Keep the fullest head we can, so the next
+			// comparison is against what the session really begins with.
+			if len(head) < headSize && int64(len(head)) < pos {
+				head = readHead(headSize)
 			}
 		}
 

@@ -84,7 +84,11 @@ func cmdRun(args []string) error {
 		if err := os.MkdirAll(filepath.Dir(lf), 0o700); err == nil {
 			if f, ferr := os.OpenFile(lf, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600); ferr == nil {
 				defer f.Close()
-				logOut = io.MultiWriter(os.Stdout, f)
+				// The file first, and the screen never allowed to fail it. A
+				// MultiWriter stops at the first writer that errors, and a tray
+				// started at login has no screen to print to: with the screen
+				// first, one failed print meant the file never got the line.
+				logOut = io.MultiWriter(f, bestEffort{os.Stdout})
 			}
 		}
 	}
@@ -209,4 +213,15 @@ func launcherFactory(useSim bool, scenarioPath, logPath string, speed float64) (
 		}
 		return &game.SimLauncher{Scenario: sc, Log: p, Speed: speed}, nil
 	}, nil
+}
+
+// bestEffort writes where it can and never reports failure, for an output
+// that may not be there, such as the console of a program started without one.
+type bestEffort struct{ w io.Writer }
+
+func (b bestEffort) Write(p []byte) (int, error) {
+	if b.w != nil {
+		_, _ = b.w.Write(p)
+	}
+	return len(p), nil
 }

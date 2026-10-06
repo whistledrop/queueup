@@ -174,3 +174,77 @@ func TestFollowReadsFromTheTopWhenTheFileAppearsAfterWatchingBegins(t *testing.T
 		t.Fatalf("line = %q, want the Steam failure line", got[0])
 	}
 }
+
+// What happened on a real PC on 2026-10-06. The previous session had left a
+// long log, Rust relaunched and started a fresh one in the same file, and by
+// the next look the new session was already longer than the old one had been.
+// Nothing ever looked shorter, so the tailer carried on from the old session's
+// end, in the middle of the new one, and missed "Connecting", the map and
+// "Spawning World" entirely: QueueUp sat on "connecting" for 39 minutes while
+// the player was in the server, then read them closing Rust as a crash and
+// relaunched it.
+//
+// On Windows it is worse, because the size Windows reports for a file another
+// program is writing can lag behind. So a new session is recognised by its
+// first bytes changing, not only by the file shrinking.
+func TestFollowNoticesANewSessionThatOutgrewTheOldOneBeforeTheNextLook(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "output_log.txt")
+	old := "2026-10-05T20:00:00.000Z|0x1|old session starts\n"
+	for len(old) < 2000 {
+		old += "2026-10-05T20:00:01.000Z|0x1|old chatter\n"
+	}
+	if err := os.WriteFile(path, []byte(old), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	c := &collector{}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go logtail.Follow(ctx, path, 150*time.Millisecond, false, c.add)
+	time.Sleep(400 * time.Millisecond) // the old session has been skipped
+
+	// The relaunch: the same file emptied and refilled, past its old length,
+	// all between two looks.
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_TRUNC, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fresh := "2026-10-06T14:05:29.302Z|0x2|new session starts\n" +
+		"2026-10-06T14:05:50.961Z|0x2|Connecting: 185.189.255.232:28015 (Raknet)\n"
+	for len(fresh) < 3000 {
+		fresh += "2026-10-06T14:06:00.000Z|0x2|new chatter\n"
+	}
+	fresh += "2026-10-06T14:07:29.408Z|0x2|[49.4s] Spawning World\n"
+	if _, err := f.WriteString(fresh); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		got := c.snapshot()
+		var connect, spawn bool
+		for _, l := range got {
+			connect = connect || l == "2026-10-06T14:05:50.961Z|0x2|Connecting: 185.189.255.232:28015 (Raknet)"
+			spawn = spawn || l == "2026-10-06T14:07:29.408Z|0x2|[49.4s] Spawning World"
+		}
+		if connect && spawn {
+			for _, l := range got {
+				if l == "2026-10-05T20:00:01.000Z|0x1|old chatter" {
+					t.Fatal("read the previous session's lines")
+				}
+			}
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("missed the new session's lines; got %d lines, first %q", len(c.snapshot()), first(c.snapshot()))
+}
+
+func first(l []string) string {
+	if len(l) == 0 {
+		return ""
+	}
+	return l[0]
+}
