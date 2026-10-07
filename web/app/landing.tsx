@@ -36,11 +36,6 @@ export default function Landing() {
             Tap join from wherever you are. Your PC queues. You walk in and play.
           </p>
           <StartForm className={s.startForm} />
-          {/* The question that stops people paying for a Rust tool, answered
-              before they have to go looking for the answer. */}
-          <p className={s.reassure}>
-            Not a cheat · never touches the game · can&apos;t get you banned
-          </p>
         </div>
         <div>
           <HeroShot />

@@ -1470,14 +1470,6 @@
   to { opacity: 1; transform: none; }
 }
 
-/* The three things somebody needs to hear before they will pay for a tool
-   that touches a game they can be banned from. */
-.reassure {
-  margin: 12px 0 0;
-  font-size: 13.5px;
-  color: var(--muted);
-}
-
 /* ------------------------------------------------------------- the offer */
 
 .offerBanner {

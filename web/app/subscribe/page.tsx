@@ -241,21 +241,6 @@ function Subscribe() {
           </p>
         )}
 
-        {/* What happens next, in order, so the renewal is never a surprise.
-            The day-25 email is real and is sent by the relay; if it ever
-            stops being sent, this line has to come down with it. */}
-        <ol className={s.timeline}>
-          <li>
-            <b>Today</b> {money(nowPence)}
-          </li>
-          <li>
-            <b>Day 25</b> we email you a reminder
-          </li>
-          <li>
-            <b>Day 30</b> {priceLine()}, cancel in two taps
-          </li>
-        </ol>
-
         <ul className={s.features}>
           {PLAN.includes.map((line) => (
             <li key={line}>{line}</li>
