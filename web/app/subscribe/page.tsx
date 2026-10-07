@@ -278,7 +278,7 @@ function Subscribe() {
             join queue whilst in class, and by the time I was home my PC was in the
             server.”
           </p>
-          <cite>— 9k-hour Rust player, founder of QueueUp</cite>
+          <cite>— 9k-hour Rust player, founder</cite>
         </blockquote>
 
         {!applied && !codeOpen && (
