@@ -18,9 +18,8 @@ import Countdown from './countdown'
 // download first is asking them to leave. So the order is account, price, pay,
 // and only then the setup they need to be sitting at the PC for.
 //
-// Which also means they are paying for something they have not seen work. Two
-// things carry that: the three steps that follow, so paying does not feel like
-// the edge of a cliff, and how plainly it can be cancelled.
+// Which also means they are paying for something they have not seen work.
+// What carries that is how plainly it can be cancelled.
 
 export default function SubscribePage() {
   return (
@@ -316,24 +315,6 @@ function Subscribe() {
           </form>
         )}
         {codeBad && <p className={s.codeBad}>{codeBad}</p>}
-      </div>
-
-      <div className={s.next}>
-        <h3>What happens next</h3>
-        <ol className={s.steps}>
-          <li>
-            <b>Link your PC.</b> One file, one six character code. About two
-            minutes, and only ever once.
-          </li>
-          <li>
-            <b>Save the servers you play.</b> So wipe day is one tap, not a
-            search.
-          </li>
-          <li>
-            <b>Join from anywhere.</b> Your PC queues while you are at work, at
-            school, or on the bus.
-          </li>
-        </ol>
       </div>
 
       <div className={s.refund}>
