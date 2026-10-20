@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "rust-steam-connect-link-shortcut",
-  date: "2026-11-10",
+  date: "2026-11-13",
   title: "Make a desktop shortcut that joins your Rust server",
   description: "A Steam link can launch Rust straight into a server. How to build one for your server and put it on your desktop, so joining is a double-click.",
   body: `

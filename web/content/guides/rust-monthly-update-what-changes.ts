@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "rust-monthly-update-what-changes",
-  date: "2026-11-18",
+  date: "2026-11-21",
   title: "The Rust monthly update: what it changes and why it wipes",
   description: "Every first Thursday Facepunch releases a Rust update, and every server wipes for it. What the monthly update contains, where to read about it, and how to be ready.",
   body: `

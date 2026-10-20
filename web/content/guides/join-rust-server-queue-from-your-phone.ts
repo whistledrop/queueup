@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "join-rust-server-queue-from-your-phone",
-  date: "2026-10-26",
+  date: "2026-10-29",
   title: "How to join a Rust server queue from your phone",
   description: "You cannot play Rust on a phone, but you can start the queue from one. How remote queueing works, what your PC needs, and what it can and cannot do.",
   body: `

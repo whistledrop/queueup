@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "rust-connection-errors-explained",
-  date: "2026-11-13",
+  date: "2026-11-16",
   title: "Common Rust connection errors and what to do",
   description: "Steam auth timeouts, anti-cheat errors, full servers and connections that just hang. What the common Rust connection errors usually mean and the first thing to try.",
   body: `

@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "rust-wipe-day-for-groups-and-clans",
-  date: "2026-11-15",
+  date: "2026-11-18",
   title: "Rust wipe day plan for groups and clans",
   description: "Wipe day goes best when a group has a plan before the server opens. Roles, a base location, and how to get everyone in quickly, even the ones running late.",
   body: `

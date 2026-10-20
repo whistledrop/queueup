@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "rust-server-full-what-it-means",
-  date: "2026-11-05",
+  date: "2026-11-08",
   title: "Rust server full? What it means and what to do",
   description: "A full Rust server does not reject you, it queues you. What a full server means on wipe night, how to tell a queue from a crash, and your options.",
   body: `

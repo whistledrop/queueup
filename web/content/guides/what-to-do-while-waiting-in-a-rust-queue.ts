@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "what-to-do-while-waiting-in-a-rust-queue",
-  date: "2026-11-16",
+  date: "2026-11-19",
   title: "What to do while you wait in a Rust queue",
   description: "A long Rust queue does not need you staring at it. How to keep your place safe, and how to use the time, or not be there at all.",
   body: `

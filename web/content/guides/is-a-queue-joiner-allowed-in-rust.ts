@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "is-a-queue-joiner-allowed-in-rust",
-  date: "2026-10-31",
+  date: "2026-11-03",
   title: "Is it allowed to use a queue joiner in Rust?",
   description: "What a remote queue tool like QueueUp actually does on your PC, how that differs from a cheat or a bot, and what to check on the server you play.",
   body: `

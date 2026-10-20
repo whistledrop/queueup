@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "play-rust-wipes-around-work-or-school",
-  date: "2026-11-08",
+  date: "2026-11-11",
   title: "How to play Rust wipes around work or school",
   description: "Rust wipes happen on a schedule that ignores your day job. How to stop missing the start of a wipe when you are at work, at school or out.",
   body: `

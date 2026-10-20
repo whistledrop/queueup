@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "why-the-first-minutes-after-a-wipe-matter",
-  date: "2026-10-30",
+  date: "2026-11-02",
   title: "Why the first minutes after a Rust wipe matter most",
   description: "On a fresh Rust map, the first players in get the best spots, the easiest resources and a head start that compounds all wipe. Here is why timing matters so much.",
   body: `

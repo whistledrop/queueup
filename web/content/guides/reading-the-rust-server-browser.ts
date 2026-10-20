@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "reading-the-rust-server-browser",
-  date: "2026-11-12",
+  date: "2026-11-15",
   title: "How to read the Rust server browser",
   description: "Player counts, wipe times, ping and server names in the Rust browser, explained, so you can pick a good server in a minute instead of ten.",
   body: `

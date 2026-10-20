@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "rust-force-wipe-time-in-your-time-zone",
-  date: "2026-10-24",
+  date: "2026-10-27",
   title: "Rust force wipe time in your time zone",
   description: "Force wipe usually lands around 7pm UK time. Here is roughly what that means in Europe, the US and Australia, and why the exact minute varies.",
   body: `

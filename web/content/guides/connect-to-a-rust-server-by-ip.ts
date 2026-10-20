@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "connect-to-a-rust-server-by-ip",
-  date: "2026-10-27",
+  date: "2026-10-30",
   title: "How to connect to a Rust server by IP address",
   description: "Joining a Rust server by IP is quicker than searching the browser. How to do it from the F1 console, and how to make a link that does it in one click.",
   body: `

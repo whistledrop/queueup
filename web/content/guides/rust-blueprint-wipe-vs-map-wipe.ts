@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "rust-blueprint-wipe-vs-map-wipe",
-  date: "2026-10-28",
+  date: "2026-10-31",
   title: "Rust blueprint wipe vs map wipe: what is the difference?",
   description: "A map wipe resets the world; a blueprint wipe resets what you know how to craft. How the two differ, how often each happens, and what it means for your next wipe.",
   body: `

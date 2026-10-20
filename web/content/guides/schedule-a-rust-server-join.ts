@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "schedule-a-rust-server-join",
-  date: "2026-11-04",
+  date: "2026-11-07",
   title: "How to schedule a Rust server join for wipe night",
   description: "Schedule your PC to join a Rust server the moment it wipes, so you are in the first minutes even when you are not at home. How scheduled joins work and how to set one up.",
   body: `

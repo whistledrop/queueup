@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "official-vs-community-vs-modded-rust-servers",
-  date: "2026-11-06",
+  date: "2026-11-09",
   title: "Official vs community vs modded Rust servers",
   description: "Rust servers come in three kinds, and they wipe, behave and feel different. A plain guide to official, community and modded servers and who each suits.",
   body: `

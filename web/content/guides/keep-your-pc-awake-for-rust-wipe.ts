@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "keep-your-pc-awake-for-rust-wipe",
-  date: "2026-10-29",
+  date: "2026-11-01",
   title: "How to keep your PC awake for a Rust wipe",
   description: "A sleeping PC drops you out of the Rust queue and cannot rejoin. How to stop Windows sleeping, restarting for updates, or turning your screen off at the wrong moment.",
   body: `

@@ -108,6 +108,11 @@ type Server struct {
 	resets *throttle
 	// pcLinks counts "email me the PC link" presses per account.
 	pcLinks *throttle
+
+	// The free server checker on the website: lookups per address on the
+	// internet, and recent answers so a busy server is asked once.
+	publicSearches, publicStatuses *throttle
+	publicLookups                  publicCache
 	// asks counts help-assistant questions per account.
 	asks *throttle
 	// leads caps an endpoint anybody on the internet can post to.
@@ -218,6 +223,7 @@ func (s *Server) routes() {
 	s.billingRoutes()
 	s.storeBillingRoutes()
 	s.marketingRoutes()
+	s.publicToolRoutes()
 	// Beta feedback and problem reports.
 	s.feedbackRoutes()
 	// Changing your password, and leaving.

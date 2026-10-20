@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "weekly-vs-monthly-wipe-which-to-play",
-  date: "2026-11-07",
+  date: "2026-11-10",
   title: "Weekly vs monthly Rust wipes: which should you play?",
   description: "Weekly or monthly wipe? A simple way to choose, based on how many hours you play, who you play with and which part of a wipe you enjoy most.",
   body: `

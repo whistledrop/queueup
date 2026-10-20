@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "why-rust-servers-restart-on-wipe-day",
-  date: "2026-11-11",
+  date: "2026-11-14",
   title: "Why Rust servers go offline and restart on wipe day",
   description: "On wipe day your Rust server vanishes from the browser, comes back, and sometimes vanishes again. What is happening during a wipe restart and how to time your join.",
   body: `

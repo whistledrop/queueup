@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "how-long-are-rust-queues-on-wipe-day",
-  date: "2026-11-17",
+  date: "2026-11-20",
   title: "How long are Rust queues on wipe day?",
   description: "Why some wipe-day queues take minutes and others take hours, what makes a queue move, and how to tell before you join whether you are in for a long wait.",
   body: `

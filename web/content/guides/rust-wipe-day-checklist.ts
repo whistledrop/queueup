@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "rust-wipe-day-checklist",
-  date: "2026-10-25",
+  date: "2026-10-28",
   title: "Rust wipe day checklist: what to do before the server wipes",
   description: "A short checklist for wipe day in Rust, from updating the game to having a plan for the first ten minutes, so nothing stands between you and a fresh map.",
   body: `

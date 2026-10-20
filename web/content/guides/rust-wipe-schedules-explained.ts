@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "rust-wipe-schedules-explained",
-  date: "2026-10-22",
+  date: "2026-10-25",
   title: "Rust wipe schedules explained: weekly, biweekly and monthly",
   description: "Rust servers wipe on different schedules, and choosing the right one changes how you play. Weekly, biweekly and monthly wipes compared, plus how force wipe fits in.",
   body: `

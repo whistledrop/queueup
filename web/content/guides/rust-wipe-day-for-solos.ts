@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "rust-wipe-day-for-solos",
-  date: "2026-11-14",
+  date: "2026-11-17",
   title: "Rust wipe day tips for solo players",
   description: "Playing Rust solo on wipe day means doing everything yourself, fast. Server choice, timing and a simple first-hour plan for solo players.",
   body: `

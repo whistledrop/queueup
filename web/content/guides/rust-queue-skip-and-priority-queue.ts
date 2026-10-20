@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "rust-queue-skip-and-priority-queue",
-  date: "2026-11-01",
+  date: "2026-11-04",
   title: "Rust queue skip and priority queue: what they are",
   description: "Some Rust community servers let supporters skip the queue. How queue skip works, where you find it, and what to do on servers where nobody can skip.",
   body: `

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { publishedTools } from '@/lib/tools'
 import s from './guides.module.css'
 
 // The header and footer every guide page shares. The button goes to the front
@@ -19,6 +20,7 @@ export function GuideFooter() {
   return (
     <footer className={s.footer}>
       <p>
+        {publishedTools().length > 0 && <><Link href="/tools">Free tools</Link> · </>}
         <Link href="/guides">All guides</Link> · <Link href="/">QueueUp</Link>
       </p>
       <p>

@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "save-favourite-rust-servers",
-  date: "2026-11-09",
+  date: "2026-11-12",
   title: "How to save your favourite Rust servers",
   description: "Stop searching for the same Rust server every wipe. How to favourite servers in the Rust browser, keep their addresses handy and join them in one tap.",
   body: `

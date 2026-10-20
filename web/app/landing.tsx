@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { BETA } from '@/lib/pricing'
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site'
+import { publishedTools } from '@/lib/tools'
 import s from './landing.module.css'
 import StartForm from './startForm'
 import HeroShot, { Spawn } from './heroShot'
@@ -217,6 +218,7 @@ export default function Landing() {
           automates the game itself. Rust is a trademark of Facepunch Studios.
         </p>
         <p>
+          {publishedTools().length > 0 && <><Link href="/tools">Free Rust tools</Link> · </>}
           <Link href="/guides">Rust guides</Link> · <Link href="/login">Sign in</Link>
         </p>
       </footer>

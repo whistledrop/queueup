@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "rust-update-stuck-downloading-before-wipe",
-  date: "2026-11-03",
+  date: "2026-11-06",
   title: "Rust update stuck before wipe? How to get it downloading",
   description: "On force wipe every Rust player needs the update at once. What to try when the Rust update will not start, stalls, or Steam keeps saying it is queued.",
   body: `

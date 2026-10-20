@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "how-to-tell-when-a-rust-server-wipes",
-  date: "2026-10-23",
+  date: "2026-10-26",
   title: "How to tell when a Rust server wipes",
   description: "Five ways to find out when a Rust server wipes next and when it last wiped, so you are there on the night rather than a day late.",
   body: `

@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "what-happens-to-your-base-on-force-wipe",
-  date: "2026-11-02",
+  date: "2026-11-05",
   title: "What happens to your base on Rust force wipe?",
   description: "On force wipe your base, loot and everything on the map is deleted on every server. What is kept, what is lost, and how to make the most of the last days before it.",
   body: `

@@ -2,7 +2,7 @@ import type { Guide } from '@/lib/guides'
 
 const guide: Guide = {
   slug: "how-rust-server-queues-work",
-  date: "2026-10-21",
+  date: "2026-10-24",
   title: "How Rust server queues work, and why you are stuck in one",
   description: "When a Rust server is full you join a queue instead of the server. Here is how that queue works, what moves you up it, and what makes you lose your place.",
   body: `
