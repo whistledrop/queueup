@@ -62,6 +62,15 @@
         "3200"
       ],
       "port": 3200
+    },
+    {
+      "name": "queueup-app-web-paid",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd ~/queueup-app && EXPO_PUBLIC_RELAY_URL=http://127.0.0.1:8091 npx expo start --web --port 8096"
+      ],
+      "port": 8096
     }
   ]
 }

@@ -23,6 +23,7 @@ import (
 	"queueup/internal/a2s"
 	"queueup/internal/mail"
 	"queueup/internal/relay"
+	"queueup/internal/revenuecat"
 	"queueup/internal/servers"
 	"queueup/internal/store"
 	"queueup/internal/stripe"
@@ -87,6 +88,11 @@ Settings come from environment variables, never from files in the repo:
   QUEUEUP_STRIPE_PRICE_ID          the monthly price       } all three are printed
   QUEUEUP_STRIPE_INTRO_COUPON_ID   the first-month offer   } by relay stripe-setup
   QUEUEUP_STRIPE_WEBHOOK_SECRET    checks webhooks are real}
+
+  QUEUEUP_REVENUECAT_SECRET_KEY      RevenueCat secret API key, for subscriptions
+                                     bought in the phone app
+  QUEUEUP_REVENUECAT_WEBHOOK_SECRET  the Authorization header RevenueCat's
+                                     webhook is set to send
 
   QUEUEUP_BILLING=on     turn the subscription gate on. Off by default, which
                          means every account runs free. Flip it when Stripe is
@@ -276,17 +282,26 @@ func serve(st *store.Store) error {
 		log.Warn("billing is off: every account runs free. Set QUEUEUP_BILLING=on once Stripe is connected")
 	}
 
+	inApp := &revenuecat.Client{SecretKey: os.Getenv("QUEUEUP_REVENUECAT_SECRET_KEY")}
+	if !inApp.Enabled() {
+		log.Warn("RevenueCat is not connected: the phone app cannot sell Unlimited yet")
+	} else if os.Getenv("QUEUEUP_REVENUECAT_WEBHOOK_SECRET") == "" {
+		log.Error("QUEUEUP_REVENUECAT_WEBHOOK_SECRET is not set: renewals and cancellations in the app stores will not reach QueueUp")
+	}
+
 	srv := relay.New(relay.Config{
 		Store: st, Log: log, AdminToken: adminToken, Servers: provider,
 		BillingEnabled: billing, Mail: mailer, WebURL: webURL, Bot: bot,
-		Stripe:                 pay,
-		StripePriceID:          priceID,
-		StripeIntroCouponID:    os.Getenv("QUEUEUP_STRIPE_INTRO_COUPON_ID"),
-		StripeReferralCouponID: os.Getenv("QUEUEUP_STRIPE_REFERRAL_COUPON_ID"),
-		StripeWebhookSecret:    os.Getenv("QUEUEUP_STRIPE_WEBHOOK_SECRET"),
-		ProxyKey:               os.Getenv("QUEUEUP_PROXY_KEY"),
-		DemoURL:                os.Getenv("QUEUEUP_DEMO_URL"),
-		Testimonial:            os.Getenv("QUEUEUP_TESTIMONIAL"),
+		Stripe:                  pay,
+		StripePriceID:           priceID,
+		StripeIntroCouponID:     os.Getenv("QUEUEUP_STRIPE_INTRO_COUPON_ID"),
+		StripeReferralCouponID:  os.Getenv("QUEUEUP_STRIPE_REFERRAL_COUPON_ID"),
+		StripeWebhookSecret:     os.Getenv("QUEUEUP_STRIPE_WEBHOOK_SECRET"),
+		RevenueCat:              inApp,
+		RevenueCatWebhookSecret: os.Getenv("QUEUEUP_REVENUECAT_WEBHOOK_SECRET"),
+		ProxyKey:                os.Getenv("QUEUEUP_PROXY_KEY"),
+		DemoURL:                 os.Getenv("QUEUEUP_DEMO_URL"),
+		Testimonial:             os.Getenv("QUEUEUP_TESTIMONIAL"),
 	})
 	httpSrv := &http.Server{
 		Addr:    addr,

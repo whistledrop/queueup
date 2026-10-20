@@ -167,6 +167,10 @@ export default function SettingsPage() {
                 ? 'QueueUp is a free beta. Nobody is being charged.'
                 : billing.comped
                 ? 'You have free access to QueueUp. There is nothing to pay.'
+                : billing.managed_by === 'app_store'
+                  ? 'Unlimited, through the App Store. Change or cancel it on your iPhone: Settings, your name, Subscriptions.'
+                : billing.managed_by === 'play_store'
+                  ? 'Unlimited, through Google Play. Change or cancel it in the Play Store: your profile, Payments and subscriptions.'
                 : billing.plan === 'paid'
                   ? `Unlimited. ${billing.price_line}`
                   : `Free plan. ${billing.joins_left} of ${billing.free_joins} joins left this month.`}
@@ -189,6 +193,13 @@ export default function SettingsPage() {
 
       <DeleteAccount
         canManage={!!billing?.can_manage}
+        storeName={
+          billing?.managed_by === 'app_store'
+            ? 'the App Store'
+            : billing?.managed_by === 'play_store'
+              ? 'Google Play'
+              : ''
+        }
         leavingOn={leavingOn}
         onError={setError}
         onChanged={load}
@@ -291,11 +302,14 @@ function ChangePassword({
    account. */
 function DeleteAccount({
   canManage,
+  storeName,
   leavingOn,
   onError,
   onChanged,
 }: {
   canManage: boolean
+  /** Set when the subscription was bought in the phone app, through a store. */
+  storeName: string
   leavingOn: string | null
   onError: (s: string) => void
   onChanged: () => void
@@ -387,6 +401,14 @@ function DeleteAccount({
         </>
       ) : (
         <form onSubmit={submit} className="stack">
+          {storeName && (
+            // Deleting the account cannot stop a store subscription: only
+            // the store can, and it keeps charging otherwise.
+            <p className="muted small" style={{ marginTop: 0 }}>
+              Cancel your subscription in {storeName} first. Deleting your
+              QueueUp account does not stop {storeName} charging you.
+            </p>
+          )}
           {canManage && (
             <p className="muted small" style={{ marginTop: 0 }}>
               Cancel your subscription first, under Subscription above.

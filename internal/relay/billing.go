@@ -90,9 +90,14 @@ func (s *Server) handleBilling(w http.ResponseWriter, r *http.Request, acct stor
 		"joins_left":          plan.JoinsLeft,
 		"joins_reset_at":      plan.ResetsAt,
 		"free_wipe_join_used": plan.FreeWipeJoinUsed,
-		"can_manage":          sub.CustomerID != "" && s.cfg.Stripe.Enabled() && !sub.Comped(),
+		"can_manage":          sub.CustomerID != "" && s.cfg.Stripe.Enabled() && !sub.Comped() && storeOf(sub.SubID) == "",
 		"checkout_ready":      s.stripeReady(),
-		"test_mode":           s.cfg.Stripe.TestMode(),
+		// Where this subscription is changed or cancelled: "stripe" is the
+		// website's manage page, "app_store" and "play_store" are the phone's
+		// own subscription settings, which QueueUp cannot open on its behalf.
+		"managed_by":  managedBy(sub),
+		"store_ready": s.cfg.RevenueCat.Enabled(),
+		"test_mode":   s.cfg.Stripe.TestMode(),
 	})
 }
 

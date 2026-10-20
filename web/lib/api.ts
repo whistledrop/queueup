@@ -49,6 +49,11 @@ export type Billing = {
   /** The promo code this account last arrived with, if any. */
   source_code: string
   can_manage: boolean
+  /**
+   * Where the subscription is changed or cancelled. A store subscription is
+   * managed in the phone's own settings, never on this website.
+   */
+  managed_by?: '' | 'stripe' | 'comped' | 'app_store' | 'play_store'
   checkout_ready: boolean
   test_mode: boolean
   /** 'free' or 'paid'. The free plan has an allowance; paid does not. */

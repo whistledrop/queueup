@@ -16,6 +16,7 @@ import (
 
 	"queueup/internal/mail"
 	"queueup/internal/protocol"
+	"queueup/internal/revenuecat"
 	"queueup/internal/servers"
 	"queueup/internal/store"
 	"queueup/internal/stripe"
@@ -75,6 +76,13 @@ type Config struct {
 	// somebody who stayed.
 	StripeReferralCouponID string
 	StripeWebhookSecret    string
+
+	// RevenueCat sells Unlimited inside the phone app, through the App Store
+	// and Google Play. Disabled (no key) means the app has nothing to sell.
+	// RevenueCatWebhookSecret is the Authorization header RevenueCat was told
+	// to send with its webhooks.
+	RevenueCat              *revenuecat.Client
+	RevenueCatWebhookSecret string
 
 	// BillingEnabled turns the subscription gate on. Off (the default), every
 	// account runs free, which is the state until Stripe is connected.
@@ -159,6 +167,9 @@ func New(cfg Config) *Server {
 	if s.cfg.Stripe == nil {
 		s.cfg.Stripe = &stripe.Client{} // disabled
 	}
+	if s.cfg.RevenueCat == nil {
+		s.cfg.RevenueCat = &revenuecat.Client{} // disabled
+	}
 	if s.cfg.WebURL == "" {
 		s.cfg.WebURL = "https://queueuprust.com"
 	}
@@ -202,6 +213,7 @@ func (s *Server) routes() {
 	s.scheduleRoutes()
 	// The subscription gate.
 	s.billingRoutes()
+	s.storeBillingRoutes()
 	// Beta feedback and problem reports.
 	s.feedbackRoutes()
 	// Changing your password, and leaving.
