@@ -169,7 +169,11 @@ func New(cfg Config) *Server {
 // Hub exposes the connection hub, for tests and for the admin view.
 func (s *Server) Hub() *Hub { return s.hub }
 
-func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) { s.mux.ServeHTTP(w, r) }
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// See cors.go: localhost origins only, for running the mobile app in a
+	// browser during development. Everything else is untouched.
+	withDevCORS(s.mux).ServeHTTP(w, r)
+}
 
 func (s *Server) routes() {
 	s.mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
