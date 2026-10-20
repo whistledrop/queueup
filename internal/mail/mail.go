@@ -29,6 +29,9 @@ type Sender struct {
 	// BaseURL is Resend's API, overridden in tests.
 	BaseURL string
 	HTTP    *http.Client
+	// HTML sends the designed version alongside the text. Off until the
+	// email colours match the website redesign: QUEUEUP_HTML_EMAIL=on.
+	HTML bool
 }
 
 // FromEnv builds a sender from the environment:
@@ -42,7 +45,7 @@ func FromEnv() *Sender {
 	if from == "" {
 		from = "QueueUp <noreply@queueuprust.com>"
 	}
-	return &Sender{APIKey: os.Getenv("QUEUEUP_RESEND_KEY"), From: from}
+	return &Sender{APIKey: os.Getenv("QUEUEUP_RESEND_KEY"), From: from, HTML: os.Getenv("QUEUEUP_HTML_EMAIL") == "on"}
 }
 
 // Enabled reports whether email can actually be sent.
@@ -92,9 +95,11 @@ func (s *Sender) send(ctx context.Context, to, subject, body, unsubscribeURL str
 		"to":      []string{to},
 		"subject": subject,
 		"text":    body,
+	}
+	if s.HTML {
 		// The same words, drawn properly. Mail apps show this and fall back
 		// to the text, which stays for anybody who reads email as plain text.
-		"html": RenderHTML(subject, body, unsubscribeURL),
+		msg["html"] = RenderHTML(subject, body, unsubscribeURL)
 	}
 	if len(headers) > 0 {
 		msg["headers"] = headers

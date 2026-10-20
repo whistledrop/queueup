@@ -31,6 +31,7 @@ type Overview = {
   segments: Segment[]
   flows_30_days: Record<string, number>
   email_ready: boolean
+  sending_on: boolean
 }
 
 // What each automatic email is, in the words Logan would use for it.
@@ -175,6 +176,12 @@ export default function Campaigns({ token }: { token: string }) {
       <h2>Email</h2>
       {!data.email_ready && (
         <p className="error">Email isn&apos;t switched on for the relay, so nothing below will send.</p>
+      )}
+      {data.email_ready && !data.sending_on && (
+        <p className="notice">
+          Marketing email is switched off for now. You can write and test campaigns, but nothing
+          below sends, scheduled or automatic, until it is switched on.
+        </p>
       )}
 
       <h3 style={{ margin: '4px 0 8px', fontSize: 15 }}>Automatic, last 30 days</h3>

@@ -81,6 +81,9 @@ type Config struct {
 	// and Google Play. Disabled (no key) means the app has nothing to sell.
 	// RevenueCatWebhookSecret is the Authorization header RevenueCat was told
 	// to send with its webhooks.
+	// MarketingEnabled is whether the free-plan emails and campaigns send.
+	MarketingEnabled bool
+
 	RevenueCat              *revenuecat.Client
 	RevenueCatWebhookSecret string
 

@@ -289,6 +289,8 @@ func serve(st *store.Store) error {
 		log.Error("QUEUEUP_REVENUECAT_WEBHOOK_SECRET is not set: renewals and cancellations in the app stores will not reach QueueUp")
 	}
 
+	marketing := os.Getenv("QUEUEUP_MARKETING") == "on"
+
 	srv := relay.New(relay.Config{
 		Store: st, Log: log, AdminToken: adminToken, Servers: provider,
 		BillingEnabled: billing, Mail: mailer, WebURL: webURL, Bot: bot,
@@ -297,6 +299,7 @@ func serve(st *store.Store) error {
 		StripeIntroCouponID:     os.Getenv("QUEUEUP_STRIPE_INTRO_COUPON_ID"),
 		StripeReferralCouponID:  os.Getenv("QUEUEUP_STRIPE_REFERRAL_COUPON_ID"),
 		StripeWebhookSecret:     os.Getenv("QUEUEUP_STRIPE_WEBHOOK_SECRET"),
+		MarketingEnabled:        marketing,
 		RevenueCat:              inApp,
 		RevenueCatWebhookSecret: os.Getenv("QUEUEUP_REVENUECAT_WEBHOOK_SECRET"),
 		ProxyKey:                os.Getenv("QUEUEUP_PROXY_KEY"),
@@ -331,7 +334,15 @@ func serve(st *store.Store) error {
 	go srv.RunRenewalReminders(ctx, time.Hour)
 	// The free-plan emails (first join, joins running low or out, force wipe
 	// week) and any campaign Logan has scheduled from the admin screen.
-	go srv.RunMarketing(ctx, 10*time.Minute)
+	//
+	// Off until Logan says so, because switching it on emails real customers
+	// within minutes: QUEUEUP_MARKETING=on. Campaigns can still be drafted in
+	// the admin screen while it is off; nothing sends.
+	if marketing {
+		go srv.RunMarketing(ctx, 10*time.Minute)
+	} else {
+		log.Warn("marketing email is off: the free-plan emails and campaigns will not send. Set QUEUEUP_MARKETING=on")
+	}
 	// Accounts whose week is up. Hourly is plenty: the promise is a day, not
 	// a minute, and a relay that restarts often must not miss the moment.
 	go srv.RunErasureSweep(ctx, time.Hour)

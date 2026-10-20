@@ -360,6 +360,7 @@ func (s *Server) handleListCampaigns(w http.ResponseWriter, r *http.Request) {
 		"segments":      segs,
 		"flows_30_days": flows,
 		"email_ready":   s.mail.Enabled(),
+		"sending_on":    s.cfg.MarketingEnabled,
 	})
 }
 
