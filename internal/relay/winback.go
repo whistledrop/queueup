@@ -40,11 +40,16 @@ type winbackEmail struct {
 var winbackSequence = []winbackEmail{
 	{stage: 1, from: 2 * time.Hour, until: 24 * time.Hour},
 	{stage: 2, from: 24 * time.Hour, until: 68 * time.Hour},
-	// Ends exactly when the offer does. "Ends in four hours" sent after it
-	// has ended would be a lie, so a relay that was down for those hours
-	// sends nothing rather than something false.
-	{stage: 3, from: 68 * time.Hour, until: offerWindow},
+	// The last one. Three emails is the whole sequence: somebody who has not
+	// come back by now is not going to, and a fourth is just the thing that
+	// gets QueueUp reported as spam.
+	{stage: 3, from: 68 * time.Hour, until: winbackWindow},
 }
+
+// winbackWindow is how long after signup QueueUp keeps trying. It used to be
+// the deadline on the discounted first month, which no longer has one; it
+// survives as the end of the email sequence, which is all it ever really was.
+const winbackWindow = 72 * time.Hour
 
 // RunWinback sends whatever is due, every `every`, until ctx ends.
 func (s *Server) RunWinback(ctx context.Context, every time.Duration) {
@@ -127,8 +132,6 @@ func (s *Server) sendOneWinback(ctx context.Context, acct store.Account, stage s
 		code:        promo.Code,
 		firstMonth:  moneyLine(promo.FirstMonthPence),
 		fullPrice:   moneyLine(priceMonthlyPence),
-		endsAt:      offerEndsAt(acct),
-		now:         now,
 		link:        back,
 		demoURL:     s.cfg.DemoURL,
 		testimonial: s.cfg.Testimonial,
@@ -159,8 +162,6 @@ type winbackDetails struct {
 	code        string
 	firstMonth  string // "£1.99"
 	fullPrice   string // "£4.99"
-	endsAt      time.Time
-	now         time.Time
 	link        string
 	demoURL     string
 	testimonial string
@@ -177,13 +178,11 @@ type winbackDetails struct {
 // wherever and whenever they open it — and it is the thing that actually
 // makes somebody act.
 func winbackMessage(stage store.WinbackStage, d winbackDetails) (subject, body string) {
-	left := hoursLeft(d.endsAt, d.now)
 	switch stage {
 	case 1:
 		subject = "Your " + d.firstMonth + " first month is saved"
 		body = "You signed up for QueueUp but didn't finish.\n\n" +
-			"Your first month is " + d.firstMonth + " with code " + d.code + ". " +
-			"It's held for you for the next " + left + ".\n\n" +
+			"Your first month is " + d.firstMonth + " with code " + d.code + ".\n\n" +
 			"Pick up where you left off:\n" + d.link + "\n\n" +
 			"After that it's " + d.fullPrice + " a month. Cancel anytime.\n"
 
@@ -207,15 +206,16 @@ func winbackMessage(stage store.WinbackStage, d winbackDetails) (subject, body s
 		}
 		b.WriteString("If it's not for you, cancel in Settings. Two taps, and you keep " +
 			"the days you've paid for.\n\n")
-		b.WriteString("Your " + d.firstMonth + " first month is still held for the next " + left + ":\n" +
+		b.WriteString("Your " + d.firstMonth + " first month is here when you want it:\n" +
 			d.link + "\n")
 		body = b.String()
 
 	case 3:
-		subject = "Your " + d.firstMonth + " month ends in " + left
-		body = "Last one about this: your first month at " + d.firstMonth +
-			" ends in " + left + ".\n\n" +
-			"After that it's " + d.fullPrice + " a month.\n\n" +
+		subject = "Last one about QueueUp"
+		body = "This is the last email about this, whatever you decide.\n\n" +
+			"QueueUp is free to try: ten joins a month, and one wipe-day join, " +
+			"without paying anything. If you want it unlimited, your first month " +
+			"is " + d.firstMonth + ", then " + d.fullPrice + " a month, cancel anytime.\n\n" +
 			d.link + "\n"
 	}
 	return subject, body

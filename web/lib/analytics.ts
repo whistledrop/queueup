@@ -42,8 +42,22 @@ export type AnalyticsEvent =
   // The paywall, counted on its own. The step between an account and a
   // payment, which is where the money is won or lost.
   | 'paywall_viewed'
-  // The deadline passing with nobody having paid.
-  | 'offer_expired'
+  // Which plan somebody picked at signup, free or paid. The split is the
+  // single most useful number about the new flow.
+  | 'plan_chosen'
+  // The free plan, used. free_join_used carries how many are left, so the
+  // shape of a free month can be seen rather than guessed: most people are
+  // expected to use two or three, and the ones who hit ten are the ones worth
+  // asking to pay.
+  | 'free_join_used'
+  | 'free_limit_reached'
+  | 'free_wipe_join_used'
+  // Every time somebody is asked to upgrade, with the thing that prompted it,
+  // so the prompts can be judged against each other rather than argued about.
+  | 'upgrade_prompt_shown'
+  // Paid, with the code they arrived on, so upgrades can be traced back to
+  // the video that brought them.
+  | 'upgraded'
 
 const KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY ?? ''
 const HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? 'https://eu.i.posthog.com'

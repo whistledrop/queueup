@@ -5,10 +5,10 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { api, ApiError, getBilling, type Billing } from '@/lib/api'
 import { PLAN, priceLine } from '@/lib/pricing'
+import { FREE_JOINS_PER_MONTH } from '@/lib/plan'
 import { capturePromoFromURL, claimCode, storedPromo, storePromo } from '@/lib/promo'
 import s from './subscribe.module.css'
 import { track } from '@/lib/analytics'
-import Countdown from './countdown'
 
 // The paywall, and the second screen of signing up rather than a gate somebody
 // hits later.
@@ -34,6 +34,16 @@ function Subscribe() {
   // can be tried without switching the gate on for everybody.
   const params = useSearchParams()
   const preview = params.get('preview') === '1'
+  // Why they are here. Set by lib/api.ts when the relay refuses something,
+  // so the page opens on the thing they just tried to do rather than on a
+  // generic price. Anything unrecognised is treated as no reason at all.
+  const reason = params.get('reason')
+  const gateLine =
+    reason === 'free_joins_used'
+      ? "You've used all 10 free joins this month."
+      : reason === 'free_wipe_join_used'
+        ? "You've already used your one free wipe day join."
+        : ''
   const [billing, setBilling] = useState<Billing | null>(null)
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState('')
@@ -49,7 +59,6 @@ function Subscribe() {
   // A real code whose offer has run out. Kept apart from "invalid", because
   // it still counts for attribution and the page should say what happened
   // rather than just show a higher price.
-  const [expired, setExpired] = useState(false)
   // Nothing about the price is shown until the code they came with has been
   // checked and their offer is known. Before, the page drew £4.99 first and
   // corrected itself a second later — which is all somebody arriving from an
@@ -69,14 +78,12 @@ function Subscribe() {
     try {
       const res = await api<{
         valid: boolean
-        expired?: boolean
         line: string
         first_month_pence?: number
       }>('/api/billing/code', { method: 'POST', body: JSON.stringify({ code: c }) })
       if (res.valid) {
         setApplied(c)
         setFirstMonth(res.first_month_pence ?? null)
-        setExpired(!!res.expired)
         setCodeOpen(false)
         storePromo(c)
       } else {
@@ -165,7 +172,6 @@ function Subscribe() {
 
   const full = Math.round(PLAN.monthly * 100)
   const discounted = firstMonth !== null && firstMonth < full
-  const offerEnds = billing?.offer_ends_at ? new Date(billing.offer_ends_at) : null
   const priceReady = codeKnown && billingKnown
 
   // Counted once the price is settled, so the event carries what they were
@@ -179,11 +185,24 @@ function Subscribe() {
       discounted,
       ...(applied ? { promo_code: applied } : {}),
     })
+    if (reason) {
+      track('upgrade_prompt_shown', { reason })
+      if (reason === 'free_joins_used') track('free_limit_reached')
+      if (reason === 'free_wipe_join_used') track('free_wipe_join_used')
+    }
     // Only when the page settles; the values are read at that moment.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [priceReady])
   const nowPence = discounted ? firstMonth! : full
   const money = (pence: number) => `${PLAN.symbol}${(pence / 100).toFixed(2)}`
+
+  // Free is only worth offering to somebody who is actually on it.
+  const onFree = billing?.enabled === true && billing.plan === 'free'
+  // "back on the 1st" beats a date: it is the rule, not one month's version
+  // of it, and it is the same sentence every month.
+  const refills = billing?.joins_left
+    ? `${billing.joins_left} left right now`
+    : 'back on the 1st'
 
   return (
     <div className="shell narrow">
@@ -203,36 +222,24 @@ function Subscribe() {
 
       {note && <div className="error">{note}</div>}
 
+      {gateLine && (
+        <div className={s.gate}>
+          <b>{gateLine}</b> They come back on the 1st. Unlimited joins start
+          here.
+        </div>
+      )}
+
       <div className={s.panel}>
         <div className={priceReady ? undefined : s.pending} aria-busy={!priceReady}>
           <p className={s.kicker}>{discounted ? 'Your first month' : 'QueueUp'}</p>
           <div className={s.priceRow}>
             {discounted && <span className={s.was}>{money(full)}</span>}
             <span className={`${s.price} ${discounted ? s.priceDeal : ''}`}>{money(nowPence)}</span>
-            {discounted && offerEnds && (
-              <Countdown
-                endsAt={offerEnds}
-                className={s.timer}
-                labelClassName={s.timerLabel}
-                digitsClassName={s.timerDigits}
-                // At zero, ask the relay rather than assume: it is what
-                // decides the price at checkout, and this keeps the page
-                // agreeing with it.
-                onEnded={() => check(applied, true)}
-              />
-            )}
           </div>
           <p className={s.after}>
             {discounted ? `then ${priceLine()}. Cancel anytime.` : 'a month. Cancel anytime.'}
           </p>
         </div>
-
-        {expired && applied && (
-          <p className={s.offerEnded}>
-            Your first-month offer has ended. Code {applied} still counts, at the
-            standard price.
-          </p>
-        )}
 
         {applied && discounted && (
           <p className={s.codeApplied}>
@@ -255,6 +262,24 @@ function Subscribe() {
         </button>
 
         <p className={s.afterPay}>Next: 2-minute PC setup</p>
+
+        {/* The free plan, on the paywall itself.
+            Somebody sent here by the gate has already used what they were
+            given, and a page with one button and no way out reads as a wall
+            rather than an offer. Saying what free still gets them costs a few
+            upgrades now and keeps the account, which is worth more than a
+            paywall nobody can leave. */}
+        {onFree && (
+          <div className={s.free}>
+            <p className={s.freeHead}>
+              Or stay on Free: {billing?.free_joins ?? FREE_JOINS_PER_MONTH} joins a
+              month, {refills}
+            </p>
+            <Link href="/" className={s.freeLink} onClick={() => track('plan_chosen', { plan: 'free', from: 'paywall' })}>
+              Keep using the free plan
+            </Link>
+          </div>
+        )}
 
         {/* The two things that stop people paying for a Rust tool, met at the
             moment they decide. No refund promise: cancelling keeps the days

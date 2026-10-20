@@ -8,6 +8,9 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    /** Why the gate said no: 'free_joins_used' | 'free_wipe_join_used'. Set
+     *  on 402 so a page can show the right prompt rather than a generic one. */
+    readonly reason?: string,
   ) {
     super(message)
   }
@@ -20,12 +23,18 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   })
   const body = await res.json().catch(() => ({}))
   if (!res.ok) {
-    // 402 means the subscription gate. Wherever it comes from, the answer is
-    // the same page, so handle it once here rather than in every button.
+    // 402 is the plan gate: out of free joins, or the free wipe join is spent.
+    // The destination is the same page either way, but the reason rides along
+    // so the paywall can open on the thing they just tried to do.
     if (res.status === 402 && typeof window !== 'undefined') {
-      window.location.href = '/subscribe'
+      const reason = typeof body.reason === 'string' ? body.reason : 'gate'
+      window.location.href = '/subscribe?reason=' + encodeURIComponent(reason)
     }
-    throw new ApiError(body.error ?? 'Something went wrong. Try again.', res.status)
+    throw new ApiError(
+      body.error ?? 'Something went wrong. Try again.',
+      res.status,
+      typeof body.reason === 'string' ? body.reason : undefined,
+    )
   }
   return body as T
 }
@@ -42,17 +51,24 @@ export type Billing = {
   can_manage: boolean
   checkout_ready: boolean
   test_mode: boolean
+  /** 'free' or 'paid'. The free plan has an allowance; paid does not. */
+  plan: 'free' | 'paid'
+  /** The size of the monthly free allowance, so the number lives in one place. */
+  free_joins: number
+  /** Successful, self-started joins this calendar month. */
+  joins_used: number
+  /** What is left of the allowance. Meaningless on paid. */
+  joins_left: number
+  /** When the allowance refills: the 1st of next month. */
+  joins_reset_at?: string
+  /** Whether the one free scheduled wipe join has been spent. */
+  free_wipe_join_used: boolean
   /**
    * Set when they have cancelled but are still inside the month they paid
    * for. The gate stays open until this date, so `subscribed` stays true and
    * this is the only thing that says they are on their way out.
    */
   ends_at?: string
-  /**
-   * When the discounted first month closes, counted from signup. Only
-   * meaningful with a code: without one there is no discount to end.
-   */
-  offer_ends_at?: string
 }
 
 /** Opens Stripe's own page for changing card, receipts and cancelling. */

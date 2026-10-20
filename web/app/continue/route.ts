@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 // Where "pick up where you left off" in a reminder email goes.
 //
 // One tap, wherever the mail app happens to open links, straight back to
-// their own paywall: signed in as them, so the price and the countdown are
+// their own paywall: signed in as them, so the price and the code are
 // their own, with the code applied on arrival. Done on the server and
 // answered with a redirect, so there is no page in between to wait on.
 //

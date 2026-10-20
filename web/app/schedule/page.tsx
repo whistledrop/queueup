@@ -55,10 +55,9 @@ function ScheduleForm() {
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!device) return
-    if (billing?.enabled && !billing.subscribed) {
-      router.push('/subscribe')
-      return
-    }
+    // No check here: a free player gets one scheduled wipe join, and only the
+    // relay knows whether they have spent it. It answers 402 with the reason
+    // if they have, which lib/api.ts turns into the right prompt.
     setBusy(true)
     setError('')
     try {

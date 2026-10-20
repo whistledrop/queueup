@@ -71,43 +71,6 @@
   visibility: hidden;
 }
 
-/* The deadline, beside the price and in the same red, so the two read as one
-   thing: this price, for this long. Digits that do not change width, or the
-   whole row would shuffle sideways every second. */
-.timer {
-  align-self: center;
-  display: inline-flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  padding: 4px 7px 5px;
-  border-radius: 7px;
-  background: rgba(192, 57, 47, 0.09);
-  color: var(--bad);
-  line-height: 1;
-}
-
-.timerLabel {
-  font-size: 8.5px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  opacity: 0.85;
-}
-
-.timerDigits {
-  font-size: 13.5px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.offerEnded {
-  margin: 12px 0 0;
-  font-size: 14px;
-  color: var(--muted);
-}
-
 .codeApplied {
   display: inline-flex;
   align-items: center;
@@ -292,4 +255,40 @@
   font-size: 12.5px;
   font-style: normal;
   color: var(--muted);
+}
+
+/* Why they were sent here: the thing they just tried to do and could not.
+   Above the price, because the price only makes sense once they know what
+   ran out. */
+.gate {
+  margin: 0 0 16px;
+  padding: 13px 16px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 12px;
+  background: var(--card-2);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* The free plan, offered on the paywall itself, so the page is an offer with
+   two answers rather than a wall with one. Quiet, below the button: it is the
+   second choice, not a competing one. */
+.free {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  text-align: center;
+}
+
+.freeHead {
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.freeLink {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
 }

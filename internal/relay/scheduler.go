@@ -61,13 +61,34 @@ func (s *Server) fireSchedule(sc store.Schedule) {
 
 	if s.cfg.BillingEnabled {
 		sub, err := s.st.SubscriptionFor(sc.AccountID)
-		if subscriptionBlocks(sub, err) {
-			fail("Your subscription ended before this join fired. Resubscribe and schedule it again.")
-			return
-		}
-		if err != nil {
+		switch {
+		case err != nil:
+			// Could not tell. Let it through, for the reason given on
+			// subscriptionBlocks below.
 			s.log.Error("reading the subscription for a due schedule, letting it through",
 				"schedule", sc.ID, "err", err)
+		case sub.Active():
+			// Paid. Nothing to count.
+		default:
+			// Free. This is the one scheduled wipe join they get, and this is
+			// the moment it is actually spent: not when they set it, because
+			// a plan they cancelled gave them nothing.
+			used, uerr := s.st.FreeWipeJoinUsedAt(sc.AccountID)
+			switch {
+			case uerr != nil:
+				s.log.Error("reading the free wipe join for a due schedule, letting it through",
+					"schedule", sc.ID, "err", uerr)
+			case !used.IsZero():
+				fail("Your free wipe join has already been used. Scheduled joins are part of the full plan.")
+				return
+			default:
+				if err := s.st.MarkFreeWipeJoinUsed(sc.AccountID, time.Now()); err != nil {
+					// Spending it is bookkeeping, not permission. Failing the
+					// wipe join they were promised because a counter would not
+					// write is the wrong way round.
+					s.log.Error("spending the free wipe join", "schedule", sc.ID, "err", err)
+				}
+			}
 		}
 	}
 

@@ -495,8 +495,8 @@ func (s *Server) handleCreateJob(w http.ResponseWriter, r *http.Request, acct st
 		return
 	}
 
-	// The gate. Everything before this point was free; joining is the product.
-	if !s.requireSubscription(w, acct) {
+	// The gate. Free gets ten joins a month, paid is unlimited.
+	if !s.allowJoin(w, acct) {
 		return
 	}
 

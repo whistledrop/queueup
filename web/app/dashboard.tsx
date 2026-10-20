@@ -55,18 +55,10 @@ export default function Dashboard({ email }: { email: string }) {
     return () => clearInterval(t)
   }, [load])
 
-  // The gate, stated up front so the paywall is never a surprise later.
-  const needsSub = billing !== null && billing.enabled && !billing.subscribed
-
-  // Nothing about the PC before payment.
-  //
-  // Most arrivals come from a video, on a phone, nowhere near their gaming PC.
-  // Showing somebody in that position a Windows download and a pairing code is
-  // asking them to close the tab and forget, so the setup steps wait until
-  // there is a subscription to set up.
-  useEffect(() => {
-    if (needsSub) router.replace('/subscribe')
-  }, [needsSub, router])
+  // Free is a plan, not a problem. This used to bounce anybody without a
+  // subscription straight to the paywall, which would now throw out every
+  // free player on arrival.
+  const onFree = billing !== null && billing.enabled && billing.plan === 'free'
 
   // Back from Stripe's checkout. The webhook can take a moment to land, so the
   // thank-you is shown from the address rather than waiting for it.
@@ -154,10 +146,11 @@ export default function Dashboard({ email }: { email: string }) {
 
   async function join(serverId: string, name: string) {
     if (!pc) return
-    if (needsSub) {
-      router.push('/subscribe')
-      return
-    }
+    // No check here. The relay owns the allowance and answers 402 with the
+    // reason when it runs out, which lib/api.ts turns into the right prompt.
+    // A second opinion in the browser could only ever be wrong in one of two
+    // directions: blocking a join somebody is entitled to, or promising one
+    // they are not.
     setJoining(serverId)
     setError('')
     try {
@@ -338,15 +331,18 @@ export default function Dashboard({ email }: { email: string }) {
           </div>
         )}
         {pc && (
-          <p className="muted small" style={{ marginBottom: needsSub ? 8 : 0 }}>
+          <p className="muted small" style={{ marginBottom: onFree ? 8 : 0 }}>
             QueueUp starts with Windows and keeps itself up to date on its own.
             If the dot stays red, check the PC is on and connected.
           </p>
         )}
-        {needsSub && (
+        {onFree && billing && (
           <p className="muted small" style={{ marginBottom: 0 }}>
-            Joining needs the subscription:{' '}
-            <Link href="/subscribe">{billing?.price_line}</Link>.
+            <b>
+              {billing.joins_left} of {billing.free_joins} free joins left
+            </b>{' '}
+            this month. <Link href="/subscribe">Go unlimited</Link> for{' '}
+            {billing.price_line}.
           </p>
         )}
       </div>

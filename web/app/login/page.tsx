@@ -42,19 +42,16 @@ function LoginForm() {
         setBusy(false)
         return
       }
-      if (creating) track('account_created', { from: 'login_page' })
-      // Whether they just signed up or came back, somebody who has not paid
-      // belongs on the paywall. This used to run only for new accounts, so
-      // signing back in dropped them on the dashboard — the whole app, with
-      // servers and schedules — and left it to the dashboard to notice and
-      // bounce them. They saw the thing they had not paid for first.
-      const billing = await fetch('/api/relay/api/billing')
-        .then((r) => (r.ok ? r.json() : null))
-        .catch(() => null)
-      if (billing && billing.enabled && !billing.subscribed && billing.checkout_ready) {
-        router.push(creating ? '/subscribe?welcome=1' : '/subscribe')
+      if (creating) {
+        track('account_created', { from: 'login_page' })
+        // A new account has not chosen a plan yet, and free is one of the
+        // answers. This used to go straight to the paywall, which is now the
+        // wrong screen for most of the people arriving.
+        router.push('/plan')
         return
       }
+      // Coming back: the app. Not having paid is no longer a reason to be
+      // sent anywhere, because the free plan is a plan.
       router.push('/')
       router.refresh()
     } catch {

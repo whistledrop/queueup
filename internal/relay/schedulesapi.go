@@ -48,8 +48,9 @@ func (s *Server) handleCreateSchedule(w http.ResponseWriter, r *http.Request, ac
 		return
 	}
 
-	// The same gate the Join button has: scheduling a join IS joining.
-	if !s.requireSubscription(w, acct) {
+	// Scheduling is the paid feature free players get to try once. The
+	// allowance is spent when it fires, not here.
+	if !s.allowSchedule(w, acct) {
 		return
 	}
 

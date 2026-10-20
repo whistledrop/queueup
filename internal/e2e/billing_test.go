@@ -47,11 +47,15 @@ func (h *harness) account(t *testing.T) store.Account {
 	return acct
 }
 
-// Everything up to and including pairing is free. The Join button is not.
-func TestJoiningIsGatedOnASubscription(t *testing.T) {
+// The free plan: ten joins a calendar month without paying, then the gate.
+//
+// This used to assert that joining without a subscription was refused outright.
+// It is not, any more — free is the way in now — so what is worth protecting is
+// the edge: the tenth join works, the eleventh does not, and the refusal says
+// why in a way the app can act on.
+func TestJoiningIsGatedOnTheFreeAllowance(t *testing.T) {
 	h := billingHarness(t)
 
-	// Pairing works with no subscription: that is the whole point of the flow.
 	deviceID, deviceToken := h.pair()
 	_, stop := h.agent(deviceToken, "instant_join")
 	defer stop()
@@ -59,25 +63,54 @@ func TestJoiningIsGatedOnASubscription(t *testing.T) {
 		return h.srv.Hub().Online(deviceID)
 	})
 
-	// Joining is refused with 402 and a message a person can read.
+	// The first join works with no subscription at all.
 	status, out := h.call(http.MethodPost, "/api/jobs", map[string]any{
 		"device_id": deviceID, "server_id": "stub-1",
 	})
-	if status != http.StatusPaymentRequired {
-		t.Fatalf("join without subscribing returned %d, want 402: %v", status, out)
+	if status != http.StatusCreated {
+		t.Fatalf("a free player's first join returned %d: %v", status, out)
 	}
-	msg, _ := out["error"].(string)
-	if len(msg) < 30 || !contains(msg, "4.99") || !contains(msg, "cancel") {
-		t.Errorf("the refusal %q should say the price and that it can be cancelled", msg)
+	jobID := out["id"].(string)
+	h.waitUntil("the join to finish", 20*time.Second, func() bool {
+		return h.jobState(jobID) == "done"
+	})
+
+	// Spend the rest of the allowance directly: nine more that actually worked.
+	acct := h.account(t)
+	for range store.FreeJoinsPerMonth - 1 {
+		j, err := h.st.CreateJob(store.NewJob{
+			AccountID: acct.ID, DeviceID: deviceID, ServerAddr: "51.83.128.10:28015",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := h.st.FinishJob(j.ID, "done", "", ""); err != nil {
+			t.Fatal(err)
+		}
 	}
 
-	// Nothing was created.
+	// The eleventh is refused, with a reason the app can switch on.
+	status, out = h.call(http.MethodPost, "/api/jobs", map[string]any{
+		"device_id": deviceID, "server_id": "stub-1",
+	})
+	if status != http.StatusPaymentRequired {
+		t.Fatalf("the 11th free join returned %d, want 402: %v", status, out)
+	}
+	if reason, _ := out["reason"].(string); reason != "free_joins_used" {
+		t.Errorf("refusal reason = %q, want free_joins_used", reason)
+	}
+	msg, _ := out["error"].(string)
+	if !contains(msg, "10 free joins") || !contains(msg, "cancel") {
+		t.Errorf("the refusal %q should say what ran out and that paying can be cancelled", msg)
+	}
+
+	// Nothing was created by the refused tap.
 	if _, err := h.st.ActiveJobForDevice(deviceID); err == nil {
 		t.Fatal("a job was created despite the gate")
 	}
 
-	// Subscribe (the way the Stripe webhook will), and the same tap works.
-	if err := h.st.SetSubscription(h.account(t).ID, "active", "sub_test"); err != nil {
+	// Subscribing lifts it immediately, with no waiting for the 1st.
+	if err := h.st.SetSubscription(acct.ID, "active", "sub_test"); err != nil {
 		t.Fatal(err)
 	}
 	status, out = h.call(http.MethodPost, "/api/jobs", map[string]any{
@@ -86,30 +119,45 @@ func TestJoiningIsGatedOnASubscription(t *testing.T) {
 	if status != http.StatusCreated {
 		t.Fatalf("join after subscribing returned %d: %v", status, out)
 	}
-	jobID := out["id"].(string)
-	h.waitUntil("the join to finish", 20*time.Second, func() bool {
-		return h.jobState(jobID) == "done"
-	})
 }
 
-func TestSchedulingIsGatedTheSameWay(t *testing.T) {
+// Scheduling is the paid feature a free player gets to try exactly once.
+func TestSchedulingIsFreeExactlyOnce(t *testing.T) {
 	h := billingHarness(t)
 	deviceID, _ := h.pair()
 
+	// The free wipe join: allowed, unpaid.
 	status, out := h.call(http.MethodPost, "/api/schedules", map[string]any{
 		"device_id": deviceID, "server_id": "stub-1",
 		"fire_at": time.Now().Add(time.Hour).UTC().Format(time.RFC3339),
 	})
-	if status != http.StatusPaymentRequired {
-		t.Fatalf("schedule without subscribing returned %d, want 402: %v", status, out)
+	if status != http.StatusCreated {
+		t.Fatalf("a free player's one wipe join returned %d, want 201: %v", status, out)
 	}
 
-	if err := h.st.SetSubscription(h.account(t).ID, "active", "sub_test"); err != nil {
+	// Spend it, the way the scheduler does when it actually fires.
+	acct := h.account(t)
+	if err := h.st.MarkFreeWipeJoinUsed(acct.ID, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+
+	status, out = h.call(http.MethodPost, "/api/schedules", map[string]any{
+		"device_id": deviceID, "server_id": "stub-1",
+		"fire_at": time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339),
+	})
+	if status != http.StatusPaymentRequired {
+		t.Fatalf("a second free wipe join returned %d, want 402: %v", status, out)
+	}
+	if reason, _ := out["reason"].(string); reason != "free_wipe_join_used" {
+		t.Errorf("refusal reason = %q, want free_wipe_join_used", reason)
+	}
+
+	if err := h.st.SetSubscription(acct.ID, "active", "sub_test"); err != nil {
 		t.Fatal(err)
 	}
 	status, _ = h.call(http.MethodPost, "/api/schedules", map[string]any{
 		"device_id": deviceID, "server_id": "stub-1",
-		"fire_at": time.Now().Add(time.Hour).UTC().Format(time.RFC3339),
+		"fire_at": time.Now().Add(3 * time.Hour).UTC().Format(time.RFC3339),
 	})
 	if status != http.StatusCreated {
 		t.Fatalf("schedule after subscribing returned %d", status)

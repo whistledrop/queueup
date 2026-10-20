@@ -1,0 +1,111 @@
+/* The plan choice, straight after signing up.
+
+   Two cards, one decision. Built from the site's own tokens rather than fixed
+   colours, so it follows the theme like every other page: an earlier version
+   hardcoded a dark card and ended up with near-black text on it. */
+
+.heading {
+  font-size: 26px;
+  line-height: 1.2;
+  margin: 24px 0 6px;
+}
+
+.sub {
+  color: var(--muted);
+  margin: 0 0 22px;
+}
+
+.plans {
+  display: grid;
+  gap: 14px;
+}
+
+/* Side by side only where there is genuinely room. Two columns on a phone
+   makes both unreadable, and the phone is where people arrive. */
+@media (min-width: 720px) {
+  .plans {
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
+  }
+}
+
+.plan {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  padding: 22px 20px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+
+.plan:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 34px rgba(18, 17, 17, 0.08);
+}
+
+.plan:disabled {
+  opacity: 0.65;
+  cursor: default;
+  transform: none;
+}
+
+/* The paid card is marked, not shouted: free is the honest first answer for
+   somebody who has not seen QueueUp work yet. */
+.planPaid {
+  border-color: var(--accent);
+}
+
+.name {
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.price {
+  font-size: 46px;
+  font-weight: 650;
+  line-height: 1.05;
+}
+
+.after {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.list {
+  list-style: none;
+  margin: 16px 0 18px;
+  padding: 0;
+  display: grid;
+  gap: 7px;
+  font-size: 15px;
+}
+
+.list li::before {
+  content: '✓';
+  color: var(--good);
+  margin-right: 8px;
+}
+
+.cta {
+  margin-top: auto;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.footnote {
+  margin-top: 18px;
+  font-size: 14px;
+  color: var(--muted);
+  text-align: center;
+}

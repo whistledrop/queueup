@@ -167,9 +167,9 @@ export default function SettingsPage() {
                 ? 'QueueUp is a free beta. Nobody is being charged.'
                 : billing.comped
                 ? 'You have free access to QueueUp. There is nothing to pay.'
-                : billing.subscribed
-                  ? `Subscribed. ${billing.price_line}`
-                  : 'Not subscribed, so joining is locked.'}
+                : billing.plan === 'paid'
+                  ? `Unlimited. ${billing.price_line}`
+                  : `Free plan. ${billing.joins_left} of ${billing.free_joins} joins left this month.`}
           </p>
         )}
         {billing?.can_manage && (
@@ -180,9 +180,9 @@ export default function SettingsPage() {
             {ending ? 'Restart subscription' : 'Manage subscription'}
           </button>
         )}
-        {billing?.enabled && !billing.subscribed && (
+        {billing?.enabled && billing.plan === 'free' && (
           <Link href="/subscribe" className="btn btn-primary btn-wide">
-            Subscribe
+            Go unlimited
           </Link>
         )}
       </div>

@@ -2,22 +2,26 @@
 
 // Signing up, on the landing page: an email address and nothing else.
 //
-// The next screen is the price. The password comes after they have paid,
-// which is the first moment there is anything in the account worth
-// protecting; asking for it sooner is asking for effort before they know
-// whether they want the thing.
+// This is the most important form on the site and almost everybody reaching
+// it is on a phone, arriving from a video, deciding in seconds. Every extra
+// field costs signups, so the password is not asked for here.
+//
+// It is asked for one screen later, after they have picked a plan: free
+// players set one before the PC setup, paid players after paying. Both need
+// one eventually, because an account with no password is an account nobody
+// can get back into from another browser tomorrow. The difference is that by
+// then they have chosen something, which is the moment effort is worth it.
 //
 // The same box is how somebody gets back. They signed up inside TikTok's own
 // browser, tapped the reminder email, and landed here in Safari signed out:
-// typing the address again takes them back to the price. Only ever into an
-// account that has never been paid for and never had a password. Anything
-// more than that needs the password, or a link sent to their own inbox.
+// typing the address again takes them back in. Only ever into an account that
+// has never been paid for and never had a password. Anything more than that
+// needs the password, or a link sent to their own inbox.
 
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { claimCode, storePromo } from '@/lib/promo'
-import { PLAN } from '@/lib/pricing'
 import { track } from '@/lib/analytics'
 
 export default function StartForm({
@@ -55,7 +59,9 @@ export default function StartForm({
       const body = await res.json().catch(() => ({}))
       if (res.status === 201 || res.status === 200) {
         if (body.created) track('account_created', { from })
-        router.push(body.created ? '/subscribe?welcome=1' : '/subscribe')
+        // Not the paywall. The next question is which plan they want, and
+        // free is one of the answers.
+        router.push('/plan')
         return
       }
       if (res.status === 202) {
@@ -83,7 +89,7 @@ export default function StartForm({
           month" either; the paywall spells out £1.99 then £4.99 before
           anybody can be charged. */}
       <p className="startClaim">
-        Claim {percentOff}% off
+        Start free, 10 joins a month
         <DownArrow />
       </p>
       <div className="startRow">
@@ -97,7 +103,7 @@ export default function StartForm({
           aria-label="Your email"
         />
         <button type="submit" disabled={busy} className="startClaimBtn">
-          Claim
+          Start for free
         </button>
       </div>
 
@@ -122,10 +128,6 @@ export default function StartForm({
     </form>
   )
 }
-
-// Worked out rather than written down, so it cannot drift from the real
-// prices if either one ever moves.
-const percentOff = Math.round((1 - PLAN.intro / PLAN.monthly) * 100)
 
 // Ties the offer to the box underneath it, so the two read as one thing
 // rather than a claim floating above an unrelated field.

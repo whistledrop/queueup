@@ -125,8 +125,6 @@ func TestTheSequenceSendsTheRightEmailAtTheRightTime(t *testing.T) {
 	for _, want := range []string{
 		"£1.99",
 		"TIKTOK",
-		// The deadline as hours left: sent three hours after signup, so 69.
-		"for the next 69 hours",
 		// One tap back to their own paywall, with the code riding along.
 		"https://queueuprust.com/continue?a=" + a.ID,
 		"promo=TIKTOK",
@@ -163,7 +161,7 @@ func TestTheSequenceSendsTheRightEmailAtTheRightTime(t *testing.T) {
 	if s := subject(got[1]); !strings.Contains(s, "allowed") {
 		t.Errorf("email two subject = %q", s)
 	}
-	for _, want := range []string{"cheat", "memory", "Steam", "cancel", "keep the days", "for the next 47 hours", "/unsubscribe?"} {
+	for _, want := range []string{"cheat", "memory", "Steam", "cancel", "keep the days", "/unsubscribe?"} {
 		if !strings.Contains(two, want) {
 			t.Errorf("email two is missing %q:\n%s", want, two)
 		}
@@ -182,17 +180,27 @@ func TestTheSequenceSendsTheRightEmailAtTheRightTime(t *testing.T) {
 		t.Errorf("email two has a demo line with no demo:\n%s", two)
 	}
 
-	// Email three, four hours before the end.
+	// Email three, the last one. It ends the sequence rather than a deadline:
+	// the discount no longer expires, so claiming it does would be a lie.
 	r.srv.sendWinback(context.Background(), start.Add(68*time.Hour+5*time.Minute))
 	got = r.sent()
 	if len(got) != 3 {
 		t.Fatalf("after 68 hours: %d emails, want 3", len(got))
 	}
-	if s := subject(got[2]); s != "Your £1.99 month ends in 4 hours" {
+	if s := subject(got[2]); s != "Last one about QueueUp" {
 		t.Errorf("email three subject = %q", s)
 	}
-	if b := text(got[2]); !strings.Contains(b, "ends in 4 hours") || !strings.Contains(b, "/unsubscribe?") {
-		t.Errorf("email three:\n%s", b)
+	three := text(got[2])
+	for _, want := range []string{"free to try", "ten joins a month", "£1.99", "/unsubscribe?"} {
+		if !strings.Contains(three, want) {
+			t.Errorf("email three is missing %q:\n%s", want, three)
+		}
+	}
+	// No invented deadline anywhere in the sequence.
+	for i, m := range got {
+		if b := strings.ToLower(text(m)); strings.Contains(b, "ends in") || strings.Contains(b, "for the next") {
+			t.Errorf("email %d counts down to a deadline that does not exist:\n%s", i+1, text(m))
+		}
 	}
 
 	// Hours only: no date and no clock time anywhere in any of them.
@@ -328,22 +336,16 @@ func TestTheUnsubscribeLinkWorksAndStopsTheRest(t *testing.T) {
 	}
 }
 
-// The offer's deadline is enforced at the checkout, on the server. After it,
-// the code still records where they came from — that is what codes are for —
-// but the first month is full price, and the paywall is told so.
-func TestTheOfferEndsAfterSeventyTwoHours(t *testing.T) {
-	cases := []struct {
-		age      time.Duration
-		discount bool
-	}{
-		{71 * time.Hour, true},
-		{73 * time.Hour, false},
-	}
-	for _, c := range cases {
-		t.Run(fmt.Sprintf("%v after signup", c.age), func(t *testing.T) {
+// The discounted first month has no deadline. It used to expire 72 hours
+// after signup, back when the price was the only reason to sign up. The free
+// plan is the reason now, so a first month is simply £1.99 whenever somebody
+// decides to pay — including the free player who upgrades in week three.
+func TestTheOfferNeverEnds(t *testing.T) {
+	for _, age := range []time.Duration{1 * time.Hour, 73 * time.Hour, 60 * 24 * time.Hour} {
+		t.Run(fmt.Sprintf("%v after signup", age), func(t *testing.T) {
 			b := newBillingRig(t, true)
 			if err := b.st.ExecForTests(`UPDATE accounts SET created_at = ? WHERE id = ?`,
-				time.Now().Add(-c.age).UnixMilli(), b.acct.ID); err != nil {
+				time.Now().Add(-age).UnixMilli(), b.acct.ID); err != nil {
 				t.Fatal(err)
 			}
 
@@ -351,32 +353,28 @@ func TestTheOfferEndsAfterSeventyTwoHours(t *testing.T) {
 			if code != 200 || out["valid"] != true {
 				t.Fatalf("code check = %d %v", code, out)
 			}
-			wantPence := float64(199)
-			if !c.discount {
-				wantPence = 499
-				if out["expired"] != true {
-					t.Errorf("an ended offer was not reported as ended: %v", out)
-				}
+			if out["first_month_pence"] != float64(199) {
+				t.Errorf("paywall told first month = %v, want 199", out["first_month_pence"])
 			}
-			if out["first_month_pence"] != wantPence {
-				t.Errorf("paywall told first month = %v, want %v", out["first_month_pence"], wantPence)
+			if _, ok := out["expired"]; ok {
+				t.Errorf("an offer with no deadline reported itself expired: %v", out)
 			}
 
 			if code, out := b.callBody(t, "POST", "/api/billing/checkout", `{"code":"TIKTOK"}`); code != 200 {
 				t.Fatalf("checkout = %d %v", code, out)
 			}
 			form := b.stripe.lastCheckout(t)
-			if got := form.Get("discounts[0][promotion_code]") != ""; got != c.discount {
-				t.Errorf("discount applied = %v, want %v", got, c.discount)
+			if form.Get("discounts[0][promotion_code]") == "" {
+				t.Error("the till charged full price for a discount with no deadline")
 			}
-			// Attribution survives the deadline either way.
 			if src := form.Get("subscription_data[metadata][source]"); src != "TIKTOK" {
-				t.Errorf("source = %q, want TIKTOK even after the offer ends", src)
+				t.Errorf("source = %q, want TIKTOK", src)
 			}
 
+			// Nothing to count down to, so nothing is advertised.
 			_, bill := b.call(t, "GET", "/api/billing")
-			if _, ok := bill["offer_ends_at"]; !ok {
-				t.Error("the paywall has no deadline to count down to")
+			if _, ok := bill["offer_ends_at"]; ok {
+				t.Errorf("billing still advertises a deadline: %v", bill["offer_ends_at"])
 			}
 		})
 	}
@@ -469,14 +467,12 @@ func TestTheEmailLinkLandsOnTheirOwnOfferAndCountdown(t *testing.T) {
 	if code, me := r.do(t, "GET", "/api/auth/me", session, ""); code != 200 || me["email"] != "tapped@example.com" {
 		t.Fatalf("signed in as %v (%d)", me["email"], code)
 	}
-	// Their countdown: 72 hours from when they signed up.
+	// No countdown. The discounted first month used to expire 72 hours after
+	// signup; now the free plan is the reason people arrive and the discount
+	// is simply what a first month costs, so there is nothing to count down to.
 	_, bill := r.do(t, "GET", "/api/billing", session, "")
-	ends, err := time.Parse(time.RFC3339Nano, fmt.Sprint(bill["offer_ends_at"]))
-	if err != nil {
-		t.Fatalf("offer_ends_at = %v", bill["offer_ends_at"])
-	}
-	if want := a.CreatedAt.Add(offerWindow); ends.Sub(want).Abs() > time.Second {
-		t.Errorf("countdown ends %v, want %v (72 hours from their own signup)", ends, want)
+	if _, ok := bill["offer_ends_at"]; ok {
+		t.Errorf("billing still advertises a deadline: %v", bill["offer_ends_at"])
 	}
 	// Their price.
 	if _, chk := r.do(t, "POST", "/api/billing/code", session, `{"code":"TIKTOK"}`); chk["first_month_pence"] != float64(199) {

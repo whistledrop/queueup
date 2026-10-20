@@ -13,12 +13,16 @@
 import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { api, ApiError, getBilling } from '@/lib/api'
+import { api, ApiError } from '@/lib/api'
 
 function Finish() {
   const params = useSearchParams()
   const justPaid = params.get('subscribed') === '1'
-  const onward = justPaid ? '/?subscribed=1' : '/'
+  // Where to go once there is a password. Free players come here on their way
+  // to the PC setup; paid players come here straight from Stripe. Only our own
+  // paths are honoured, so a crafted link cannot bounce anybody off-site.
+  const next = params.get('next')
+  const onward = justPaid ? '/?subscribed=1' : next === 'get' ? '/get' : '/'
 
   const [email, setEmail] = useState('')
   const [ready, setReady] = useState(false)
@@ -34,17 +38,8 @@ function Finish() {
           window.location.replace(onward)
           return
         }
-        // Arriving here without having just paid, and not paying: the price
-        // comes first. Straight back from Stripe, though, the payment may
-        // still be on its way to us, and sending somebody who has just paid
-        // back to the paywall would be the worst possible thing to show them.
-        if (!justPaid) {
-          const billing = await getBilling()
-          if (billing.enabled && !billing.subscribed) {
-            window.location.replace('/subscribe')
-            return
-          }
-        }
+        // No paywall bounce. This screen exists to give an account a
+        // password, which a free player needs just as much as a paying one.
         setEmail(me.email)
         setReady(true)
       } catch (e) {

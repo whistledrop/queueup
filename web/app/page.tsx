@@ -17,19 +17,14 @@ export default async function Home({
   if (!res.ok) return <Landing />
   const me = (await res.json()) as { email: string; has_password?: boolean }
 
-  // Signed up with only an email. Not paid yet: the price, which is the only
-  // thing there is for them. Paid but closed the tab before choosing a
-  // password: that step, before anything else, because until they do this
-  // browser is the only place they could ever get back in. Decided here on
-  // the server so the app never flashes up first and is then taken away.
+  // Decided here on the server so the app never flashes up first and is then
+  // taken away.
   if (me.has_password === false) {
-    // Straight back from Stripe. The payment may still be on its way to us,
-    // so asking billing now could say "not paid" to somebody who just has:
-    // they go to the password step, and it knows not to send them back.
+    // An account from the old email-only signup that never set a password.
+    // Everybody needs one now, free or paid, so there is one destination:
+    // choose a password, then carry on.
     if ((await searchParams).subscribed === '1') redirect('/finish?subscribed=1')
-    const bill = await relayFetch('/api/billing')
-    const billing = bill.ok ? ((await bill.json()) as { enabled?: boolean; subscribed?: boolean }) : null
-    redirect(billing?.enabled && !billing.subscribed ? '/subscribe' : '/finish')
+    redirect('/finish')
   }
 
   return (
