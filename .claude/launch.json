@@ -71,6 +71,36 @@
         "cd ~/queueup-app && EXPO_PUBLIC_RELAY_URL=http://127.0.0.1:8091 npx expo start --web --port 8096"
       ],
       "port": 8096
+    },
+    {
+      "name": "queueup-relay-8093",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "QUEUEUP_PROXY_KEY=local-dev-proxy-key-not-a-secret",
+        "QUEUEUP_BILLING=on",
+        "QUEUEUP_ADDR=:8093",
+        "QUEUEUP_STRIPE_SECRET_KEY=sk_test_placeholder_not_a_real_key",
+        "QUEUEUP_STRIPE_PRICE_ID=price_placeholder",
+        "./scripts/dev-relay.sh"
+      ],
+      "port": 8093
+    },
+    {
+      "name": "queueup-web-8093",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "QUEUEUP_PROXY_KEY=local-dev-proxy-key-not-a-secret",
+        "RELAY_URL=http://127.0.0.1:8093",
+        "npm",
+        "--prefix",
+        "web",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "3201"
+      ],
+      "port": 3201
     }
   ]
 }

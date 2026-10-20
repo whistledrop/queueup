@@ -329,6 +329,9 @@ func serve(st *store.Store) error {
 	// The warning five days before the first full-price month. Hourly: the
 	// promise is a day, not a minute.
 	go srv.RunRenewalReminders(ctx, time.Hour)
+	// The free-plan emails (first join, joins running low or out, force wipe
+	// week) and any campaign Logan has scheduled from the admin screen.
+	go srv.RunMarketing(ctx, 10*time.Minute)
 	// Accounts whose week is up. Hourly is plenty: the promise is a day, not
 	// a minute, and a relay that restarts often must not miss the moment.
 	go srv.RunErasureSweep(ctx, time.Hour)

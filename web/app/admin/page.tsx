@@ -11,6 +11,7 @@
 // (feedback and problem reports). Then the people themselves.
 
 import { useCallback, useEffect, useState } from 'react'
+import Campaigns from './campaigns'
 
 type Account = {
   id: string
@@ -288,6 +289,8 @@ export default function AdminPage() {
           </div>
 
           <Funnel token={token} />
+
+          <Campaigns token={token} />
 
           <div className="card">
             <h2>How joins went</h2>

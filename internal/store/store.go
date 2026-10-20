@@ -163,7 +163,7 @@ func Open(path string) (*Store, error) {
 			return nil, fmt.Errorf("setting %s: %w", pragma, err)
 		}
 	}
-	for _, s := range []string{schema, authSchema, serversSchema, feedbackSchema, resetSchema, leadSchema} {
+	for _, s := range []string{schema, authSchema, serversSchema, feedbackSchema, resetSchema, leadSchema, marketingSchema} {
 		if _, err := db.Exec(s); err != nil {
 			return nil, fmt.Errorf("creating schema: %w", err)
 		}

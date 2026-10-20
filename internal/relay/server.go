@@ -214,6 +214,7 @@ func (s *Server) routes() {
 	// The subscription gate.
 	s.billingRoutes()
 	s.storeBillingRoutes()
+	s.marketingRoutes()
 	// Beta feedback and problem reports.
 	s.feedbackRoutes()
 	// Changing your password, and leaving.
