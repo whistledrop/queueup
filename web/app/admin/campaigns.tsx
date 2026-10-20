@@ -51,7 +51,9 @@ const TEMPLATES: { label: string; segment: string; subject: string; body: string
 
 Ten joins a month from your phone, plus one free wipe join: your PC watches the server through the restart and queues the moment it comes back.
 
-Nothing to pay and no card needed. Sign in and tap Join: https://queueuprust.com/servers
+Nothing to pay and no card needed. Sign in and tap Join.
+
+Find a server: https://queueuprust.com/servers
 
 If you want more, Unlimited is £1.99 for your first month, then £4.99 a month.`,
   },
@@ -73,7 +75,9 @@ After that, joining a Rust server is one tap from wherever you are.`,
     subject: 'QueueUp has a free plan now',
     body: `You used to be on QueueUp Unlimited. Since then there's a free plan: ten joins a month and no card needed, so your account still works.
 
-Your PC is probably still linked. Sign in and tap Join: https://queueuprust.com/servers`,
+Your PC is probably still linked. Sign in and tap Join.
+
+Find a server: https://queueuprust.com/servers`,
   },
   {
     label: 'Phone app is out',
@@ -273,7 +277,7 @@ export default function Campaigns({ token }: { token: string }) {
               style={{ minHeight: 220 }}
             />
             <p className="muted small" style={{ margin: '6px 0 0' }}>
-              Plain text. The unsubscribe link is added for you.
+              Plain text. Put a link on its own line as "Button text: https://..." and it becomes a button. The unsubscribe link is added for you.
             </p>
           </div>
           <div>

@@ -174,8 +174,9 @@ func (s *Server) tellThemTheyAreLeaving(ctx context.Context, acct store.Account,
 		" your account and everything\nin it will be erased: your linked PC, your joins, your schedules and your\n" +
 		"saved servers. That cannot be undone.\n\n" +
 		"If you meant to do this, you do not need to do anything.\n\n" +
-		"If this was not you, sign in at " + strings.TrimSuffix(s.cfg.WebURL, "/") + "/settings" + " and press \"Keep my account\"\n" +
-		"on the Settings page. Change your password while you are there.\n"
+		"If this was not you, keep your account from the Settings page, and change\n" +
+		"your password while you are there.\n\n" +
+		"Keep my account: " + strings.TrimSuffix(s.cfg.WebURL, "/") + "/settings\n"
 	sendCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	if err := s.mail.Send(sendCtx, acct.Email, "Your QueueUp account is scheduled for deletion", body); err != nil {

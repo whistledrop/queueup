@@ -52,11 +52,11 @@ func (s *Sender) Enabled() bool { return s != nil && s.APIKey != "" }
 // not set up" apart from "the send failed".
 var ErrDisabled = errors.New("email is not set up on this relay")
 
-// Send delivers one plain-text email that somebody asked for: a password
+// Send delivers one email that somebody asked for: a password
 // reset, the link for their PC. Nothing to opt out of, because they pressed
 // the button.
 func (s *Sender) Send(ctx context.Context, to, subject, body string) error {
-	return s.send(ctx, to, subject, body, nil)
+	return s.send(ctx, to, subject, body, "", nil)
 }
 
 // SendMarketing delivers an email that nobody pressed a button for, and so
@@ -74,12 +74,12 @@ func (s *Sender) SendMarketing(ctx context.Context, to, subject, body, unsubscri
 		// of email this package must not be able to produce.
 		return errors.New("a marketing email needs an unsubscribe link")
 	}
-	return s.send(ctx, to, subject, body, map[string]string{
+	return s.send(ctx, to, subject, body, unsubscribeURL, map[string]string{
 		"List-Unsubscribe": "<" + unsubscribeURL + ">",
 	})
 }
 
-func (s *Sender) send(ctx context.Context, to, subject, body string, headers map[string]string) error {
+func (s *Sender) send(ctx context.Context, to, subject, body, unsubscribeURL string, headers map[string]string) error {
 	if !s.Enabled() {
 		return ErrDisabled
 	}
@@ -92,6 +92,9 @@ func (s *Sender) send(ctx context.Context, to, subject, body string, headers map
 		"to":      []string{to},
 		"subject": subject,
 		"text":    body,
+		// The same words, drawn properly. Mail apps show this and fall back
+		// to the text, which stays for anybody who reads email as plain text.
+		"html": RenderHTML(subject, body, unsubscribeURL),
 	}
 	if len(headers) > 0 {
 		msg["headers"] = headers

@@ -204,14 +204,17 @@ func (s *Server) firstJoinEmail(a store.Account) (string, string) {
 		wipeLine = "On Unlimited you can schedule a join for every wipe, so your PC is queuing the moment the server comes back."
 	}
 	return "Your first join worked. Three things to try next",
-		fmt.Sprintf(`QueueUp got you into your first server. A few things that make it better:
+		fmt.Sprintf(`QueueUp got you into your first server. Three things make it even better.
 
-1. Save the servers you play. Wipe day becomes one tap instead of a search: %s
+Save the servers you play, so wipe day is one tap instead of a search.
 
-2. Schedule a wipe join. %s
+Save your servers: %s
+
 %s
 
-3. Keep your PC awake. QueueUp can't wake a sleeping PC, so set Windows sleep to Never on the nights you want to join.
+Schedule a wipe join: %s
+
+And keep your PC awake. QueueUp can't wake a sleeping PC, so set Windows sleep to Never on the nights you want to join.
 
 Happy raiding.`, s.web("/servers"), wipeLine, s.web("/schedule"))
 }
@@ -230,29 +233,31 @@ func (s *Server) wipeWeekEmail(a store.Account, wipe time.Time) (string, string)
 		return "Force wipe is " + day + ". Link your PC before then",
 			fmt.Sprintf(`Force wipe is %s. %s
 
-QueueUp can only queue for you once your PC is linked, and it takes about two minutes: %s
+QueueUp can only queue for you once your PC is linked, and it takes about two minutes. Do it before Thursday and you can join from your phone wherever you are when the servers come back.
 
-Do it before Thursday and you can join from your phone wherever you are when the servers come back.`,
+Link your PC: %s`,
 				day, timeLine, s.web("/get"))
 	case sub.Active():
 		return "Force wipe is " + day + ". Schedule your join",
 			fmt.Sprintf(`Force wipe is %s. %s
 
-Schedule your join now and your PC will wait for the server to come back, then queue the moment it does: %s
+Schedule your join now and your PC will wait for the server to come back, then queue the moment it does. Leave your PC on and awake, with Steam signed in.
 
-Leave your PC on and awake, with Steam signed in.`, day, timeLine, s.web("/schedule"))
+Schedule your join: %s`, day, timeLine, s.web("/schedule"))
 	case wipeUsed.IsZero():
 		return "Force wipe is " + day + ". Your free wipe join is waiting",
 			fmt.Sprintf(`Force wipe is %s. %s
 
-You still have your free wipe join. Schedule it now, and your PC will watch the server through the restart and queue the moment it comes back: %s
+You still have your free wipe join. Schedule it now, and your PC will watch the server through the restart and queue the moment it comes back. Leave your PC on and awake, with Steam signed in.
 
-Leave your PC on and awake, with Steam signed in.`, day, timeLine, s.web("/schedule"))
+Use your free wipe join: %s`, day, timeLine, s.web("/schedule"))
 	default:
 		return "Force wipe is " + day,
 			fmt.Sprintf(`Force wipe is %s. %s
 
-You can still join by hand from your phone on the night with your free joins. To have your PC wait through the restart and queue the moment the server is back, without you watching, that's a scheduled join, part of Unlimited at %s: %s`,
+You can still join by hand from your phone on the night with your free joins. To have your PC wait through the restart and queue the moment the server is back, without you watching, that's a scheduled join, part of Unlimited at %s.
+
+Go unlimited: %s`,
 				day, timeLine, s.upgradeLine(a.ID), s.web("/subscribe"))
 	}
 }
