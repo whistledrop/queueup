@@ -1,0 +1,159 @@
+/* The guides: long reading on a phone first. A narrow column, generous line
+   height, and nothing beside the text competing with it. */
+
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 20px 80px;
+}
+
+.nav {
+  position: sticky;
+  top: 12px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 12px 0 28px;
+  padding: 10px 10px 10px 20px;
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: saturate(180%) blur(14px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+}
+
+.nav a { text-decoration: none; color: inherit; }
+
+.navCta {
+  background: var(--accent);
+  color: var(--accent-text) !important;
+  font-weight: 500;
+  font-size: 15px;
+  padding: 9px 16px;
+  border-radius: var(--radius-pill);
+}
+
+.kicker {
+  margin: 0 0 8px;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.title {
+  margin: 0 0 12px;
+  font-size: clamp(30px, 6vw, 42px);
+  line-height: 1.12;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.lede {
+  margin: 0 0 8px;
+  font-size: 18px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.meta {
+  margin: 0 0 28px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.body {
+  font-size: 17.5px;
+  line-height: 1.7;
+}
+
+.body h2 {
+  margin: 36px 0 10px;
+  font-size: 25px;
+  line-height: 1.25;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  scroll-margin-top: 90px;
+}
+
+.body h3 {
+  margin: 26px 0 6px;
+  font-size: 19px;
+  font-weight: 600;
+  scroll-margin-top: 90px;
+}
+
+.body p { margin: 0 0 16px; }
+.body ul, .body ol { margin: 0 0 18px; padding-left: 22px; }
+.body li { margin: 0 0 6px; }
+.body a { color: var(--accent); }
+
+.tip {
+  margin: 0 0 18px;
+  padding: 14px 18px;
+  border-radius: var(--radius);
+  background: var(--card-2);
+  border-left: 3px solid var(--accent);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.cta {
+  margin: 40px 0 0;
+  padding: 24px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  background: var(--card-2);
+}
+
+.cta h2 {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.cta p { margin: 0 0 16px; color: var(--muted); line-height: 1.55; }
+
+.ctaBtn {
+  display: inline-block;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 500;
+  padding: 13px 24px;
+  border-radius: var(--radius-pill);
+  text-decoration: none;
+}
+
+.list { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
+
+.item a {
+  display: block;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
+  color: inherit;
+}
+
+.item h2 {
+  margin: 0 0 6px;
+  font-size: 20px;
+  line-height: 1.3;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.item p { margin: 0; color: var(--muted); font-size: 15.5px; line-height: 1.5; }
+
+.more { margin: 40px 0 0; }
+.more h2 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+
+.footer {
+  margin-top: 56px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.55;
+}

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Geist } from 'next/font/google'
 import './globals.css'
 import PromoCatcher from './promoCatcher'
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from '@/lib/site'
 
 // Geist, at weight 500 for headings rather than bold. The combination of a
 // grotesque at medium weight with tight letter-spacing is most of what makes a
@@ -9,8 +10,21 @@ import PromoCatcher from './promoCatcher'
 const geist = Geist({ subsets: ['latin'], display: 'swap' })
 
 export const metadata: Metadata = {
-  title: 'QueueUp',
-  description: 'Join a Rust server queue from your phone while your PC waits at home.',
+  // Every relative address in metadata (canonicals, share cards) resolves
+  // against the real site, not whichever host served the page.
+  metadataBase: new URL(SITE_URL),
+  title: { default: SITE_TITLE, template: `%s | ${SITE_NAME}` },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  openGraph: {
+    type: 'website',
+    siteName: SITE_NAME,
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    url: '/',
+    locale: 'en_GB',
+  },
+  twitter: { card: 'summary_large_image', title: SITE_TITLE, description: SITE_DESCRIPTION },
   // The manifest and apple icon make "Add to Home Screen" produce a real app
   // icon, and on iPhone the home-screen install is what unlocks push
   // notifications at all.

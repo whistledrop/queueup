@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { BETA } from '@/lib/pricing'
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site'
 import s from './landing.module.css'
 import StartForm from './startForm'
 import HeroShot, { Spawn } from './heroShot'
@@ -10,6 +11,47 @@ import Demo from './demo'
 
 // The landing page. Everything on it is a picture of the real app: the phone
 // mockups are the actual screens, rebuilt in markup so they stay pin sharp.
+
+// The questions, once: rendered below, and handed to search engines as
+// structured data, so the two can never say different things.
+const FAQ = [
+  {
+    q: 'Will this get me banned?',
+    a: 'No. It opens the game through Steam and reads a log file. It never plays, moves or acts in game for you.',
+  },
+  {
+    q: 'Does my PC have to stay on?',
+    a: 'Yes, awake and signed in, with Steam running. It cannot wake a sleeping PC, but it does survive a Windows reboot.',
+  },
+  { q: 'Do you need my Steam password?', a: 'Never. There is nowhere to type one.' },
+  {
+    q: 'Which servers work?',
+    a: 'Any Rust server in the browser, official or community. Search by name and QueueUp follows the address between wipes.',
+  },
+  { q: 'How long does setup take?', a: 'Two minutes, once.' },
+]
+
+const STRUCTURED = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: SITE_NAME,
+    url: SITE_URL,
+    description: SITE_DESCRIPTION,
+    applicationCategory: 'GameApplication',
+    operatingSystem: 'Windows, iOS, Android, Web',
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'GBP' },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: FAQ.map((f) => ({
+      '@type': 'Question',
+      name: f.q,
+      acceptedAnswer: { '@type': 'Answer', text: f.a },
+    })),
+  },
+]
 
 export default function Landing() {
   return (
@@ -157,35 +199,12 @@ export default function Landing() {
         <p className={s.kicker}>Questions</p>
         <h2>The ones everyone asks</h2>
         <div className={s.faq}>
-          <details>
-            <summary>Will this get me banned?</summary>
-            <p>
-              No. It opens the game through Steam and reads a log file. It never
-              plays, moves or acts in game for you.
-            </p>
-          </details>
-          <details>
-            <summary>Does my PC have to stay on?</summary>
-            <p>
-              Yes, awake and signed in, with Steam running. It cannot wake a
-              sleeping PC, but it does survive a Windows reboot.
-            </p>
-          </details>
-          <details>
-            <summary>Do you need my Steam password?</summary>
-            <p>Never. There is nowhere to type one.</p>
-          </details>
-          <details>
-            <summary>Which servers work?</summary>
-            <p>
-              Any Rust server in the browser, official or community. Search by
-              name and QueueUp follows the address between wipes.
-            </p>
-          </details>
-          <details>
-            <summary>How long does setup take?</summary>
-            <p>Two minutes, once.</p>
-          </details>
+          {FAQ.map((f) => (
+            <details key={f.q}>
+              <summary>{f.q}</summary>
+              <p>{f.a}</p>
+            </details>
+          ))}
         </div>
       </section>
 
@@ -198,9 +217,16 @@ export default function Landing() {
           automates the game itself. Rust is a trademark of Facepunch Studios.
         </p>
         <p>
-          <Link href="/login">Sign in</Link>
+          <Link href="/guides">Rust guides</Link> · <Link href="/login">Sign in</Link>
         </p>
       </footer>
+      {/* What search engines read about the product and the questions above,
+          so a search can show the answers directly. Built from the same
+          words as the page, never different ones. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED).replace(/</g, '\\u003c') }}
+      />
       </div>
     </div>
   )
