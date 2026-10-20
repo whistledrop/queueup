@@ -120,3 +120,24 @@ func TestBornFromKeywords(t *testing.T) {
 		t.Errorf("a spaced tag did not parse: %v", got)
 	}
 }
+
+// The reply's player counts are single bytes, so a 500-slot server says 244.
+// Rust's cp and mp tags carry the real numbers, and those must win: a full
+// big server read as a quarter empty is exactly wrong on wipe night.
+func TestBigServersReportTheirRealPlayerCounts(t *testing.T) {
+	f, err := NewFakeServer(Info{Name: "Rustoria.co - US Mondays", Players: 490, MaxPlayers: 500, Queue: 12}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	got, err := Query(context.Background(), f.Addr(), time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Players != 490 || got.MaxPlayers != 500 {
+		t.Fatalf("players = %d/%d, want 490/500 (keywords %q)", got.Players, got.MaxPlayers, got.Keywords)
+	}
+	if n, ok := tagInt("monthly,mp300,cp12", "mp"); !ok || n != 300 {
+		t.Fatalf("tagInt read %d %v from a tag list with \"monthly\" in it", n, ok)
+	}
+}

@@ -132,9 +132,33 @@ func parseInfo(resp []byte, addr string) (Info, error) {
 			info.Keywords = r.cstring()
 			info.Queue = QueueFromKeywords(info.Keywords)
 			info.BornAt = BornFromKeywords(info.Keywords)
+			// The player counts above are single bytes, so a 500-slot server
+			// reports 244. Rust tags the true numbers, cp and mp, for exactly
+			// this reason; when they are there, they win.
+			if n, ok := tagInt(info.Keywords, "cp"); ok {
+				info.Players = n
+			}
+			if n, ok := tagInt(info.Keywords, "mp"); ok {
+				info.MaxPlayers = n
+			}
 		}
 	}
 	return info, nil
+}
+
+// tagInt reads a number tag like "cp490" from Rust's keywords: the prefix,
+// then nothing but digits, so "monthly" is never mistaken for "mp".
+func tagInt(keywords, prefix string) (int, bool) {
+	for _, tag := range strings.Split(keywords, ",") {
+		rest, ok := strings.CutPrefix(strings.TrimSpace(tag), prefix)
+		if !ok || rest == "" {
+			continue
+		}
+		if n, err := strconv.Atoi(rest); err == nil && n >= 0 {
+			return n, true
+		}
+	}
+	return 0, false
 }
 
 // QueueFromKeywords digs the queued-player count out of Rust's keyword tags.
