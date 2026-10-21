@@ -1,13 +1,12 @@
 import type { Metadata, Viewport } from 'next'
-import { Geist } from 'next/font/google'
+import { Inter } from 'next/font/google'
 import './globals.css'
 import PromoCatcher from './promoCatcher'
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from '@/lib/site'
 
-// Geist, at weight 500 for headings rather than bold. The combination of a
-// grotesque at medium weight with tight letter-spacing is most of what makes a
-// page read as a real product rather than a template.
-const geist = Geist({ subsets: ['latin'], display: 'swap' })
+// Inter, the face Linear's look is built on: neutral, very readable small,
+// and tight and confident at display sizes.
+const font = Inter({ subsets: ['latin'], display: 'swap' })
 
 export const metadata: Metadata = {
   // Every relative address in metadata (canonicals, share cards) resolves
@@ -48,7 +47,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={geist.className}>
+    <html lang="en" className={font.className}>
       <body>
         <PromoCatcher />
         {children}

@@ -93,7 +93,7 @@ export default function Landing() {
 
         <div className={s.step}>
           <div>
-            <span className={s.stepNumber}>1</span>
+            <span className={s.stepNumber}>01</span>
             <h3>Tap join from anywhere</h3>
             <p>Search any server, official or community, and press one button.</p>
           </div>
@@ -104,7 +104,7 @@ export default function Landing() {
 
         <div className={s.step}>
           <div>
-            <span className={s.stepNumber}>2</span>
+            <span className={s.stepNumber}>02</span>
             <h3>Your PC queues and loads in</h3>
             <p>
               It waits in the queue, loads the map and holds your slot. Crash or
@@ -118,7 +118,7 @@ export default function Landing() {
 
         <div className={s.step}>
           <div>
-            <span className={s.stepNumber}>3</span>
+            <span className={s.stepNumber}>03</span>
             <h3>Walk in and play</h3>
             <p>Sit down to a game that is already running, already in.</p>
           </div>
