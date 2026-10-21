@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from 'react'
 import Link from 'next/link'
+import SocialSignIn from '../socialSignIn'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { track } from '@/lib/analytics'
 
@@ -106,6 +107,7 @@ function LoginForm() {
             {busy ? 'One moment' : creating ? 'Create account' : 'Sign in'}
           </button>
         </form>
+        <SocialSignIn from="login_page" />
       </div>
 
       <button

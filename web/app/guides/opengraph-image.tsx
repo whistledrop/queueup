@@ -19,23 +19,23 @@ export default function Image() {
           flexDirection: 'column',
           justifyContent: 'space-between',
           padding: '72px 80px',
-          background: '#0d0f12',
-          color: '#f2f4f7',
+          background: '#0e0f12',
+          color: '#edeef0',
           fontFamily: 'sans-serif',
         }}
       >
         <div style={{ display: 'flex', fontSize: 44, fontWeight: 600, letterSpacing: -1 }}>
-          Queue<span style={{ color: '#d05a2a' }}>Up</span>
+          Queue<span style={{ color: '#3b82f6' }}>Up</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
           <div style={{ display: 'flex', fontSize: 76, fontWeight: 600, lineHeight: 1.05, letterSpacing: -2 }}>
             Rust wipes, queues and servers, explained.
           </div>
-          <div style={{ display: 'flex', fontSize: 32, color: '#99a1ad' }}>
+          <div style={{ display: 'flex', fontSize: 32, color: '#8b8f98' }}>
             Tap join on your phone. Your PC queues. You walk in and play.
           </div>
         </div>
-        <div style={{ display: 'flex', fontSize: 26, color: '#99a1ad' }}>
+        <div style={{ display: 'flex', fontSize: 26, color: '#8b8f98' }}>
           Free for 10 joins a month · queueuprust.com
         </div>
       </div>

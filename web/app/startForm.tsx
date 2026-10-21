@@ -23,6 +23,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { claimCode, storePromo } from '@/lib/promo'
 import { track } from '@/lib/analytics'
+import SocialSignIn from './socialSignIn'
 
 export default function StartForm({
   className,
@@ -117,6 +118,8 @@ export default function StartForm({
       )}
 
       {sent && <p className="startSmall">{sent}</p>}
+
+      <SocialSignIn from={from} />
 
       {/* Pressing Claim is what makes the account now, so this is where
           the privacy notice has to be: before it, not after. */}

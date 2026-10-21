@@ -423,7 +423,7 @@ function Diagram() {
       </text>
 
       {/* relay */}
-      <rect x="230" y="35" width="120" height="80" rx="14" fill="#191c1f" stroke="#d05a2a" />
+      <rect x="230" y="35" width="120" height="80" rx="14" fill="#191c1f" stroke="#3b82f6" />
       <text x="290" y="72" textAnchor="middle" fill="#eef1f4" fontSize="14" fontWeight="600">
         QueueUp
       </text>

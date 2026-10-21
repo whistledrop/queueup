@@ -1,29 +1,28 @@
 /* Mobile first. This is opened on a phone, on wipe day, usually in a hurry. */
 
 :root {
-  /* Light throughout. The app used to be dark, on the theory that it is used
-     at night on a phone. In practice the first thing anybody sees is a website
-     asking them to install a program on their PC, and white reads as a company
-     while dark reads as a side project. The whole app follows the landing
-     page so the story does not change halfway through. */
-  --bg: #ffffff;
-  --card: #ffffff;
-  --card-2: #f7f7f9;
-  --line: #e9e9ee;
-  --text: #121111;
-  --muted: #51515a;
-  --accent: #d05a2a;
+  /* Graphite: near-black ground, grey cards, soft white text and one blue.
+     Chosen by Logan on 2026-10-21, for the whole product: website, app and
+     (later) email. Every colour below is used through these names, so a
+     palette change is a change here. */
+  color-scheme: dark;
+  --bg: #0e0f12;
+  --card: #17191d;
+  --card-2: #1d2025;
+  --line: #26292f;
+  --text: #edeef0;
+  --muted: #8b8f98;
+  --accent: #3b82f6;
   --accent-text: #ffffff;
-  /* Darker than the dark theme's versions: these sit on white now, and the
-     old ones were chosen to glow against black. */
-  --good: #1a7f52;
-  --warn: #8a6410;
-  --bad: #c0392f;
+  /* Lighter than a light theme's versions: these sit on near-black. */
+  --good: #3dd68c;
+  --warn: #f2b544;
+  --bad: #f87171;
   /* Gold, for rewards and nothing else. One colour the app uses in exactly
      one place stays meaningful; used twice it becomes decoration. */
-  --gold: #c08a1e;
-  --gold-ink: #8a6410;
-  --gold-soft: rgba(192, 138, 30, 0.12);
+  --gold: #e0b24a;
+  --gold-ink: #f2c766;
+  --gold-soft: rgba(224, 178, 74, 0.14);
   --radius: 16px;
   /* Big, soft corners on anything card-shaped. */
   --radius-lg: 22px;
@@ -163,9 +162,9 @@ label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 6px
 .pill.bad { color: var(--bad); border-color: var(--bad); }
 
 .error {
-  background: rgba(212, 87, 78, 0.08);
+  background: rgba(248, 113, 113, 0.1);
   border: 1px solid var(--bad);
-  color: #8c2f27;
+  color: var(--bad);
   border-radius: 10px;
   padding: 10px 12px;
   font-size: 14px;
@@ -173,9 +172,9 @@ label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 6px
 }
 
 .notice {
-  background: rgba(214, 161, 58, 0.12);
-  border: 1px solid rgba(138, 100, 16, 0.35);
-  color: #6b4d09;
+  background: rgba(242, 181, 68, 0.1);
+  border: 1px solid rgba(242, 181, 68, 0.35);
+  color: var(--warn);
   border-radius: 10px;
   padding: 10px 12px;
   font-size: 13px;
@@ -286,7 +285,7 @@ label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 6px
    whole thing looks like a virus warning. So we show it to them before they
    see it, with the thing to click marked. */
 .warnBox {
-  background: rgba(214, 161, 58, 0.08);
+  background: rgba(242, 181, 68, 0.08);
   border: 1px solid var(--warn);
   border-radius: 12px;
   padding: 14px;
@@ -296,7 +295,7 @@ label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 6px
 .warnBox h4 {
   margin: 0 0 4px;
   font-size: 15px;
-  color: #6b4d09;
+  color: var(--warn);
 }
 
 /* The setup list makes its strongs block-level headings. Inside this box they
@@ -509,8 +508,8 @@ header.top {
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid var(--warn);
-  background: rgba(214, 161, 58, 0.1);
-  color: #6b4d09;
+  background: rgba(242, 181, 68, 0.1);
+  color: var(--warn);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -588,9 +587,9 @@ textarea { min-height: 120px; resize: vertical; line-height: 1.45; }
   word-break: break-all;
 }
 
-/* The landing page paints itself white; the page behind it must match, or a
-   dark strip shows above and below on overscroll. */
-body:has([data-landing]) { background: #ffffff; }
+/* The landing page paints its own ground; the page behind it must match, or a
+   strip of another colour shows above and below on overscroll. */
+body:has([data-landing]) { background: var(--bg); }
 
 /* The help assistant's back-and-forth. */
 .askQuestion { font-weight: 600; margin-bottom: 6px; }
@@ -626,7 +625,7 @@ button, .btn {
   transition: transform 0.12s ease, filter 0.12s ease, background 0.12s ease;
 }
 button:hover:not(:disabled), .btn:hover { transform: translateY(-1px); }
-.btn-primary, button.primary { box-shadow: 0 6px 16px rgba(208, 90, 42, 0.24); }
+.btn-primary, button.primary { box-shadow: 0 6px 16px rgba(59, 130, 246, 0.22); }
 
 input, textarea { border-radius: 14px; }
 
@@ -638,12 +637,12 @@ header.top {
   position: sticky;
   top: 10px;
   z-index: 20;
-  background: rgba(255, 255, 255, 0.82);
+  background: rgba(23, 25, 29, 0.82);
   backdrop-filter: saturate(180%) blur(14px);
   border: 1px solid var(--line);
   border-radius: var(--radius-pill);
   padding: 9px 9px 9px 18px;
-  box-shadow: 0 6px 24px rgba(18, 17, 17, 0.06);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
 }
 
 .brand { font-weight: 600; }
@@ -670,8 +669,8 @@ header.top {
   margin: 14px 0;
   padding: 14px 16px;
   border-radius: 20px;
-  background: #fdf3e4;
-  border: 1px solid #f0dcb9;
+  background: rgba(242, 181, 68, 0.1);
+  border: 1px solid rgba(242, 181, 68, 0.3);
   font-size: 13.5px;
   line-height: 1.5;
   text-align: left;
@@ -686,7 +685,7 @@ header.top {
   padding: 7px 16px;
   font-size: 13.5px;
   background: var(--text);
-  color: #fff;
+  color: var(--bg);
   border: none;
 }
 
@@ -767,3 +766,16 @@ header.top {
 .shell.narrow {
   max-width: 560px;
 }
+
+/* "Continue with Google / Apple", under the email box. Apple's button is
+   drawn to Apple's own rules (black or white, its logo, its words); Google's
+   is Google's own, rendered by its script. */
+.socialSignIn { display: flex; flex-direction: column; align-items: stretch; gap: 10px; margin-top: 14px; max-width: 420px; margin-left: auto; margin-right: auto; }
+.socialOr { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 13px; }
+.socialOr::before, .socialOr::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.appleBtn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 44px; border-radius: var(--radius-pill); border: 1px solid var(--text);
+  background: #ffffff; color: #000000; font-size: 15.5px; font-weight: 500; cursor: pointer;
+}
+.googleBtn { display: flex; justify-content: center; min-height: 44px; }

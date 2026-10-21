@@ -16,7 +16,7 @@
   justify-content: space-between;
   margin: 12px 0 28px;
   padding: 10px 10px 10px 20px;
-  background: rgba(255, 255, 255, 0.86);
+  background: rgba(23, 25, 29, 0.86);
   backdrop-filter: saturate(180%) blur(14px);
   border: 1px solid var(--line);
   border-radius: var(--radius-pill);
