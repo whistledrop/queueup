@@ -110,6 +110,8 @@
         "RELAY_URL=http://127.0.0.1:8093",
         "NEXT_PUBLIC_APPLE_SERVICES_ID=com.queueup.preview",
         "NEXT_PUBLIC_GOOGLE_CLIENT_ID=preview.apps.googleusercontent.com",
+        "NEXT_PUBLIC_APP_STORE_URL=https://apps.apple.com/app/id0000000000",
+        "NEXT_PUBLIC_PLAY_STORE_URL=https://play.google.com/store/apps/details?id=com.queueup.app",
         "npm",
         "--prefix",
         "web",

@@ -42,6 +42,8 @@ export type AnalyticsEvent =
   // The paywall, counted on its own. The step between an account and a
   // payment, which is where the money is won or lost.
   | 'paywall_viewed'
+  // A store button on the front page: which store, from which kind of device.
+  | 'store_clicked'
   // Which plan somebody picked at signup, free or paid. The split is the
   // single most useful number about the new flow.
   | 'plan_chosen'
