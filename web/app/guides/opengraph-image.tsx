@@ -25,7 +25,7 @@ export default function Image() {
         }}
       >
         <div style={{ display: 'flex', fontSize: 44, fontWeight: 600, letterSpacing: -1 }}>
-          Queue<span style={{ color: '#3b82f6' }}>Up</span>
+          Queue<span style={{ color: '#ffffff' }}>Up</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
           <div style={{ display: 'flex', fontSize: 76, fontWeight: 600, lineHeight: 1.05, letterSpacing: -2 }}>

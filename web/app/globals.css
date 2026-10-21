@@ -1,7 +1,8 @@
 /* Mobile first. This is opened on a phone, on wipe day, usually in a hurry. */
 
 :root {
-  /* Graphite: near-black ground, grey cards, soft white text and one blue.
+  /* Graphite: near-black ground, grey cards and soft white text, with white
+     for the one thing to press.
      Chosen by Logan on 2026-10-21, for the whole product: website, app and
      (later) email. Every colour below is used through these names, so a
      palette change is a change here. */
@@ -12,8 +13,10 @@
   --line: #26292f;
   --text: #edeef0;
   --muted: #8b8f98;
-  --accent: #3b82f6;
-  --accent-text: #ffffff;
+  /* No colour: Logan wants black, grey and white only. The one
+     "accent" is near-white, with dark text on it, as Linear's buttons are. */
+  --accent: #f4f4f5;
+  --accent-text: #0e0f12;
   /* Lighter than a light theme's versions: these sit on near-black. */
   --good: #3dd68c;
   --warn: #f2b544;
@@ -63,7 +66,7 @@ header.top {
   letter-spacing: -0.02em;
   text-decoration: none;
 }
-.brand span { color: var(--accent); }
+.brand span { color: var(--muted); }
 
 .card {
   background: var(--card);
@@ -625,7 +628,7 @@ button, .btn {
   transition: transform 0.12s ease, filter 0.12s ease, background 0.12s ease;
 }
 button:hover:not(:disabled), .btn:hover { transform: translateY(-1px); }
-.btn-primary, button.primary { box-shadow: 0 6px 16px rgba(59, 130, 246, 0.22); }
+.btn-primary, button.primary { box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35); }
 
 input, textarea { border-radius: 14px; }
 
