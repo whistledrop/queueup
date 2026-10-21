@@ -1443,7 +1443,7 @@
 
 .rotatorWord {
   display: inline-block;
-  animation: rotateWord 0.4s ease;
+  animation: rotateWord 0.28s ease-out;
 }
 
 /* The full stop stays put while the word moves. */
@@ -1451,8 +1451,10 @@
   color: var(--accent);
 }
 
+/* Quick, and never fully invisible: a headline with a hole in it for most
+   of a second, every two seconds, reads as broken rather than lively. */
 @keyframes rotateWord {
-  from { opacity: 0; transform: translateY(0.22em); }
+  from { opacity: 0.25; transform: translateY(0.12em); }
   to { opacity: 1; transform: none; }
 }
 
