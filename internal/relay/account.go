@@ -94,7 +94,12 @@ func (s *Server) handleEraseOwnAccount(w http.ResponseWriter, r *http.Request, a
 	// and keep charging their card, with no account left to cancel from. They
 	// cancel, then they leave.
 	if s.cfg.BillingEnabled {
-		if sub, err := s.st.SubscriptionFor(acct.ID); err == nil && sub.Active() {
+		// Only a website subscription: that is the one cancelled from here.
+		// An App Store or Google Play subscription carries on regardless of
+		// the account, and is cancelled in the phone's settings, which the
+		// app says before anybody gets this far; a month given by hand has
+		// nothing to cancel.
+		if sub, err := s.st.SubscriptionFor(acct.ID); err == nil && sub.Active() && !sub.Comped() && storeOf(sub.SubID) == "" {
 			writeError(w, http.StatusConflict,
 				"Cancel your subscription first, or you would keep being charged with no account to cancel from. "+
 					"Use Manage subscription, cancel there, then come back and delete.")
@@ -108,11 +113,21 @@ func (s *Server) handleEraseOwnAccount(w http.ResponseWriter, r *http.Request, a
 			"Too many attempts. Wait a few minutes and try again.")
 		return
 	}
-	if err := s.st.CheckOwnPassword(acct.ID, body.Password); err != nil {
-		s.signIns.fail(acct.ID)
-		s.signIns.fail(from)
-		writeError(w, http.StatusUnauthorized, "That password isn't right.")
+	// Somebody who signs in with Google or Apple has no password to type.
+	// For them the signed-in session and the typed word are the gate, and
+	// the week's grace with an email is the safety net, as for everyone.
+	hasPassword, err := s.st.HasPassword(acct.ID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Couldn't check that. Try again.")
 		return
+	}
+	if hasPassword {
+		if err := s.st.CheckOwnPassword(acct.ID, body.Password); err != nil {
+			s.signIns.fail(acct.ID)
+			s.signIns.fail(from)
+			writeError(w, http.StatusUnauthorized, "That password isn't right.")
+			return
+		}
 	}
 	// Typing the word is the last gate. A password can be saved in a browser;
 	// this cannot be clicked through by accident.

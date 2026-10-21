@@ -33,8 +33,9 @@ function Finish() {
   useEffect(() => {
     ;(async () => {
       try {
-        const me = await api<{ email: string; has_password?: boolean }>('/api/auth/me')
-        if (me.has_password) {
+        const me = await api<{ email: string; has_password?: boolean; has_login?: boolean }>('/api/auth/me')
+        // A password, or Google or Apple: any way back in means nothing to do here.
+        if (me.has_login ?? me.has_password) {
           window.location.replace(onward)
           return
         }

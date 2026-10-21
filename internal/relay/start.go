@@ -128,7 +128,9 @@ func (s *Server) startExisting(w http.ResponseWriter, from, email, code string) 
 		writeError(w, http.StatusInternalServerError, "Couldn't check that address. Try again.")
 		return
 	}
-	hasPassword, err := s.st.HasPassword(acct.ID)
+	// A password or a linked Google or Apple sign-in: either is a way in, and
+	// an account with a way in is never opened by typing its address.
+	hasPassword, err := s.st.CanSignIn(acct.ID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Couldn't check that address. Try again.")
 		return

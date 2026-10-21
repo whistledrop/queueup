@@ -15,11 +15,12 @@ export default async function Home({
 
   const res = await relayFetch('/api/auth/me')
   if (!res.ok) return <Landing />
-  const me = (await res.json()) as { email: string; has_password?: boolean }
+  const me = (await res.json()) as { email: string; has_password?: boolean; has_login?: boolean }
 
   // Decided here on the server so the app never flashes up first and is then
   // taken away.
-  if (me.has_password === false) {
+  // No way back in yet: no password, and no Google or Apple sign-in.
+  if ((me.has_login ?? me.has_password) === false) {
     // An account from the old email-only signup that never set a password.
     // Everybody needs one now, free or paid, so there is one destination:
     // choose a password, then carry on.

@@ -101,6 +101,25 @@
         "3201"
       ],
       "port": 3201
+    },
+    {
+      "name": "queueup-web-social-preview",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "QUEUEUP_PROXY_KEY=local-dev-proxy-key-not-a-secret",
+        "RELAY_URL=http://127.0.0.1:8093",
+        "NEXT_PUBLIC_APPLE_SERVICES_ID=com.queueup.preview",
+        "NEXT_PUBLIC_GOOGLE_CLIENT_ID=preview.apps.googleusercontent.com",
+        "npm",
+        "--prefix",
+        "web",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "3202"
+      ],
+      "port": 3202
     }
   ]
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/coder/websocket"
 
 	"queueup/internal/mail"
+	"queueup/internal/oidc"
 	"queueup/internal/protocol"
 	"queueup/internal/revenuecat"
 	"queueup/internal/servers"
@@ -81,6 +82,10 @@ type Config struct {
 	// and Google Play. Disabled (no key) means the app has nothing to sell.
 	// RevenueCatWebhookSecret is the Authorization header RevenueCat was told
 	// to send with its webhooks.
+	// Google and Apple check "Continue with Google / Apple" sign-ins. Either
+	// is off until its client ids are configured.
+	Google, Apple *oidc.Provider
+
 	// MarketingEnabled is whether the free-plan emails and campaigns send.
 	MarketingEnabled bool
 
@@ -224,6 +229,7 @@ func (s *Server) routes() {
 	s.storeBillingRoutes()
 	s.marketingRoutes()
 	s.publicToolRoutes()
+	s.oauthRoutes()
 	// Beta feedback and problem reports.
 	s.feedbackRoutes()
 	// Changing your password, and leaving.

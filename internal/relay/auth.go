@@ -218,5 +218,12 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request, acct store.Acc
 	if has, err := s.st.HasPassword(acct.ID); err == nil {
 		out["has_password"] = has
 	}
+	// has_login is what decides whether somebody still has to choose a
+	// password: an account that signs in with Google or Apple already has a
+	// way back in, and must not be sent to make one.
+	if methods, err := s.st.SignInMethods(acct.ID); err == nil {
+		out["sign_in_methods"] = methods
+		out["has_login"] = len(methods) > 0
+	}
 	writeJSON(w, http.StatusOK, out)
 }

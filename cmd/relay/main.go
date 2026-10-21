@@ -22,6 +22,7 @@ import (
 
 	"queueup/internal/a2s"
 	"queueup/internal/mail"
+	"queueup/internal/oidc"
 	"queueup/internal/relay"
 	"queueup/internal/revenuecat"
 	"queueup/internal/servers"
@@ -291,6 +292,17 @@ func serve(st *store.Store) error {
 
 	marketing := os.Getenv("QUEUEUP_MARKETING") == "on"
 
+	// Each is a comma-separated list of QueueUp's own client ids with that
+	// provider: the website's, the iOS app's, the Android app's.
+	google := oidc.Google(splitList(os.Getenv("QUEUEUP_GOOGLE_CLIENT_IDS")))
+	apple := oidc.Apple(splitList(os.Getenv("QUEUEUP_APPLE_CLIENT_IDS")))
+	if !google.Enabled() {
+		log.Warn("Continue with Google is off: set QUEUEUP_GOOGLE_CLIENT_IDS")
+	}
+	if !apple.Enabled() {
+		log.Warn("Continue with Apple is off: set QUEUEUP_APPLE_CLIENT_IDS")
+	}
+
 	srv := relay.New(relay.Config{
 		Store: st, Log: log, AdminToken: adminToken, Servers: provider,
 		BillingEnabled: billing, Mail: mailer, WebURL: webURL, Bot: bot,
@@ -300,6 +312,8 @@ func serve(st *store.Store) error {
 		StripeReferralCouponID:  os.Getenv("QUEUEUP_STRIPE_REFERRAL_COUPON_ID"),
 		StripeWebhookSecret:     os.Getenv("QUEUEUP_STRIPE_WEBHOOK_SECRET"),
 		MarketingEnabled:        marketing,
+		Google:                  google,
+		Apple:                   apple,
 		RevenueCat:              inApp,
 		RevenueCatWebhookSecret: os.Getenv("QUEUEUP_REVENUECAT_WEBHOOK_SECRET"),
 		ProxyKey:                os.Getenv("QUEUEUP_PROXY_KEY"),
@@ -453,4 +467,15 @@ Share it as a link so nobody has to type it:
 Typed codes work too, on the payment screen, for Discord and voice chat.
 `, made, mode, strings.TrimSuffix(envOr("QUEUEUP_WEB_URL", "https://queueuprust.com"), "/"), made)
 	return nil
+}
+
+// splitList reads a comma-separated setting, ignoring blanks.
+func splitList(v string) []string {
+	var out []string
+	for _, s := range strings.Split(v, ",") {
+		if s = strings.TrimSpace(s); s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
 }
