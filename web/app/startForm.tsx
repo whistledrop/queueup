@@ -86,7 +86,7 @@ export default function StartForm({
           nothing in return, and this is the reason to fill it in. Shown to
           everybody, because everybody gets it: somebody with no code of
           their own claims with the site's. No price here, and no "first
-          month" either; the paywall spells out £1.99 then £4.99 before
+          month" either; the paywall spells out the trial and £4.99 before
           anybody can be charged. */}
       <p className="startClaim">
         Start free, 10 joins a month

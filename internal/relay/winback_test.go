@@ -118,13 +118,12 @@ func TestTheSequenceSendsTheRightEmailAtTheRightTime(t *testing.T) {
 		t.Fatalf("after 3 hours: %d emails, want 1", len(got))
 	}
 	one := got[0]
-	if s := subject(one); s != "Your £1.99 first month is saved" {
+	if s := subject(one); s != "Your 7-day free trial is waiting" {
 		t.Errorf("email one subject = %q", s)
 	}
 	body := text(one)
 	for _, want := range []string{
-		"£1.99",
-		"TIKTOK",
+		"7 days are free",
 		// One tap back to their own paywall, with the code riding along.
 		"https://queueuprust.com/continue?a=" + a.ID,
 		"promo=TIKTOK",
@@ -161,7 +160,7 @@ func TestTheSequenceSendsTheRightEmailAtTheRightTime(t *testing.T) {
 	if s := subject(got[1]); !strings.Contains(s, "allowed") {
 		t.Errorf("email two subject = %q", s)
 	}
-	for _, want := range []string{"cheat", "memory", "Steam", "cancel", "keep the days", "/unsubscribe?"} {
+	for _, want := range []string{"cheat", "memory", "Steam", "cancel", "Try it free", "/unsubscribe?"} {
 		if !strings.Contains(two, want) {
 			t.Errorf("email two is missing %q:\n%s", want, two)
 		}
@@ -181,7 +180,7 @@ func TestTheSequenceSendsTheRightEmailAtTheRightTime(t *testing.T) {
 	}
 
 	// Email three, the last one. It ends the sequence rather than a deadline:
-	// the discount no longer expires, so claiming it does would be a lie.
+	// nothing here expires, so claiming it does would be a lie.
 	r.srv.sendWinback(context.Background(), start.Add(68*time.Hour+5*time.Minute))
 	got = r.sent()
 	if len(got) != 3 {
@@ -191,7 +190,7 @@ func TestTheSequenceSendsTheRightEmailAtTheRightTime(t *testing.T) {
 		t.Errorf("email three subject = %q", s)
 	}
 	three := text(got[2])
-	for _, want := range []string{"free to try", "ten joins a month", "£1.99", "/unsubscribe?"} {
+	for _, want := range []string{"free to use", "ten joins a month", "first 7 days are", "/unsubscribe?"} {
 		if !strings.Contains(three, want) {
 			t.Errorf("email three is missing %q:\n%s", want, three)
 		}
@@ -259,27 +258,24 @@ func TestALateArrivalGetsOneEmailNotThree(t *testing.T) {
 	}
 }
 
-// A code that does not exist in Stripe gives no £1.99, so no email may say
-// it does. And nobody without a code has an offer to be told about at all.
-func TestNoEmailPromisesAPriceStripeWontCharge(t *testing.T) {
+// There is no discount any more (2026-10-21), so no email may mention one,
+// whatever code somebody arrived with.
+func TestNoEmailMentionsADiscount(t *testing.T) {
 	r := newWinbackRig(t, "", "")
 	now := time.Now()
-	dead := r.signup(t, "typo@example.com", "TIKTOOK", 3*time.Hour, now)
-	r.signup(t, "direct@example.com", "", 3*time.Hour, now)
-
+	r.signup(t, "typo@example.com", "TIKTOOK", 3*time.Hour, now)
+	r.signup(t, "tiktok@example.com", "TIKTOK", 3*time.Hour, now)
 	r.srv.sendWinback(context.Background(), now)
-	if n := len(r.sent()); n != 0 {
-		t.Fatalf("%d emails to people with no live offer", n)
+	if len(r.sent()) == 0 {
+		t.Fatal("no win-back emails at all")
 	}
-
-	// The dead code is not spent: if they type a working one later, the
-	// sequence picks them up.
-	if err := r.st.RememberSourceCode(dead.ID, "TIKTOK"); err != nil {
-		t.Fatal(err)
-	}
-	r.srv.sendWinback(context.Background(), now)
-	if n := len(r.sent()); n != 1 {
-		t.Errorf("after a working code: %d emails, want 1", n)
+	for _, m := range r.sent() {
+		body := subject(m) + " " + text(m)
+		for _, bad := range []string{"£1.99", "first month", "discount"} {
+			if strings.Contains(body, bad) {
+				t.Errorf("a win-back email mentions %q:\n%s", bad, body)
+			}
+		}
 	}
 }
 
@@ -336,11 +332,9 @@ func TestTheUnsubscribeLinkWorksAndStopsTheRest(t *testing.T) {
 	}
 }
 
-// The discounted first month has no deadline. It used to expire 72 hours
-// after signup, back when the price was the only reason to sign up. The free
-// plan is the reason now, so a first month is simply £1.99 whenever somebody
-// decides to pay — including the free player who upgrades in week three.
-func TestTheOfferNeverEnds(t *testing.T) {
+// The free trial has no deadline either: a free player who decides in week
+// three gets the same 7 days as somebody deciding on the day they signed up.
+func TestTheTrialNeverExpires(t *testing.T) {
 	for _, age := range []time.Duration{1 * time.Hour, 73 * time.Hour, 60 * 24 * time.Hour} {
 		t.Run(fmt.Sprintf("%v after signup", age), func(t *testing.T) {
 			b := newBillingRig(t, true)
@@ -348,33 +342,19 @@ func TestTheOfferNeverEnds(t *testing.T) {
 				time.Now().Add(-age).UnixMilli(), b.acct.ID); err != nil {
 				t.Fatal(err)
 			}
-
-			code, out := b.callBody(t, "POST", "/api/billing/code", `{"code":"TIKTOK"}`)
-			if code != 200 || out["valid"] != true {
-				t.Fatalf("code check = %d %v", code, out)
-			}
-			if out["first_month_pence"] != float64(199) {
-				t.Errorf("paywall told first month = %v, want 199", out["first_month_pence"])
-			}
-			if _, ok := out["expired"]; ok {
-				t.Errorf("an offer with no deadline reported itself expired: %v", out)
-			}
-
 			if code, out := b.callBody(t, "POST", "/api/billing/checkout", `{"code":"TIKTOK"}`); code != 200 {
 				t.Fatalf("checkout = %d %v", code, out)
 			}
 			form := b.stripe.lastCheckout(t)
-			if form.Get("discounts[0][promotion_code]") == "" {
-				t.Error("the till charged full price for a discount with no deadline")
+			if form.Get("subscription_data[trial_period_days]") != "7" {
+				t.Error("no free trial for a first subscription")
 			}
 			if src := form.Get("subscription_data[metadata][source]"); src != "TIKTOK" {
 				t.Errorf("source = %q, want TIKTOK", src)
 			}
-
-			// Nothing to count down to, so nothing is advertised.
 			_, bill := b.call(t, "GET", "/api/billing")
 			if _, ok := bill["offer_ends_at"]; ok {
-				t.Errorf("billing still advertises a deadline: %v", bill["offer_ends_at"])
+				t.Errorf("billing advertises a deadline: %v", bill["offer_ends_at"])
 			}
 		})
 	}
@@ -441,8 +421,7 @@ func (r *winbackRig) follow(t *testing.T, q url.Values) (int, map[string]any) {
 }
 
 // The link in the email, tapped somewhere they are not signed in: straight
-// back to their own paywall, at the price the email promised, counting down
-// from their own signup — not a fresh 72 hours, and not the full price.
+// back to their own paywall, with the free trial the email promised.
 func TestTheEmailLinkLandsOnTheirOwnOfferAndCountdown(t *testing.T) {
 	r := newWinbackRig(t, "", "")
 	start := time.Now().Add(-3 * time.Hour)
@@ -474,9 +453,9 @@ func TestTheEmailLinkLandsOnTheirOwnOfferAndCountdown(t *testing.T) {
 	if _, ok := bill["offer_ends_at"]; ok {
 		t.Errorf("billing still advertises a deadline: %v", bill["offer_ends_at"])
 	}
-	// Their price.
-	if _, chk := r.do(t, "POST", "/api/billing/code", session, `{"code":"TIKTOK"}`); chk["first_month_pence"] != float64(199) {
-		t.Errorf("price on arrival = %v, want 199", chk["first_month_pence"])
+	// Their trial, still there.
+	if fmt.Sprint(bill["trial_days"]) != "7" {
+		t.Errorf("trial on arrival = %v days, want 7", bill["trial_days"])
 	}
 }
 
@@ -577,4 +556,37 @@ func TestTheRenewalWarningGoesOnceBeforeTheFullPriceMonth(t *testing.T) {
 		}
 	}
 	_ = unpaid
+}
+
+// Two days before a free trial becomes a charge, one email says so and how to
+// cancel. Once, and only for a trial that is really ending.
+func TestTheTrialReminderGoesOnceTwoDaysBefore(t *testing.T) {
+	r := newWinbackRig(t, "", "")
+	a, err := r.st.Register("trial@example.com", "a good password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := r.st.SetSubscription(a.ID, "active", "sub_t"); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	if err := r.st.SetTrialEnd(a.ID, now.Add(5*24*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	r.srv.sendTrialReminders(context.Background(), now)
+	if n := len(r.sent()); n != 0 {
+		t.Fatalf("%d reminders five days early", n)
+	}
+	if err := r.st.SetTrialEnd(a.ID, now.Add(36*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	r.srv.sendTrialReminders(context.Background(), now)
+	r.srv.sendTrialReminders(context.Background(), now)
+	got := r.sent()
+	if len(got) != 1 || subject(got[0]) != "Your QueueUp free trial ends in 2 days" {
+		t.Fatalf("reminders = %d, subject %q", len(got), subjectOf(got))
+	}
+	if !strings.Contains(text(got[0]), "/settings") || !strings.Contains(text(got[0]), "£4.99") {
+		t.Errorf("reminder does not say the price or how to cancel:\n%s", text(got[0]))
+	}
 }

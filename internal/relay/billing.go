@@ -30,14 +30,16 @@ import (
 // So the whole payment flow can be tested on the live site, in Stripe's test
 // mode, while every beta tester carries on joining for free.
 //
-// Price: £1.99 for the first month, then £4.99 a month. Stripe holds the real
-// numbers; these mirror web/lib/pricing.ts for the words on screen.
+// Price: a 7-day free trial, once per account, then £4.99 a month. No
+// discounts (Logan, 2026-10-21): the free plan is how people try QueueUp, and
+// the trial is how they try Unlimited. Stripe holds the real price; these
+// mirror web/lib/pricing.ts for the words on screen.
 const (
 	priceMonthlyPence = 499
-	priceIntroPence   = 199
 	priceCurrency     = "GBP"
 	priceLine         = "£4.99 a month"
-	introLine         = "£1.99 for your first month, then £4.99 a month"
+	trialDays         = 7
+	introLine         = "free for 7 days, then £4.99 a month"
 )
 
 func (s *Server) billingRoutes() {
@@ -59,9 +61,7 @@ func (s *Server) handleBilling(w http.ResponseWriter, r *http.Request, acct stor
 		writeError(w, http.StatusInternalServerError, "Couldn't check your subscription.")
 		return
 	}
-	// There is one public price. The lower first month exists only behind a
-	// code, because the code is how we find out which channel a customer came
-	// from, and a discount everybody gets automatically tells us nothing.
+	// The code somebody arrived on: it says which channel they came from.
 	code, _ := s.st.SourceCode(acct.ID)
 	// What this account may actually do: free with an allowance, or paid.
 	plan, err := s.planFor(acct)
@@ -69,6 +69,7 @@ func (s *Server) handleBilling(w http.ResponseWriter, r *http.Request, acct stor
 		writeError(w, http.StatusInternalServerError, "Couldn't check your plan.")
 		return
 	}
+	trialEnd, _ := s.st.TrialEndsAt(acct.ID)
 	planName := "free"
 	if plan.Paid {
 		planName = "paid"
@@ -95,9 +96,13 @@ func (s *Server) handleBilling(w http.ResponseWriter, r *http.Request, acct stor
 		// Where this subscription is changed or cancelled: "stripe" is the
 		// website's manage page, "app_store" and "play_store" are the phone's
 		// own subscription settings, which QueueUp cannot open on its behalf.
-		"managed_by":  managedBy(sub),
-		"store_ready": s.cfg.RevenueCat.Enabled(),
-		"test_mode":   s.cfg.Stripe.TestMode(),
+		// The free trial this account would get, in days: zero once it has
+		// had one. And when a running trial ends, for the screen to say.
+		"trial_days":    map[bool]int{true: 0, false: trialDays}[sub.IntroUsed],
+		"trial_ends_at": trialEnd,
+		"managed_by":    managedBy(sub),
+		"store_ready":   s.cfg.RevenueCat.Enabled(),
+		"test_mode":     s.cfg.Stripe.TestMode(),
 	})
 }
 
@@ -132,46 +137,36 @@ func (s *Server) handleCheckout(w http.ResponseWriter, r *http.Request, acct sto
 		code, _ = s.st.SourceCode(acct.ID)
 	}
 
-	ctxCode, cancelCode := context.WithTimeout(r.Context(), 15*time.Second)
-	promo, err := s.cfg.Stripe.LookupPromotionCode(ctxCode, code, priceMonthlyPence)
-	cancelCode()
-	switch {
-	case code == "":
-		// No code. Standard price, no attribution, which is the cost of a
-		// customer arriving with nothing.
-	case errors.Is(err, stripe.ErrNoSuchCode):
-		writeError(w, http.StatusBadRequest, "That code isn't valid. Leave it blank to subscribe at the standard price.")
-		return
-	case err != nil:
-		s.log.Error("looking up a promo code", "account", acct.ID, "err", err)
-		writeError(w, http.StatusBadGateway, "Couldn't check that code. Try again in a moment.")
-		return
-	case promo.Forever:
-		// A never-ending discount is a pricing mistake wearing a code's
-		// clothes. Refuse it rather than sell a subscription at a loss forever.
-		s.log.Error("refusing a forever discount code", "code", promo.Code)
-		writeError(w, http.StatusBadRequest, "That code isn't valid. Leave it blank to subscribe at the standard price.")
-		return
-	default:
-		if err := s.st.RememberSourceCode(acct.ID, promo.Code); err != nil {
-			s.log.Error("remembering a source code", "account", acct.ID, "err", err)
-		}
-		// Some codes belong to a channel and some belong to a person. A
-		// person's code owes them something, so it is written down here, once,
-		// and never moved afterwards.
-		if referrer, err := s.st.AccountForReferralCode(promo.Code); err == nil {
-			if err := s.st.RecordReferredBy(acct.ID, referrer); err != nil {
-				s.log.Error("recording a referrer", "account", acct.ID, "err", err)
+	// Codes no longer change the price; they still say where somebody came
+	// from, which is the whole attribution system. A code Stripe does not
+	// know is simply not recorded: it must not stop anybody subscribing.
+	var source string
+	if code != "" {
+		ctxCode, cancelCode := context.WithTimeout(r.Context(), 15*time.Second)
+		promo, err := s.cfg.Stripe.LookupPromotionCode(ctxCode, code, priceMonthlyPence)
+		cancelCode()
+		if err == nil {
+			source = promo.Code
+			if err := s.st.RememberSourceCode(acct.ID, promo.Code); err != nil {
+				s.log.Error("remembering a source code", "account", acct.ID, "err", err)
 			}
+			// Some codes belong to a person, who is owed something for it.
+			if referrer, err := s.st.AccountForReferralCode(promo.Code); err == nil {
+				if err := s.st.RecordReferredBy(acct.ID, referrer); err != nil {
+					s.log.Error("recording a referrer", "account", acct.ID, "err", err)
+				}
+			}
+		} else if !errors.Is(err, stripe.ErrNoSuchCode) {
+			s.log.Error("looking up a promo code", "account", acct.ID, "err", err)
 		}
 	}
 
-	// The discounted first month has no deadline. It used to run for 72 hours
-	// from signup, back when the price was the only reason to sign up at all.
-	// Now the free plan is what brings people in, so the discount is simply
-	// what a first month costs, and a countdown to a price that never changes
-	// would be theatre.
-	discount := promo.ID
+	// The free trial is once per account, ever: cancel and come back and it is
+	// the normal price, or the trial would be free forever.
+	trial := 0
+	if !sub.IntroUsed {
+		trial = trialDays
+	}
 
 	web := strings.TrimSuffix(s.cfg.WebURL, "/")
 	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
@@ -182,8 +177,8 @@ func (s *Server) handleCheckout(w http.ResponseWriter, r *http.Request, acct sto
 		CustomerID: sub.CustomerID,
 		PriceID:    s.cfg.StripePriceID,
 
-		PromotionCodeID: discount,
-		SourceCode:      promo.Code,
+		SourceCode: source,
+		TrialDays:  trial,
 		// The home page, which every version of the website has. The new one
 		// passes somebody who paid without a password on to choose one; this
 		// used to point straight at that step, and for the minutes a website
@@ -315,6 +310,13 @@ func (s *Server) syncSubscription(ctx context.Context, accountID, subID string) 
 		if err := s.st.LinkStripe(accountID, live.Customer, live.ID); err != nil {
 			return err
 		}
+		// When a free trial turns into the first charge, so the reminder
+		// before it can be sent.
+		if live.TrialEnd > 0 {
+			if err := s.st.SetTrialEnd(accountID, time.Unix(live.TrialEnd, 0)); err != nil {
+				return err
+			}
+		}
 		fresh := !current.Active() || current.SubID != live.ID
 		if fresh {
 			s.log.Info("subscription active", "account", accountID, "status", live.Status)
@@ -362,12 +364,8 @@ func (s *Server) syncSubscription(ctx context.Context, accountID, subID string) 
 	return s.st.SetSubscription(accountID, "none", live.ID)
 }
 
-// handleCheckCode tells the paywall what a code is actually worth, and
-// remembers it.
-//
-// It exists so that somebody arriving on ?promo=TIKTOK sees "£1.99 for your
-// first month" as a real number on the page rather than being asked to trust a
-// discount that only appears on Stripe's screen after they have committed.
+// handleCheckCode checks a code from a link and remembers it. Codes no
+// longer change the price (2026-10-21); they say where somebody came from.
 //
 // It also records the code, which is why it runs on arrival and not only at
 // checkout: people land today and pay on Thursday, and the attribution has to
@@ -417,11 +415,12 @@ func (s *Server) handleCheckCode(w http.ResponseWriter, r *http.Request, acct st
 	if err := s.st.RememberSourceCode(acct.ID, promo.Code); err != nil {
 		s.log.Error("remembering a source code", "account", acct.ID, "err", err)
 	}
+	// Saved for attribution; it no longer changes the price.
 	writeJSON(w, http.StatusOK, map[string]any{
 		"valid":             true,
 		"code":              promo.Code,
-		"first_month_pence": promo.FirstMonthPence,
-		"line":              moneyLine(promo.FirstMonthPence) + " for your first month, then " + priceLine + ".",
+		"first_month_pence": priceMonthlyPence,
+		"line":              "Code " + promo.Code + " saved.",
 	})
 }
 

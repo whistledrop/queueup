@@ -48,66 +48,42 @@ function Subscribe() {
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState('')
 
-  // The code, and what it is actually worth. Checked against Stripe rather
-  // than assumed, so the number on this page is the number they get charged.
+  // The code they arrived with. It no longer changes the price; it is checked
+  // and kept because it says where they came from.
   const [code, setCode] = useState('')
-  const [codeOpen, setCodeOpen] = useState(false)
-  const [codeBad, setCodeBad] = useState('')
   const [applied, setApplied] = useState('')
-  const [firstMonth, setFirstMonth] = useState<number | null>(null)
-  const [checking, setChecking] = useState(false)
   // A real code whose offer has run out. Kept apart from "invalid", because
   // it still counts for attribution and the page should say what happened
   // rather than just show a higher price.
-  // Nothing about the price is shown until the code they came with has been
-  // checked and their offer is known. Before, the page drew £4.99 first and
-  // corrected itself a second later — which is all somebody arriving from an
-  // email promising £1.99 needs to see to decide the email was a lie.
+  // Nothing about the price is shown until billing has said whether this
+  // account gets the free trial, so the page never changes its mind mid-read.
   const [codeKnown, setCodeKnown] = useState(false)
   const [billingKnown, setBillingKnown] = useState(false)
 
-  // quiet is for the code we found saved from a ?promo= link rather than one
-  // they typed. If that one fails there is nothing for them to fix and nothing
-  // they asked for, so complaining at somebody who has not touched the box is
-  // just noise on the screen where they are deciding whether to pay.
-  const check = useCallback(async (raw: string, quiet = false) => {
+  // Checks a code that arrived in a link and keeps it if real. Silent either
+  // way: there is no box to complain in, and it changes no price.
+  const check = useCallback(async (raw: string) => {
     const c = raw.trim().toUpperCase()
     if (!c) return
-    setChecking(true)
-    setCodeBad('')
     try {
-      const res = await api<{
-        valid: boolean
-        line: string
-        first_month_pence?: number
-      }>('/api/billing/code', { method: 'POST', body: JSON.stringify({ code: c }) })
-      if (res.valid) {
-        setApplied(c)
-        setFirstMonth(res.first_month_pence ?? null)
-        setCodeOpen(false)
-        storePromo(c)
-      } else {
-        setApplied('')
-        setFirstMonth(null)
-        if (!quiet) setCodeBad(res.line)
-      }
-    } catch (e) {
+      const res = await api<{ valid: boolean }>('/api/billing/code', {
+        method: 'POST',
+        body: JSON.stringify({ code: c }),
+      })
+      setApplied(res.valid ? c : '')
+      if (res.valid) storePromo(c)
+    } catch {
       setApplied('')
-      setFirstMonth(null)
-      if (!quiet) setCodeBad((e as Error).message)
-    } finally {
-      setChecking(false)
     }
   }, [])
 
   useEffect(() => {
     capturePromoFromURL()
-    // Everybody was offered the discount on the way in, so everybody arrives
-    // with a code: theirs, or the site's own.
+    // The code they arrived on, theirs or the site's own, for attribution.
     const saved = claimCode()
     if (saved) {
       setCode(saved)
-      check(saved, true).finally(() => setCodeKnown(true))
+      check(saved).finally(() => setCodeKnown(true))
     } else {
       setCodeKnown(true)
     }
@@ -171,7 +147,9 @@ function Subscribe() {
   }
 
   const full = Math.round(PLAN.monthly * 100)
-  const discounted = firstMonth !== null && firstMonth < full
+  // No discounts since 2026-10-21: the price is the price, and a first
+  // subscription starts with a free trial instead.
+  const trial = billing?.trial_days ?? 0
   const priceReady = codeKnown && billingKnown
 
   // Counted once the price is settled, so the event carries what they were
@@ -182,7 +160,7 @@ function Subscribe() {
     counted.current = true
     track('paywall_viewed', {
       price_pence: nowPence,
-      discounted,
+      trial_days: trial,
       ...(applied ? { promo_code: applied } : {}),
     })
     if (reason) {
@@ -193,7 +171,7 @@ function Subscribe() {
     // Only when the page settles; the values are read at that moment.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [priceReady])
-  const nowPence = discounted ? firstMonth! : full
+  const nowPence = full
   const money = (pence: number) => `${PLAN.symbol}${(pence / 100).toFixed(2)}`
 
   // Free is only worth offering to somebody who is actually on it.
@@ -231,21 +209,16 @@ function Subscribe() {
 
       <div className={s.panel}>
         <div className={priceReady ? undefined : s.pending} aria-busy={!priceReady}>
-          <p className={s.kicker}>{discounted ? 'Your first month' : 'QueueUp'}</p>
+          <p className={s.kicker}>{trial > 0 ? 'QueueUp Unlimited' : 'QueueUp'}</p>
           <div className={s.priceRow}>
-            {discounted && <span className={s.was}>{money(full)}</span>}
-            <span className={`${s.price} ${discounted ? s.priceDeal : ''}`}>{money(nowPence)}</span>
+            <span className={s.price}>{trial > 0 ? `${trial} days free` : money(nowPence)}</span>
           </div>
           <p className={s.after}>
-            {discounted ? `then ${priceLine()}. Cancel anytime.` : 'a month. Cancel anytime.'}
+            {trial > 0
+              ? `then ${priceLine()}. Cancel before the trial ends and you pay nothing.`
+              : 'a month. Cancel anytime.'}
           </p>
         </div>
-
-        {applied && discounted && (
-          <p className={s.codeApplied}>
-            <Tick /> Code {applied} applied
-          </p>
-        )}
 
         <ul className={s.features}>
           {PLAN.includes.map((line) => (
@@ -256,9 +229,9 @@ function Subscribe() {
         <button className={s.cta} onClick={checkout} disabled={busy || !priceReady}>
           {busy || !priceReady
             ? 'One moment'
-            : discounted
-              ? `Start my ${money(nowPence)} month`
-              : 'Start my month'}
+            : trial > 0
+              ? 'Start my free trial'
+              : 'Subscribe'}
         </button>
 
         <p className={s.afterPay}>Next: 2-minute PC setup</p>
@@ -306,40 +279,6 @@ function Subscribe() {
           <cite>— 9k-hour Rust player, founder</cite>
         </blockquote>
 
-        {!applied && !codeOpen && (
-          <button className={s.codeToggle} onClick={() => setCodeOpen(true)}>
-            Have a code?
-          </button>
-        )}
-
-        {codeOpen && (
-          <form
-            className={s.codeRow}
-            onSubmit={(e) => {
-              e.preventDefault()
-              check(code)
-            }}
-          >
-            <input
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              placeholder="CODE"
-              maxLength={64}
-              autoFocus
-              // The box may already hold a code that arrived in the link and
-              // failed. Typing over it should replace it, not append to it.
-              onFocus={(e) => e.currentTarget.select()}
-              autoCapitalize="characters"
-              autoCorrect="off"
-              spellCheck={false}
-              aria-label="Promo code"
-            />
-            <button type="submit" disabled={checking || !code.trim()}>
-              {checking ? '...' : 'Apply'}
-            </button>
-          </form>
-        )}
-        {codeBad && <p className={s.codeBad}>{codeBad}</p>}
       </div>
 
       <div className={s.refund}>
@@ -369,10 +308,3 @@ function Lock() {
   )
 }
 
-function Tick() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M4 12.5l5.5 5.5L20 7" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}

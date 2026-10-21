@@ -79,18 +79,14 @@ function ChoosePlan() {
           disabled={!!busy}
         >
           <span className={s.name}>Unlimited</span>
-          <span className={s.price}>
-            {PLAN.symbol}
-            {PLAN.intro.toFixed(2)}
-          </span>
-          <span className={s.after}>first month, then {PLAN.symbol}{PLAN.monthly.toFixed(2)} a month</span>
+          <span className={s.price}>{PLAN.trialDays} days free</span>
+          <span className={s.after}>then {PLAN.symbol}{PLAN.monthly.toFixed(2)} a month</span>
           <ul className={s.list}>
             <li>Unlimited joins, every wipe</li>
             <li>Schedule any join, any time</li>
             <li>Auto-join the moment a wipe ends</li>
-            <li>Squad joins with your mates</li>
           </ul>
-          <span className={s.cta}>{busy === 'paid' ? 'Opening…' : 'Go unlimited'}</span>
+          <span className={s.cta}>{busy === 'paid' ? 'Opening…' : 'Start free trial'}</span>
         </button>
       </div>
 

@@ -56,7 +56,7 @@ Nothing to pay and no card needed. Sign in and tap Join.
 
 Find a server: https://queueuprust.com/servers
 
-If you want more, Unlimited is £1.99 for your first month, then £4.99 a month.`,
+If you want more, Unlimited is free for 7 days, then £4.99 a month.`,
   },
   {
     label: 'Link your PC',

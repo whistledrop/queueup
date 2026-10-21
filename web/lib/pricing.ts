@@ -4,11 +4,9 @@ export const PLAN = {
   currency: 'GBP',
   symbol: '£',
   monthly: 4.99,
-  // The discounted first month is NOT a standing offer. It exists only behind
-  // a promo code, because the code is the only thing that tells us which
-  // channel a customer came from, and a discount everybody gets automatically
-  // answers nothing. See lib/promo.ts.
-  intro: 1.99,
+  // No discounts (2026-10-21). A first subscription starts with a free trial,
+  // once per account; codes only say where somebody came from.
+  trialDays: 7,
   name: 'QueueUp',
   includes: [
     'Unlimited joins, any Rust server',
@@ -31,9 +29,9 @@ export function costLine(): string {
     : `${priceLine()}. Cancel anytime, in two taps.`
 }
 
-/** The first-month offer, spelled out in full: what it costs now AND after. */
+/** The trial, spelled out in full: what it costs now AND after. */
 export function introLine(): string {
-  return `${PLAN.symbol}${PLAN.intro.toFixed(2)} for your first month, then ${priceLine()}`
+  return `Free for ${PLAN.trialDays} days, then ${priceLine()}`
 }
 
 export function priceLine(): string {

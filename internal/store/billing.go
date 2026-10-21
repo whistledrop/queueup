@@ -24,9 +24,10 @@ type Subscription struct {
 	// FirstPaidAt is when money first changed hands, kept forever so that a
 	// customer who left is not mistaken for one who never arrived.
 	FirstPaidAt time.Time
-	// IntroUsed records that this account has had the discounted first month.
-	// It survives cancelling, which is the point: cancel and resubscribe is
-	// full price, or the intro offer is £1.99 forever.
+	// IntroUsed records that this account has had its introductory offer:
+	// the free trial now, the old £1.99 first month before 2026-10-21. It
+	// survives cancelling, which is the point: cancel and resubscribe is full
+	// price, or the trial is free forever.
 	IntroUsed bool
 	// EndsAt is set when somebody has cancelled but is still inside the month
 	// they paid for. The gate stays open until then, so Status alone says

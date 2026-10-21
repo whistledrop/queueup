@@ -137,6 +137,9 @@ type CheckoutParams struct {
 	// customer came from. This is the whole attribution system: no code, no
 	// idea, and every channel therefore gets its own code.
 	SourceCode string
+	// TrialDays, when above zero, starts the subscription with that many free
+	// days. Stripe takes the card now and charges when the trial ends.
+	TrialDays int
 }
 
 // CreateCheckoutSession returns the address of Stripe's payment page.
@@ -164,6 +167,9 @@ func (c *Client) CreateCheckoutSession(ctx context.Context, p CheckoutParams) (s
 	}
 	if p.SourceCode != "" {
 		f.Set("subscription_data[metadata][source]", p.SourceCode)
+	}
+	if p.TrialDays > 0 {
+		f.Set("subscription_data[trial_period_days]", strconv.Itoa(p.TrialDays))
 	}
 	var out struct {
 		URL string `json:"url"`
@@ -209,6 +215,9 @@ type Subscription struct {
 	Discounts []json.RawMessage `json:"discounts"`
 	// Discount is the same thing, before the field became a list.
 	Discount json.RawMessage `json:"discount"`
+	// TrialEnd is when a free trial turns into the first charge, in Unix
+	// seconds; zero when there is no trial.
+	TrialEnd int64 `json:"trial_end"`
 
 	// CancelAtPeriodEnd is somebody who has cancelled but is still inside the
 	// month they paid for. Stripe keeps the status "active" until that month

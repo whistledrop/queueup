@@ -113,7 +113,7 @@ func (s *Server) allowJoin(w http.ResponseWriter, acct store.Account) bool {
 		return true
 	}
 	writeGateError(w,
-		"You've used all 10 free joins this month. They come back on the 1st, or go unlimited for "+
+		"You've used all 10 free joins this month. They come back on the 1st, or try Unlimited "+
 			introLine+", cancel anytime.",
 		reasonFreeJoinsUsed)
 	return false
@@ -138,7 +138,7 @@ func (s *Server) allowSchedule(w http.ResponseWriter, acct store.Account) bool {
 		return true
 	}
 	writeGateError(w,
-		"You've used your free wipe join. Scheduled joins are part of the full plan: "+
+		"You've used your free wipe join. Scheduled joins are part of Unlimited, "+
 			introLine+", cancel anytime.",
 		reasonFreeWipeUsed)
 	return false

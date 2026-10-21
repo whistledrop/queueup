@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"queueup/internal/store"
-	"queueup/internal/stripe"
 )
 
 // Winning back somebody who signed up and did not pay.
@@ -88,28 +87,9 @@ func (s *Server) sendWinback(ctx context.Context, now time.Time) {
 }
 
 func (s *Server) sendOneWinback(ctx context.Context, acct store.Account, stage store.WinbackStage, now time.Time) {
-	// The code is checked against Stripe now, not trusted from when they
-	// signed up: signup stores whatever was typed or carried in the link,
-	// unchecked, and an email promising £1.99 has to be backed by a code that
-	// actually gives £1.99.
-	code, err := s.st.SourceCode(acct.ID)
-	if err != nil || code == "" {
-		return
-	}
-	lookupCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
-	promo, err := s.cfg.Stripe.LookupPromotionCode(lookupCtx, code, priceMonthlyPence)
-	cancel()
-	if errors.Is(err, stripe.ErrNoSuchCode) || (err == nil && promo.Forever) {
-		// No live offer behind this code. Not marked: if they type a working
-		// one on the paywall later, the sequence picks them up from there.
-		return
-	}
-	if err != nil {
-		// Stripe unreachable. Try again on the next tick rather than send an
-		// email with a price in it that nobody has checked.
-		s.log.Error("checking a code for a win-back email", "account", acct.ID, "err", err)
-		return
-	}
+	// The code they arrived on rides along in the link, for attribution. It
+	// no longer changes the price: nothing here promises a discount.
+	code, _ := s.st.SourceCode(acct.ID)
 
 	token, err := s.st.UnsubscribeToken(acct.ID)
 	if err != nil {
@@ -126,11 +106,13 @@ func (s *Server) sendOneWinback(ctx context.Context, acct store.Account, stage s
 		s.log.Error("making a continue link", "account", acct.ID, "err", err)
 		return
 	}
-	back := web + "/continue?" + url.Values{"a": {acct.ID}, "t": {cont}, "promo": {promo.Code}}.Encode()
+	q := url.Values{"a": {acct.ID}, "t": {cont}}
+	if code != "" {
+		q.Set("promo", code)
+	}
+	back := web + "/continue?" + q.Encode()
 
 	subject, body := winbackMessage(stage, winbackDetails{
-		code:        promo.Code,
-		firstMonth:  moneyLine(promo.FirstMonthPence),
 		fullPrice:   moneyLine(priceMonthlyPence),
 		link:        back,
 		demoURL:     s.cfg.DemoURL,
@@ -153,14 +135,12 @@ func (s *Server) sendOneWinback(ctx context.Context, acct store.Account, stage s
 		s.log.Error("sending a win-back email", "account", acct.ID, "stage", stage, "err", err)
 		return
 	}
-	s.log.Info("win-back email sent", "account", acct.ID, "stage", stage, "code", promo.Code)
+	s.log.Info("win-back email sent", "account", acct.ID, "stage", stage, "code", code)
 }
 
 // winbackDetails is everything an email needs to say, worked out before any
 // of it is written, so the wording below is only wording.
 type winbackDetails struct {
-	code        string
-	firstMonth  string // "£1.99"
 	fullPrice   string // "£4.99"
 	link        string
 	demoURL     string
@@ -180,16 +160,16 @@ type winbackDetails struct {
 func winbackMessage(stage store.WinbackStage, d winbackDetails) (subject, body string) {
 	switch stage {
 	case 1:
-		subject = "Your " + d.firstMonth + " first month is saved"
+		subject = "Your 7-day free trial is waiting"
 		body = "You signed up for QueueUp but didn't finish.\n\n" +
-			"Your first month is " + d.firstMonth + " with code " + d.code + ".\n\n" +
+			"QueueUp is free to use: ten joins a month. To try Unlimited, the first 7 days are free.\n\n" +
 			"Pick up where you left off:\n" + d.link + "\n\n" +
-			"After that it's " + d.fullPrice + " a month. Cancel anytime.\n"
+			"After the trial it's " + d.fullPrice + " a month. Cancel anytime.\n"
 
 	case 2:
 		subject = "Is QueueUp allowed in Rust?"
 		var b strings.Builder
-		b.WriteString("The thing most people want to know before paying: is this a cheat?\n\n")
+		b.WriteString("The thing most people want to know first: is this a cheat?\n\n")
 		// Every claim here is one of QueueUp's own hard rules, not a
 		// description of luck. It does not promise nobody will ever be
 		// banned, because that is Facepunch's call and not ours to make; it
@@ -204,18 +184,16 @@ func winbackMessage(stage store.WinbackStage, d winbackDetails) (subject, body s
 		if d.testimonial != "" {
 			b.WriteString(d.testimonial + "\n\n")
 		}
-		b.WriteString("If it's not for you, cancel in Settings. Two taps, and you keep " +
-			"the days you've paid for.\n\n")
-		b.WriteString("Your " + d.firstMonth + " first month is here when you want it:\n" +
-			d.link + "\n")
+		b.WriteString("If it's not for you, cancel in Settings. Two taps.\n\n")
+		b.WriteString("Try it free:\n" + d.link + "\n")
 		body = b.String()
 
 	case 3:
 		subject = "Last one about QueueUp"
 		body = "This is the last email about this, whatever you decide.\n\n" +
-			"QueueUp is free to try: ten joins a month, and one wipe-day join, " +
-			"without paying anything. If you want it unlimited, your first month " +
-			"is " + d.firstMonth + ", then " + d.fullPrice + " a month, cancel anytime.\n\n" +
+			"QueueUp is free to use: ten joins a month, and one wipe-day join, " +
+			"without paying anything. If you want it unlimited, the first 7 days are " +
+			"free, then " + d.fullPrice + " a month, cancel anytime.\n\n" +
 			d.link + "\n"
 	}
 	return subject, body
@@ -304,6 +282,7 @@ func (s *Server) RunRenewalReminders(ctx context.Context, every time.Duration) {
 			return
 		case <-tick.C:
 			s.sendRenewalReminders(ctx, time.Now())
+			s.sendTrialReminders(ctx, time.Now())
 		}
 	}
 }
@@ -344,5 +323,49 @@ func (s *Server) sendRenewalReminders(ctx context.Context, now time.Time) {
 			continue
 		}
 		s.log.Info("renewal reminder sent", "account", acct.ID)
+	}
+}
+
+// ------------------------------------------------------ trial reminders
+
+// The reminder before a free trial becomes a charge. Two days ahead: long
+// enough to cancel without rushing, close enough to still be remembered. It
+// is not marketing, so it goes to people who unsubscribed from marketing too:
+// it is the warning before money is taken.
+const (
+	trialRemindFrom  = 24 * time.Hour
+	trialRemindUntil = 48 * time.Hour
+)
+
+func (s *Server) sendTrialReminders(ctx context.Context, now time.Time) {
+	if !s.mail.Enabled() {
+		return
+	}
+	due, err := s.st.AccountsDueTrialReminder(now, trialRemindFrom, trialRemindUntil)
+	if err != nil {
+		s.log.Error("finding trials about to end", "err", err)
+		return
+	}
+	for _, acct := range due {
+		ends, err := s.st.TrialEndsAt(acct.ID)
+		if err != nil || ends.IsZero() {
+			continue
+		}
+		claimed, err := s.st.MarkTrialReminded(acct.ID, now)
+		if err != nil || !claimed {
+			continue
+		}
+		body := "Your QueueUp free trial ends on " + ends.Format("Monday 2 January") + ".\n\n" +
+			"After that it's " + priceLine + ". Nothing to do if you want to keep it.\n\n" +
+			"If you don't, cancel before then in two taps from Settings and you won't be charged:\n\n" +
+			"Open Settings: " + s.web("/settings") + "\n"
+		sendCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
+		err = s.mail.Send(sendCtx, acct.Email, "Your QueueUp free trial ends in 2 days", body)
+		cancel()
+		if err != nil {
+			s.log.Error("sending a trial reminder", "account", acct.ID, "err", err)
+			continue
+		}
+		s.log.Info("trial reminder sent", "account", acct.ID)
 	}
 }

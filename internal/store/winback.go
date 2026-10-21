@@ -222,6 +222,7 @@ func (s *Store) AccountsDueRenewalReminder(now time.Time, after, cutoff time.Dur
 		   AND subscription_status = 'active'
 		   AND subscription_ends_at = 0
 		   AND erase_after = 0
+		   AND trial_ends_at = 0
 		 ORDER BY first_paid_at`,
 		ms(now.Add(-after)), ms(now.Add(-cutoff)))
 	if err != nil {
@@ -244,6 +245,62 @@ func (s *Store) AccountsDueRenewalReminder(now time.Time, after, cutoff time.Dur
 func (s *Store) MarkRenewalReminded(accountID string, now time.Time) (bool, error) {
 	res, err := s.db.Exec(
 		`UPDATE accounts SET renewal_reminder_at = ? WHERE id = ? AND renewal_reminder_at = 0`,
+		ms(now.UTC()), accountID)
+	if err != nil {
+		return false, err
+	}
+	n, _ := res.RowsAffected()
+	return n == 1, nil
+}
+
+// ------------------------------------------------------------ free trials
+
+// SetTrialEnd records when this account's free trial turns into the first
+// charge. Zero means no trial.
+func (s *Store) SetTrialEnd(accountID string, at time.Time) error {
+	_, err := s.db.Exec(`UPDATE accounts SET trial_ends_at = ? WHERE id = ?`, ms(at.UTC()), accountID)
+	return err
+}
+
+// AccountsDueTrialReminder returns accounts whose trial ends between `from`
+// and `until` from now, still subscribed and not cancelled, and not yet told.
+func (s *Store) AccountsDueTrialReminder(now time.Time, from, until time.Duration) ([]Account, error) {
+	rows, err := s.db.Query(`
+		SELECT `+accountColumns+` FROM accounts
+		 WHERE trial_reminder_at = 0
+		   AND trial_ends_at > ?
+		   AND trial_ends_at <= ?
+		   AND subscription_status = 'active'
+		   AND subscription_ends_at = 0
+		   AND erase_after = 0
+		 ORDER BY trial_ends_at`,
+		ms(now.Add(from)), ms(now.Add(until)))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Account
+	for rows.Next() {
+		a, err := scanAccount(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
+// TrialEndsAt reads when the account's trial ends, or zero.
+func (s *Store) TrialEndsAt(accountID string) (time.Time, error) {
+	var at int64
+	err := s.db.QueryRow(`SELECT trial_ends_at FROM accounts WHERE id = ?`, accountID).Scan(&at)
+	return fromMs(at), err
+}
+
+// MarkTrialReminded records that the trial reminder has gone, so it goes
+// once. Reports whether this call is the one that claimed it.
+func (s *Store) MarkTrialReminded(accountID string, now time.Time) (bool, error) {
+	res, err := s.db.Exec(`UPDATE accounts SET trial_reminder_at = ? WHERE id = ? AND trial_reminder_at = 0`,
 		ms(now.UTC()), accountID)
 	if err != nil {
 		return false, err

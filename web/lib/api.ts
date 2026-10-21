@@ -49,6 +49,10 @@ export type Billing = {
   /** The promo code this account last arrived with, if any. */
   source_code: string
   can_manage: boolean
+  /** The free trial this account would get, in days; zero once it has had one. */
+  trial_days?: number
+  /** When a running trial turns into the first charge. */
+  trial_ends_at?: string
   /**
    * Where the subscription is changed or cancelled. A store subscription is
    * managed in the phone's own settings, never on this website.

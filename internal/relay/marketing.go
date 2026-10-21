@@ -255,7 +255,7 @@ Use your free wipe join: %s`, day, timeLine, s.web("/schedule"))
 		return "Force wipe is " + day,
 			fmt.Sprintf(`Force wipe is %s. %s
 
-You can still join by hand from your phone on the night with your free joins. To have your PC wait through the restart and queue the moment the server is back, without you watching, that's a scheduled join, part of Unlimited at %s.
+You can still join by hand from your phone on the night with your free joins. To have your PC wait through the restart and queue the moment the server is back, without you watching, that's a scheduled join, part of Unlimited (%s).
 
 Go unlimited: %s`,
 				day, timeLine, s.upgradeLine(a.ID), s.web("/subscribe"))

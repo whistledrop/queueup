@@ -30,9 +30,11 @@ export default function TermsPage() {
 
         <h2>What it costs</h2>
         <p>
-          £1.99 for your first month, then £4.99 a month until you cancel. The
-          £1.99 first month is once per account. Prices include any VAT due.
-          Stripe takes the payment; we never see your card.
+          The free plan costs nothing. Unlimited is £4.99 a month until you
+          cancel. Your first Unlimited subscription starts with a 7-day free
+          trial, once per account: cancel before it ends and you pay nothing.
+          Prices include any VAT due. On the website Stripe takes the payment;
+          in the app, Apple or Google does. We never see your card.
         </p>
 
         <h2>Cancelling</h2>

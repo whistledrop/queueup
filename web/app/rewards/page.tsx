@@ -39,7 +39,8 @@ export default function RewardsPage() {
     }
   }
 
-  const intro = `${PLAN.symbol}${PLAN.intro.toFixed(2)}`
+  // What a rewarded month costs: the referral discount is £3 off one month.
+  const intro = `${PLAN.symbol}${(PLAN.monthly - 3).toFixed(2)}`
   const slots = Array.from({ length: ref?.max ?? 3 }, (_, i) => {
     if (!ref) return 'locked'
     if (i < ref.used) return 'used'
@@ -65,9 +66,9 @@ export default function RewardsPage() {
             <div style={{ minWidth: 0 }}>
               <h3 className={s.title}>Bring your mates</h3>
               <p className={s.what}>
-                They get their first month for {intro}. When one of them has
-                paid and linked a PC of their own, one of your months drops to{' '}
-                {intro} too.
+                They get Unlimited free for {PLAN.trialDays} days. When one of
+                them has paid and linked a PC of their own, one of your months
+                drops to {intro}.
               </p>
             </div>
           </div>

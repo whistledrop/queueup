@@ -255,33 +255,55 @@ func TestWithoutACodeThereIsNoDiscount(t *testing.T) {
 	}
 }
 
-// A code both discounts the first month and says where this customer came
-// from, permanently, on the subscription itself.
-func TestACodeDiscountsAndAttributes(t *testing.T) {
+// A code says where this customer came from, permanently, on the
+// subscription itself. Since 2026-10-21 it never changes the price: the first
+// 7 days are free for everybody instead.
+func TestACodeAttributesButNeverDiscounts(t *testing.T) {
 	b := newBillingRig(t, true)
 
 	code, out := b.callBody(t, "POST", "/api/billing/code", `{"code":"tiktok"}`)
 	if code != 200 || out["valid"] != true {
 		t.Fatalf("checking a good code = %d %v", code, out)
 	}
-	if got := fmt.Sprint(out["first_month_pence"]); got != "199" {
-		t.Errorf("first month = %s pence, want 199", got)
+	if got := fmt.Sprint(out["first_month_pence"]); got != "499" {
+		t.Errorf("first month = %s pence, want the full 499", got)
 	}
 
 	if code, out := b.callBody(t, "POST", "/api/billing/checkout", `{"code":"TIKTOK"}`); code != 200 {
 		t.Fatalf("checkout with a code = %d %v", code, out)
 	}
 	sent := b.stripe.lastCheckout(t)
-	if sent.Get("discounts[0][promotion_code]") != "promo_tiktok" {
-		t.Errorf("the code was not applied: %v", sent)
+	if sent.Get("discounts[0][promotion_code]") != "" {
+		t.Errorf("a discount was applied: %v", sent)
 	}
 	if sent.Get("subscription_data[metadata][source]") != "TIKTOK" {
 		t.Errorf("the source did not reach the subscription: %v", sent)
+	}
+	if sent.Get("subscription_data[trial_period_days]") != "7" {
+		t.Errorf("no 7-day trial on a first subscription: %v", sent)
 	}
 
 	// And it survives the gap between arriving and paying.
 	if got, _ := b.st.SourceCode(b.acct.ID); got != "TIKTOK" {
 		t.Errorf("source code on the account = %q", got)
+	}
+}
+
+// The trial is once per account: cancel and come back, and it is the normal
+// price, or the trial would be free forever.
+func TestTheFreeTrialIsOncePerAccount(t *testing.T) {
+	b := newBillingRig(t, true)
+	if err := b.st.LinkStripe(b.acct.ID, "cus_1", "sub_old"); err != nil { // marks the intro as had
+		t.Fatal(err)
+	}
+	if code, out := b.callBody(t, "POST", "/api/billing/checkout", `{}`); code != 200 {
+		t.Fatalf("checkout = %d %v", code, out)
+	}
+	if got := b.stripe.lastCheckout(t).Get("subscription_data[trial_period_days]"); got != "" {
+		t.Errorf("a second trial was given: %q", got)
+	}
+	if _, out := b.call(t, "GET", "/api/billing"); fmt.Sprint(out["trial_days"]) != "0" {
+		t.Errorf("billing says trial_days = %v after one was had", out["trial_days"])
 	}
 }
 
@@ -299,15 +321,12 @@ func TestTheLastCodeWins(t *testing.T) {
 	}
 }
 
-// A code that never expires is a pricing mistake wearing a code's clothes.
-func TestAForeverDiscountIsRefused(t *testing.T) {
+// A code nobody knows must never stand between somebody and subscribing:
+// codes only say where people came from now.
+func TestAnUnknownCodeDoesNotBlockSubscribing(t *testing.T) {
 	b := newBillingRig(t, true)
-	_, out := b.callBody(t, "POST", "/api/billing/code", `{"code":"FOREVER"}`)
-	if out["valid"] != false {
-		t.Errorf("a forever discount was accepted: %v", out)
-	}
-	if code, _ := b.callBody(t, "POST", "/api/billing/checkout", `{"code":"FOREVER"}`); code != http.StatusBadRequest {
-		t.Errorf("checkout accepted a forever discount: %d", code)
+	if code, out := b.callBody(t, "POST", "/api/billing/checkout", `{"code":"FOREVER"}`); code != 200 {
+		t.Errorf("checkout with an unrecognised code = %d %v", code, out)
 	}
 }
 
