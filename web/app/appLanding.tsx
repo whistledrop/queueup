@@ -55,10 +55,9 @@ export default function AppLanding() {
         ) : (
           <>
             <p className={s.soon}>Coming soon to iPhone and Android.</p>
-            <StartForm className={`${l.startForm} ${s.form}`} />
+            <StartForm className={`${l.startForm} ${s.form}`} claim={false} />
           </>
         )}
-        <p className={s.free}>Free: 10 joins a month. Pro: 7 days free, then £4.99 a month.</p>
 
         <div className={s.shot}>
           <HeroShot />

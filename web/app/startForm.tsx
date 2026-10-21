@@ -28,10 +28,13 @@ import SocialSignIn from './socialSignIn'
 export default function StartForm({
   className,
   from = 'landing',
+  claim = true,
 }: {
   className?: string
   /** Which form on the page this is, so the two can be told apart later. */
   from?: string
+  /** The "Start free, 10 joins a month" line above the box. */
+  claim?: boolean
 }) {
   const router = useRouter()
   const [email, setEmail] = useState('')
@@ -89,10 +92,12 @@ export default function StartForm({
           their own claims with the site's. No price here, and no "first
           month" either; the paywall spells out the trial and £4.99 before
           anybody can be charged. */}
-      <p className="startClaim">
-        Start free, 10 joins a month
-        <DownArrow />
-      </p>
+      {claim && (
+        <p className="startClaim">
+          Start free, 10 joins a month
+          <DownArrow />
+        </p>
+      )}
       <div className="startRow">
         <input
           type="email"
