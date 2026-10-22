@@ -1,24 +1,22 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { connection } from 'next/server'
 import { guideBySlug, publishedGuides, readingMinutes } from '@/lib/guides'
 import { SITE_NAME, SITE_URL } from '@/lib/site'
 import Markdown from '../markdown'
 import { GuideCta, GuideFooter, GuideNav } from '../chrome'
 import s from '../guides.module.css'
 
-// Prerendered at build for every guide already out, and rebuilt at most
-// hourly. A guide whose day comes after the build is made on its first visit;
-// one whose day has not come is a 404, exactly as if it did not exist.
-export const revalidate = 3600
-
-export function generateStaticParams() {
-  return publishedGuides().map((g) => ({ slug: g.slug }))
-}
+// Made on each visit. A guide whose day has not come is a 404, exactly as if
+// it did not exist, and it must stop being one at midnight UK on its day
+// without a deploy. Built pages could not promise that: a "not found" built
+// or stored before the day stayed stored after it (2026-10-22, the tools).
 
 type Props = { params: Promise<{ slug: string }> }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  await connection()
   const g = guideBySlug((await params).slug)
   if (!g) return {}
   return {
@@ -43,6 +41,7 @@ function longDate(iso: string): string {
 }
 
 export default async function GuidePage({ params }: Props) {
+  await connection()
   const g = guideBySlug((await params).slug)
   if (!g) notFound()
 

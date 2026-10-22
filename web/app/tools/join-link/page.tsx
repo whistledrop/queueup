@@ -1,16 +1,21 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { connection } from 'next/server'
 import { releasedTool } from '@/lib/tools'
 import { GuideCta, GuideFooter, GuideNav } from '../../guides/chrome'
 import g from '../../guides/guides.module.css'
 import Maker from './maker'
 
-export const revalidate = 3600
+// Checked on every visit, not built once: a page built before its release
+// day is a "not found", and the host kept serving that stored copy after the
+// day came (2026-10-22, the server checker). Asking at request time means it
+// appears at midnight UK on its day, whenever the site was last deployed.
 
 const SLUG = 'join-link'
 
-export function generateMetadata(): Metadata {
+export async function generateMetadata(): Promise<Metadata> {
+  await connection()
   const t = releasedTool(SLUG)
   if (!t) return {}
   return {
@@ -20,7 +25,8 @@ export function generateMetadata(): Metadata {
   }
 }
 
-export default function JoinLink() {
+export default async function JoinLink() {
+  await connection()
   if (!releasedTool(SLUG)) notFound()
   return (
     <div className={g.page}>
